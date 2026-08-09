@@ -2,6 +2,7 @@
 "use strict";
 const D=window.KP_DATA;
 if(!D)return;
+if(!document.querySelector('link[data-kp-enhancements]')){const link=document.createElement('link');link.rel='stylesheet';link.href='./enhancements.css';link.dataset.kpEnhancements='1';document.head.appendChild(link)}
 const STORAGE="krakowPocketCoop";
 const $=s=>document.querySelector(s);
 const esc=(s="")=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
