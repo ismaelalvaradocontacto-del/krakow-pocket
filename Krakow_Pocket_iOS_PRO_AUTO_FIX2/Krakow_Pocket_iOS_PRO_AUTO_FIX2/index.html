@@ -1,0 +1,794 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#7b1e2b">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Kraków Pocket">
+  <title>Kraków Pocket · Aventura para dos</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./icon-192.svg">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    :root{
+      --ink:#201917; --muted:#786d68; --paper:#fbf7ef; --card:#fffdf8;
+      --red:#7b1e2b; --red2:#a63a48; --gold:#b3882d; --line:#e7ddd0;
+      --green:#2f6b4e; --blue:#315d83; --shadow:0 8px 24px rgba(43,30,23,.08);
+      --safe: max(16px, env(safe-area-inset-bottom));
+    }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--paper);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif}
+    button,input,select{font:inherit}
+    button{cursor:pointer}
+    .app{max-width:820px;margin:auto;padding-bottom:calc(92px + var(--safe));min-height:100dvh}
+    .hero{padding:18px 18px 14px;background:linear-gradient(145deg,#6e1724,#8c2937);color:white}
+    .eyebrow{font-size:12px;opacity:.8;text-transform:uppercase;letter-spacing:.08em}
+    h1{font-size:23px;margin:5px 0 6px;font-family:Georgia,serif}
+    .sub{font-size:14px;opacity:.9}
+    .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+    .stat{background:rgba(255,255,255,.11);border:1px solid rgba(255,255,255,.18);border-radius:14px;padding:10px}
+    .stat b{display:block;font-size:16px}.stat span{font-size:11px;opacity:.82}
+    .content{padding:14px}
+    .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px;margin-bottom:12px;box-shadow:var(--shadow)}
+    .card h2,.card h3{margin:0 0 7px;font-size:17px}
+    .small{font-size:13px;color:var(--muted);line-height:1.4}
+    .pill{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 9px;font-size:12px;background:#f1e7d8;color:#5f4420}
+    .pill.free{background:#e3f1e8;color:#28583e}.pill.food{background:#f7e7df;color:#763825}.pill.work{background:#e5edf5;color:#294b68}
+    .row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+    .btn{border:0;border-radius:14px;padding:12px 14px;background:var(--red);color:#fff;font-weight:650}
+    .btn.secondary{background:#efe5d8;color:var(--ink)}
+    .btn.ghost{background:transparent;color:var(--red);border:1px solid #d9c8b8}
+    .btn.full{width:100%}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    label{font-size:13px;color:var(--muted)}
+    select,input[type=number]{width:100%;margin-top:5px;border:1px solid var(--line);background:white;border-radius:12px;padding:11px;color:var(--ink)}
+    #map{height:390px;border-radius:18px;overflow:hidden;border:1px solid var(--line);background:#eee5d8}
+    .map-status{margin-top:8px;font-size:12px;color:var(--muted)}
+    .bottom{position:fixed;left:0;right:0;bottom:0;z-index:1000;background:rgba(251,247,239,.94);backdrop-filter:blur(16px);border-top:1px solid var(--line);padding:8px 10px calc(8px + env(safe-area-inset-bottom))}
+    .tabs{max-width:820px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr);gap:4px}
+    .tab{border:0;background:transparent;border-radius:12px;padding:7px 3px;color:var(--muted);font-size:11px}
+    .tab strong{display:block;font-size:18px;line-height:1.1;margin-bottom:2px}.tab.active{background:#efe4d4;color:var(--red)}
+    .panel{display:none}.panel.active{display:block}
+    .mission{border-left:4px solid var(--gold)}
+    .quest-title{font-family:Georgia,serif;font-size:18px}
+    .progress{height:10px;border-radius:999px;background:#eee2d3;overflow:hidden}.progress i{display:block;height:100%;background:var(--red);width:0;transition:.2s}
+    .poi-list{display:grid;gap:9px}
+    .poi{padding:12px;border:1px solid var(--line);border-radius:15px;background:#fff}
+    .poi button{font-size:12px;padding:8px 10px}
+    .distance{font-size:12px;color:var(--blue);font-weight:650}
+    .score{font-family:Georgia,serif;color:var(--gold);font-size:20px}
+    .switch{display:flex;gap:8px;align-items:center}
+    .switch input{width:22px;height:22px}
+    .story{line-height:1.52;font-size:14px}
+    .budgetBar{height:12px;background:#eee2d3;border-radius:999px;overflow:hidden}.budgetBar i{height:100%;display:block;background:var(--green);width:0}
+    .budgetBar.over i{background:var(--red)}
+    .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:100px;z-index:3000;background:#211b18;color:white;padding:10px 14px;border-radius:12px;font-size:13px;display:none;max-width:88%;text-align:center}
+    dialog{border:0;border-radius:20px;max-width:560px;width:calc(100% - 28px);padding:0;background:var(--card);color:var(--ink);box-shadow:0 24px 70px rgba(0,0,0,.25)}
+    dialog::backdrop{background:rgba(20,16,14,.55)}
+    .modal{padding:18px}.modal h3{font-family:Georgia,serif;font-size:21px;margin:0 0 8px}.modal .actions{display:flex;gap:8px;margin-top:15px}
+    .leaflet-popup-content-wrapper{border-radius:14px}.leaflet-popup-content{margin:11px 13px;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif}
+    .loc-dot{width:20px;height:20px;border-radius:50%;background:#1c78d0;border:4px solid white;box-shadow:0 0 0 2px rgba(28,120,208,.28)}
+    
+    .dash{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+    .metricPro{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
+    .metricPro .label{font-size:12px;color:var(--muted)}
+    .metricPro .value{font-family:Georgia,serif;font-size:24px;margin-top:4px}
+    .ringWrap{display:grid;place-items:center;position:relative;width:112px;height:112px}
+    .ringWrap svg{transform:rotate(-90deg)}
+    .ringText{position:absolute;text-align:center}.ringText b{font-size:22px;display:block}.ringText span{font-size:11px;color:var(--muted)}
+    .spark{width:100%;height:80px}
+    .timeline{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+    .dayCard{border:1px solid var(--line);border-radius:15px;padding:11px;background:#fff}
+    .dayCard b{display:block}.dayCard .small{margin-top:3px}
+    .heroPro{position:relative;overflow:hidden}
+    .heroPro:after{content:'🐉';position:absolute;right:-18px;bottom:-38px;font-size:120px;opacity:.07;transform:rotate(-12deg)}
+
+    
+    :root{
+      --tap:48px;
+      --radius:18px;
+    }
+    body{
+      -webkit-font-smoothing:antialiased;
+      text-rendering:optimizeLegibility;
+      overscroll-behavior-y:none;
+    }
+    button,select,input{min-height:var(--tap)}
+    .content{padding-left:14px;padding-right:14px}
+    .card{padding:16px;border-radius:20px}
+    .hero{padding-left:16px;padding-right:16px}
+    .tabs{gap:6px}
+    .tab{min-height:54px;font-size:10px}
+    .tab strong{font-size:20px}
+    .quick-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    .quick{min-height:58px;border-radius:16px;border:1px solid var(--line);background:#fff;padding:12px;text-align:left}
+    .quick b{display:block;font-size:14px}.quick span{display:block;font-size:11px;color:var(--muted);margin-top:2px}
+    .settings-fab{position:absolute;right:16px;top:max(18px,env(safe-area-inset-top));z-index:2;border:1px solid rgba(255,255,255,.24);background:rgba(255,255,255,.12);color:white;border-radius:999px;width:44px;height:44px;display:grid;place-items:center;min-height:44px}
+    .compact-row{display:flex;align-items:center;gap:10px;justify-content:space-between}
+    .sync-mini{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--muted)}
+    .sync-dot{width:9px;height:9px;border-radius:50%;background:#9e8d83}
+    .sync-dot.ok{background:#3f8b61}
+    .sheet{border:0;border-radius:24px 24px 0 0;max-width:820px;width:100%;margin:auto 0 0;align-self:end;max-height:88vh;overflow:auto;padding:0;background:var(--card)}
+    .sheet::backdrop{background:rgba(25,20,18,.45);backdrop-filter:blur(2px)}
+    .sheet-head{position:sticky;top:0;background:var(--card);padding:14px 16px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;z-index:2}
+    .sheet-body{padding:16px 16px calc(24px + env(safe-area-inset-bottom))}
+    .sheet-close{border:0;background:#efe6db;border-radius:999px;width:40px;height:40px;min-height:40px}
+    .hero-copy{padding-right:50px}
+    .smart-card{background:linear-gradient(180deg,#fffdf8,#fbf3e9);border:1px solid var(--line);border-radius:22px;padding:16px;box-shadow:var(--shadow)}
+    .smart-title{font-family:Georgia,serif;font-size:20px;margin:2px 0 4px}
+    .big-cta{width:100%;min-height:56px;border-radius:16px}
+    .hide-setup{display:none!important}
+    @media(max-width:430px){
+      .stats{grid-template-columns:repeat(3,1fr);gap:6px}
+      .stat{padding:9px 8px}
+      .stat b{font-size:15px}
+      .grid2{grid-template-columns:1fr 1fr}
+      .dash{grid-template-columns:1fr 1fr}
+      .timeline{grid-template-columns:1fr}
+      .timeline .dayCard{display:flex;justify-content:space-between;gap:12px}
+      .timeline .dayCard .small{max-width:65%}
+      .quick-actions{grid-template-columns:1fr 1fr}
+      .sheet{max-height:92vh}
+      input,select{font-size:16px}
+    }
+
+    @media(max-width:480px){#map{height:350px}.content{padding:12px}.grid3{grid-template-columns:1fr}.hero{padding-top:max(18px,env(safe-area-inset-top))}}
+  </style>
+</head>
+<body>
+<div class="app">
+  <header class="hero heroPro"><button id="openSettings" class="settings-fab" aria-label="Abrir ajustes">⚙️</button><div class="hero-copy">
+    <div class="eyebrow">Kraków Pocket · 11–13 agosto 2026</div>
+    <h1>La búsqueda de las Escamas de Wawel</h1>
+    <div class="sub">Desde vuestra casa en Nowa Praga hasta Cracovia y vuelta: descubrir mucho, gastar poco y poder atender trabajo cuando haga falta.</div>
+    <div style="display:flex;gap:8px;margin-top:11px;flex-wrap:wrap">
+      <span class="pill" style="background:rgba(255,255,255,.14);color:white">🧭 Ismael · Explorador</span>
+      <span class="pill" style="background:rgba(255,255,255,.14);color:white">🔎 Laura · Cronista</span>
+      <span class="pill" id="syncHero" style="background:rgba(255,255,255,.14);color:white">☁️ sin sincronizar</span>
+    </div>
+    <div class="stats">
+      <div class="stat"><b id="scoreTop">0 🐉</b><span>escamas</span></div>
+      <div class="stat"><b>72,16 €</b><span>ya pagados</span></div>
+      <div class="stat"><b>21 €/día</b><span>objetivo pareja</span></div>
+    </div>
+  </div></header>
+
+  <main class="content">
+    <section id="home" class="panel active">
+      <div class="card">
+        <div class="row"><div><div class="eyebrow" style="color:var(--gold)">Panel de la aventura</div><h2>Vuestro viaje de un vistazo</h2></div><span class="pill free">juntos</span></div>
+        <div class="dash" style="margin-top:12px">
+          <div class="metricPro"><div class="label">Presupuesto variable usado</div><div class="value" id="dashSpend">0 €</div><div class="small" id="dashSpendSub">de 63 €</div></div>
+          <div class="metricPro"><div class="label">Misiones completadas</div><div class="value" id="dashMissions">0 / 12</div><div class="small">aventura cooperativa</div></div>
+        </div>
+        <div class="grid2" style="margin-top:14px;align-items:center">
+          <div class="ringWrap">
+            <svg width="112" height="112" viewBox="0 0 112 112" aria-label="Progreso de la aventura">
+              <circle cx="56" cy="56" r="44" fill="none" stroke="#eee2d3" stroke-width="10"/>
+              <circle id="ringProgress" cx="56" cy="56" r="44" fill="none" stroke="#7b1e2b" stroke-width="10" stroke-linecap="round" stroke-dasharray="276.46" stroke-dashoffset="276.46"/>
+            </svg>
+            <div class="ringText"><b id="ringPct">0%</b><span>descubierto</span></div>
+          </div>
+          <div>
+            <div class="small">Gasto por día</div>
+            <svg class="spark" viewBox="0 0 240 80" role="img" aria-label="Gasto diario">
+              <line x1="0" y1="65" x2="240" y2="65" stroke="#e7ddd0"/>
+              <polyline id="spendLine" points="10,65 120,65 230,65" fill="none" stroke="#7b1e2b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle id="sp1c" cx="10" cy="65" r="5" fill="#7b1e2b"/><circle id="sp2c" cx="120" cy="65" r="5" fill="#7b1e2b"/><circle id="sp3c" cx="230" cy="65" r="5" fill="#7b1e2b"/>
+            </svg>
+            <div class="grid3 small" style="text-align:center"><span>Mar</span><span>Mié</span><span>Jue</span></div>
+          </div>
+        </div>
+        <div class="timeline" style="margin-top:14px">
+          <div class="dayCard"><b>Mar 11</b><div class="small">10:15 llegada · Old Town + Wawel</div></div>
+          <div class="dayCard"><b>Mié 12</b><div class="small">Kazimierz + Podgórze</div></div>
+          <div class="dayCard"><b>Jue 13</b><div class="small">día flexible · 20:00 bus</div></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row"><div><div class="eyebrow" style="color:var(--gold)">Viaje puerta a puerta</div><h2>🏠 Casa → 🐉 Cracovia → 🏠 Casa</h2></div><span class="pill free">todo conectado</span></div>
+        <div class="route" style="margin-top:14px">
+          <div class="stop"><b>🏠 Casa · Stalowa 20/22</b><div class="small">Nowa Praga, Varsovia</div></div>
+          <div class="stop"><b>🚌 Warszawa Zachodnia</b><div class="small">Bus martes 11 · 06:00</div></div>
+          <div class="stop"><b>🚌 Kraków MDA</b><div class="small">Llegada 10:15</div></div>
+          <div class="stop"><b>🏠 W94 Hostel</b><div class="small">11–13 agosto</div></div>
+          <div class="stop"><b>🐉 Aventura en Cracovia</b><div class="small">Old Town · Wawel · Kazimierz · Podgórze</div></div>
+          <div class="stop"><b>🚌 Kraków MDA</b><div class="small">Jueves 13 · salida 20:00</div></div>
+          <div class="stop"><b>🚌 Warszawa Zachodnia</b><div class="small">Viernes 14 · llegada 00:10</div></div>
+          <div class="stop"><b>🏠 Casa · Stalowa 20/22</b><div class="small">Fin de la expedición</div></div>
+        </div>
+        <div class="grid2" style="margin-top:12px">
+          <button class="btn" id="homeToStation">Casa → estación</button>
+          <button class="btn secondary" id="stationToHome">Estación → casa</button>
+        </div>
+        <div class="grid2" style="margin-top:8px">
+          <button class="btn ghost" id="homeOnMap">Ver casa</button>
+          <button class="btn ghost" id="stationOnMap">Ver Zachodnia</button>
+        </div>
+      </div>
+
+      <div class="card mission">
+        <div class="row"><div><div class="eyebrow" style="color:var(--gold)">Prólogo · martes 11</div><div class="quest-title">La salida de Nowa Praga</div></div><span class="score">⏱️</span></div>
+        <div class="dash" style="margin-top:12px">
+          <div class="metricPro"><div class="label">Objetivo en Zachodnia</div><div class="value">05:30</div><div class="small">30 min antes del bus</div></div>
+          <div class="metricPro"><div class="label">Cuenta atrás</div><div class="value" id="departureCountdown">—</div><div class="small" id="departureHint">hasta el margen de seguridad</div></div>
+        </div>
+        <p class="small" style="margin-top:12px">Como los horarios urbanos pueden cambiar, el botón abre la ruta actual en Google Maps desde vuestra dirección. La app no os obliga a una línea concreta.</p>
+      </div>
+
+      <div class="smart-card">
+        <div class="compact-row">
+          <div>
+            <div class="eyebrow" style="color:var(--gold)">Ahora</div>
+            <div class="smart-title" id="missionTitle">¿Qué hacemos?</div>
+          </div>
+          <div class="sync-mini"><span id="syncDot" class="sync-dot"></span><span id="syncMiniText">sin sincronizar</span></div>
+        </div>
+        <p class="small" id="missionText">Activa la ubicación una vez y la app podrá proponeros planes cercanos.</p>
+        <button class="btn big-cta" id="locateBtn">📍 Activar ubicación</button>
+
+        <div class="grid2" style="margin-top:12px">
+          <label>Tiempo
+            <select id="freeTime"><option value="30">30 min</option><option value="60" selected>1 hora</option><option value="120">2 horas</option><option value="240">Media tarde</option></select>
+          </label>
+          <label>Plan
+            <select id="mood"><option value="explore">Explorar</option><option value="free">Gratis</option><option value="food">Comer barato</option><option value="rest">Tranquilo</option><option value="work">Trabajo</option></select>
+          </label>
+        </div>
+        <button class="btn big-cta" style="margin-top:10px" id="recommendBtn">✨ Recomendar ahora</button>
+      </div>
+
+      <div class="quick-actions" style="margin-top:12px">
+        <button class="quick" id="quickMap"><b>🗺️ Ver mapa</b><span>Sitios cerca de vosotros</span></button>
+        <button class="quick" id="quickFood"><b>🍲 Comer barato</b><span>Prioriza opciones económicas</span></button>
+        <button class="quick" id="quickWork"><b>💼 Pausar por trabajo</b><span>Planes cortos y tranquilos</span></button>
+        <button class="quick" id="quickReturn"><b>🚌 Regreso</b><span>Ruta hacia vuestro bus</span></button>
+      </div>
+
+      <div class="card" id="recommendation">
+        <h2>Consejo de los cronistas</h2>
+        <p class="story">Activad el GPS. La app priorizará lugares cercanos, gratuitos y compatibles con el tiempo que tengáis.</p>
+      </div>
+
+      <div class="card">
+        <div class="compact-row">
+          <div><h2 style="margin-bottom:2px">Modo trabajo</h2><div class="small">Reduce planes largos y mantiene todo flexible.</div></div>
+          <label class="switch"><input id="workMode" type="checkbox" aria-label="Activar modo trabajo"></label>
+        </div>
+      </div>
+    </section>
+
+    <section id="mapPanel" class="panel">
+      <div class="card" style="padding:10px">
+        <div id="map"></div>
+        <div class="map-status" id="mapStatus">Cargando puntos de Cracovia…</div>
+      </div>
+      <div class="card">
+        <div class="row"><h2>Cerca de vosotros</h2><button class="btn ghost" id="refreshNear">Actualizar</button></div>
+        <div class="poi-list" id="nearList"></div>
+      </div>
+    </section>
+
+    <section id="quests" class="panel">
+      <div class="card">
+        <div class="row"><h2>Vuestro progreso</h2><b id="questCount">0 / 10</b></div>
+        <div class="progress"><i id="questBar"></i></div>
+        <p class="small">Las escamas se consiguen mirando la ciudad, no mirando el teléfono.</p>
+      </div>
+      <div id="questList"></div>
+    </section>
+
+    <section id="guide" class="panel">
+      <div class="card">
+        <h2>Free tour para dos</h2>
+        <p class="small">Ruta autoguiada. Leed una historia de 30–60 segundos, guardad el móvil y buscad el detalle en la ciudad.</p>
+        <button class="btn full" id="startTour">🎧 Empezar desde la parada más cercana</button>
+      </div>
+      <div id="storyList"></div>
+    </section>
+
+    <section id="budget" class="panel">
+      <div class="card">
+        <h2>El reto del złoty</h2>
+        <p class="small">Presupuesto variable orientativo en Cracovia: 63 € entre los dos para martes, miércoles y jueves. No es una obligación de gastar.</p>
+        <div class="grid3">
+          <label>Martes (€)<input type="number" id="b1" min="0" step=".5" value="0"></label>
+          <label>Miércoles (€)<input type="number" id="b2" min="0" step=".5" value="0"></label>
+          <label>Jueves (€)<input type="number" id="b3" min="0" step=".5" value="0"></label>
+        </div>
+        <div class="row" style="margin-top:14px"><b id="variableSpend">0 € variables</b><b id="totalSpend">72,16 € viaje</b></div>
+        <div class="budgetBar" id="budgetBar" style="margin-top:10px"><i></i></div>
+        <p class="small" id="budgetMessage">Todo el margen sigue disponible.</p>
+      </div>
+      <div class="card">
+        <h2>Reglas que os ahorran dinero</h2>
+        <div class="poi-list">
+          <div class="poi"><b>🥐 Desayuno</b><div class="small">Supermercado/panadería antes de entrar en la zona turística.</div></div>
+          <div class="poi"><b>🍲 Comida fuerte</b><div class="small">Milk bar o comida sencilla. Evitad que bebidas y extras dupliquen la cuenta.</div></div>
+          <div class="poi"><b>🚶 Transporte</b><div class="small">Vuestra base está bien situada: priorizad caminar.</div></div>
+          <div class="poi"><b>🆓 Cultura</b><div class="small">El jueves, la exposición permanente del Museo de Podgórze tiene entrada gratuita según el museo.</div></div>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<nav class="bottom">
+  <div class="tabs">
+    <button class="tab active" data-panel="home"><strong>🐉</strong>Ahora</button>
+    <button class="tab" data-panel="mapPanel"><strong>🗺️</strong>Mapa</button>
+    <button class="tab" data-panel="quests"><strong>🧩</strong>Misiones</button>
+    <button class="tab" data-panel="guide"><strong>📖</strong>Historias</button>
+    <button class="tab" data-panel="budget"><strong>💰</strong>Gasto</button>
+  </div>
+</nav>
+
+
+<dialog id="settingsSheet" class="sheet">
+  <div class="sheet-head"><div><b>Ajustes</b><div class="small">Solo hace falta tocar esto una vez</div></div><button id="closeSettings" class="sheet-close" aria-label="Cerrar">✕</button></div>
+  <div class="sheet-body">
+    <div class="card" style="box-shadow:none">
+      <div class="row"><div><div class="eyebrow" style="color:var(--gold)">Aventura cooperativa</div><h3>Ismael + Laura</h3></div><span class="pill work" id="syncStatus">solo este iPhone</span></div>
+      <p class="small">Vais siempre juntos. El nombre del móvil solo personaliza mensajes; progreso y presupuesto son compartidos.</p>
+      <div class="grid2">
+        <label>Este iPhone es de
+          <select id="playerSelect"><option value="Ismael">🧭 Ismael</option><option value="Laura">🔎 Laura</option></select>
+        </label>
+        <label>Código de aventura
+          <input id="adventureCode" value="WAWEL-ISMAEL-LAURA" autocomplete="off">
+        </label>
+      </div>
+    </div>
+
+    <div class="card" style="box-shadow:none">
+      <h3>☁️ Sincronización</h3>
+      <p class="small">La aventura ya viene configurada. No tenéis que copiar claves ni secretos.</p>
+      <button class="btn" id="connectCloud" style="width:100%;margin-top:8px">Reconectar ahora</button>
+      <button class="btn secondary" id="createCloud" style="display:none">Crear partida</button>
+      <p class="small" id="syncHelp">Conexión automática al abrir la app.</p>
+      <details style="margin-top:10px">
+        <summary class="small" style="cursor:pointer">Datos técnicos</summary>
+        <label style="display:block;margin-top:8px">Supabase Project URL
+          <input id="supabaseUrl" readonly autocomplete="off">
+        </label>
+        <label style="display:block;margin-top:8px">Supabase publishable key
+          <input id="supabaseKey" readonly autocomplete="off">
+        </label>
+        <label style="display:block;margin-top:8px">Secreto compartido
+          <input id="adventureSecret" type="password" readonly autocomplete="off">
+        </label>
+      </details>
+    </div>
+
+    <div class="card" style="box-shadow:none">
+      <h3>🏠 Vuestra base</h3>
+      <div class="small">Stalowa 20/22 · Nowa Praga · Varsovia</div>
+      <div class="grid2" style="margin-top:10px">
+        <button class="btn secondary" id="settingsHomeMap">Ver casa</button>
+        <button class="btn secondary" id="settingsStation">Ver Zachodnia</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="storyDialog"><div class="modal"><div class="eyebrow" style="color:var(--gold)">Crónica de Cracovia</div><h3 id="dlgTitle"></h3><p class="story" id="dlgText"></p><div class="actions"><button class="btn secondary" id="closeDlg">Cerrar</button><button class="btn" id="navigateDlg">Ir andando</button></div></div></dialog>
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const FIXED=72.16, VARIABLE_CAP=63;
+const HOME_WARSAW='Stalowa 20/22, 03-426 Warszawa, Poland';
+const WARSAW_BUS='Warszawa Zachodnia Bus Station, Warsaw, Poland';
+const KRAKOW_BUS='Kraków MDA Bus Station, Bosacka 18, Kraków, Poland';
+const OUTBOUND=new Date('2026-08-11T06:00:00+02:00');
+const RETURN_DEPART=new Date('2026-08-13T20:00:00+02:00');
+const RETURN_ARRIVE=new Date('2026-08-14T00:10:00+02:00');
+const STATION_TARGET=new Date('2026-08-11T05:30:00+02:00');
+const state=JSON.parse(localStorage.getItem('krakowPocketCoop')||'{"visited":[],"budgetByPlayer":{"Ismael":[0,0,0],"Laura":[0,0,0]}}');
+if(!state.visited) state.visited=[];
+// Migración defensiva: versiones anteriores guardaban budgetByPlayer y no state.budget.
+// La aventura actual usa un único presupuesto conjunto.
+if(!Array.isArray(state.budget)) state.budget=[0,0,0];
+if(!state.budgetByPlayer) state.budgetByPlayer={Ismael:[0,0,0],Laura:[0,0,0]};
+let currentPlayer=localStorage.getItem('krakowPlayer')||'Ismael';
+const CLOUD_CONFIG={
+  url:'https://ahzmwkztlakejmrvgcdm.supabase.co',
+  key:'sb_publishable_sf-RddHTp5jdFCQOfRBBsQ_PZGKOIxJ',
+  code:'WAWEL-ISMAEL-LAURA',
+  secret:'krakow2026'
+};
+let cloud={...CLOUD_CONFIG};
+localStorage.setItem('kpSupabaseUrl',cloud.url);
+localStorage.setItem('kpSupabaseKey',cloud.key);
+localStorage.setItem('kpAdventureCode',cloud.code);
+localStorage.setItem('kpAdventureSecret',cloud.secret);
+let syncTimer=null;
+let userPos=null,userMarker=null,map=null,watchId=null;
+const markers=new Map();
+
+const pois=[
+ {id:'homewarsaw',name:'Casa · Varsovia',type:'base',q:'Stalowa 20/22, 03-426 Warszawa, Poland',emoji:'🏠',cost:'base',time:0,
+  story:'Vuestra base en Nowa Praga. La aventura empieza aquí antes del amanecer del martes 11.'},
+ {id:'zachodnia',name:'Warszawa Zachodnia',type:'bus',q:'Warszawa Zachodnia Bus Station, Warsaw, Poland',emoji:'🚌',cost:'pagado',time:0,
+  story:'Vuestro FlixBus a Cracovia sale de aquí el martes 11 a las 06:00 y volvéis aquí el viernes 14 a las 00:10.'},
+ {id:'w94',name:'W94 Hostel',type:'base',q:'W94 Hostel, Juliana Dunajewskiego 8, Kraków',emoji:'🏠',cost:'pagado',time:0,
+  story:'Vuestra base. Está al norte del casco antiguo: usad Planty como corredor peatonal para entrar y salir del centro sin gastar en transporte.'},
+ {id:'mda',name:'Kraków MDA',type:'bus',q:'Kraków MDA Bus Station, Bosacka 18, Kraków',emoji:'🚌',cost:'pagado',time:0,
+  story:'Aquí llegáis el martes a las 10:15 y desde aquí sale vuestro bus de vuelta el jueves a las 20:00.'},
+ {id:'florian',name:'Puerta de San Florián',type:'history',q:"St. Florian's Gate, Kraków",emoji:'🛡️',cost:'gratis',time:20,
+  story:'Una de las entradas históricas a la ciudad amurallada. Mirad cómo la calle Floriańska conduce hacia Rynek: la ciudad medieval se lee caminando.'},
+ {id:'rynek',name:'Rynek Główny',type:'history',q:'Rynek Główny, Kraków',emoji:'🏛️',cost:'gratis',time:30,
+  story:'El gran corazón comercial de la Cracovia medieval. Sukiennice ocupa el centro porque comercio y vida urbana estaban literalmente entrelazados.'},
+ {id:'maria',name:'Basílica de Santa María',type:'history',q:"St. Mary's Basilica, Kraków",emoji:'🎺',cost:'exterior gratis',time:20,
+  story:'Esperad al cambio de hora para escuchar el hejnał. La melodía se corta de golpe; la tradición popular lo vincula con un vigía que alertaba de un ataque.'},
+ {id:'maius',name:'Collegium Maius',type:'history',q:'Collegium Maius, Kraków',emoji:'📚',cost:'patio gratis',time:25,
+  story:'Uno de los lugares históricos de la Universidad Jaguelónica. El patio cambia por completo el ambiente respecto al bullicio de Rynek.'},
+ {id:'wawel',name:'Colina de Wawel',type:'history',q:'Wawel Royal Castle, Kraków',emoji:'👑',cost:'exteriores gratis',time:60,
+  story:'Durante siglos, Wawel fue un centro político y religioso fundamental de Polonia. Antes de comprar entradas, explorad la colina, patios accesibles y vistas del Vístula.'},
+ {id:'dragon',name:'Dragón de Wawel',type:'game',q:'Wawel Dragon, Kraków',emoji:'🐉',cost:'gratis',time:20,
+  story:'El dragón es el gran hilo conductor de vuestra aventura. Encontrad la escultura junto al Vístula y esperad un poco antes de marcharos.'},
+ {id:'szeroka',name:'Calle Szeroka · Kazimierz',type:'history',q:'Szeroka Street, Kraków',emoji:'✡️',cost:'gratis',time:45,
+  story:'Kazimierz fue durante siglos un centro de vida judía. Mirad fachadas, sinagogas y patios: su valor está en las capas históricas, no solo en los bares.'},
+ {id:'placnowy',name:'Plac Nowy',type:'explore',q:'Plac Nowy, Kraków',emoji:'🥯',cost:'variable',time:25,
+  story:'Un buen punto para sentir el Kazimierz contemporáneo y comparar comida rápida sin sentaros automáticamente en un restaurante.'},
+ {id:'bernatek',name:'Puente Bernatek',type:'walk',q:'Father Bernatek Footbridge, Kraków',emoji:'🌉',cost:'gratis',time:20,
+  story:'Cruzadlo andando hacia Podgórze. Es una transición natural entre barrios y una forma sencilla de seguir explorando sin transporte.'},
+ {id:'ghetto',name:'Plac Bohaterów Getta',type:'history',q:'Plac Bohaterów Getta, Kraków',emoji:'🪑',cost:'gratis',time:30,
+  story:'Las sillas del memorial recuerdan a las personas confinadas y deportadas desde el gueto de Cracovia. Es una parada para bajar el ritmo.'},
+ {id:'podmuseum',name:'Museo de Podgórze',type:'museum',q:'Muzeum Podgórza, Limanowskiego 51, Kraków',emoji:'🏛️',cost:'jueves gratis',time:75,
+  story:'El museo presenta la historia del distrito de Podgórze. Según el Museo de Cracovia, los jueves la entrada a la exposición permanente es gratuita.'},
+ {id:'tomasza',name:'Milkbar Tomasza',type:'food',q:'Milkbar Tomasza, Świętego Tomasza 24, Kraków',emoji:'🍲',cost:'$',time:45,
+  story:'Una de vuestras opciones de comida económica en Old Town. Ideal como comida fuerte del día; controlad bebidas y extras.'},
+ {id:'temida',name:'Pod Temidą',type:'food',q:'Bar Mleczny Pod Temidą, Grodzka 43, Kraków',emoji:'🥟',cost:'$',time:45,
+  story:'Bar mleczny muy bien colocado si bajáis por Grodzka hacia Wawel. Comparad platos y no asumáis que todo el menú cuesta lo mismo.'},
+ {id:'sham',name:'SHAM Falafel',type:'food',q:'SHAM Falafel, Rynek Kleparski 5, Kraków',emoji:'🧆',cost:'$',time:40,
+  story:'Alternativa económica cerca del norte del casco antiguo cuando queráis descansar de la comida polaca.'},
+ {id:'biedronka',name:'Biedronka cercana',type:'shop',q:'Biedronka, Kraków Old Town',emoji:'🛒',cost:'ahorro',time:20,
+  story:'Usad supermercado para agua, desayuno, fruta, yogures y una cena sencilla. Es una de las palancas principales de vuestro presupuesto.'}
+];
+
+const quests=[
+ {poi:'florian',owner:'Ambos',title:'La puerta de los viajeros',text:'Ismael guía la entrada: encuentra la Puerta de San Florián y decide qué calle os lleva al corazón de la ciudad.',points:10},
+ {poi:'rynek',owner:'Ambos',title:'La mirada de la cronista',text:'Laura elige un detalle de Rynek que Ismael no haya señalado todavía. Después intercambiad papeles.',points:15},
+ {poi:'maria',owner:'Ambos',title:'El trompetista invisible',text:'Escuchad juntos el hejnał al cambio de hora e intentad localizar de qué torre viene sin mirar el móvil.',points:20},
+ {poi:'maius',owner:'Ambos',title:'El patio escondido',text:'Laura busca el detalle arquitectónico más curioso del Collegium Maius y se lo enseña a Ismael sin decir dónde está.',points:10},
+ {poi:'wawel',owner:'Ambos',title:'La colina de los reyes',text:'Ismael encuentra una vista del Vístula que merezca una foto conjunta sin comprar ninguna entrada.',points:15},
+ {poi:'dragon',owner:'Ambos',title:'La primera escama',text:'Encontrad juntos al Dragón de Wawel. Esperad al menos un minuto antes de marcharos.',points:25},
+ {poi:'szeroka',owner:'Ambos',title:'Capas de Kazimierz',text:'Laura debe encontrar tres señales de la historia judía de Szeroka y explicarle a Ismael qué ha observado.',points:20},
+ {poi:'bernatek',owner:'Ambos',title:'Cruzar de mundo',text:'Ismael guía hasta el puente Bernatek. A mitad del puente, cada uno decide qué barrio le atrae más hasta ahora.',points:10},
+ {poi:'ghetto',owner:'Ambos',title:'Las sillas',text:'Contad juntos en silencio diez sillas del memorial y leed el espacio antes de sacar ninguna foto.',points:25},
+ {poi:'tomasza',owner:'Ambos',title:'Maestros del złoty',text:'Haced una comida caliente manteniendo el gasto conjunto del día dentro de vuestro objetivo.',points:20},
+ {poi:'podmuseum',owner:'Ambos',title:'El jueves secreto',text:'Si os apetece museo, Laura comprueba que siga vigente la entrada gratuita del jueves y decide si encaja sin correr.',points:15},
+ {poi:'placnowy',owner:'Ambos',title:'El cazador de gangas',text:'Ismael busca una opción de comida o snack en Plac Nowy y compara precio antes de comprar.',points:10}
+];
+
+function computedScore(){return quests.filter(q=>state.visited.includes(q.poi)).reduce((s,q)=>s+q.points,0)}
+function save(push=true){
+  localStorage.setItem('krakowPocketCoop',JSON.stringify(state));
+  updateScore();renderDashboard();
+  if(push && cloud.url && cloud.key && cloud.code && cloud.secret) pushCloud().catch(()=>{});
+}
+function toast(s){const t=document.getElementById('toast');t.textContent=s;t.style.display='block';setTimeout(()=>t.style.display='none',2200)}
+function updateScore(){
+  const score=computedScore();
+  document.getElementById('scoreTop').textContent=score+' 🐉';
+  const c=state.visited.length;
+  document.getElementById('questCount').textContent=c+' / '+quests.length;
+  document.getElementById('questBar').style.width=(c/quests.length*100)+'%';
+}
+function hav(a,b){const R=6371,rad=x=>x*Math.PI/180,dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon),la1=rad(a.lat),la2=rad(b.lat);const h=Math.sin(dLat/2)**2+Math.cos(la1)*Math.cos(la2)*Math.sin(dLon/2)**2;return 2*R*Math.asin(Math.sqrt(h))}
+function navUrl(p){return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(p.lat+','+p.lon)}&travelmode=walking`}
+async function geocode(p){
+  const url='https://nominatim.openstreetmap.org/search?format=json&limit=1&q='+encodeURIComponent(p.q);
+  const r=await fetch(url,{headers:{'Accept-Language':'es'}});
+  const j=await r.json(); if(!j.length) return null;
+  p.lat=+j[0].lat;p.lon=+j[0].lon;return p;
+}
+async function loadPois(){
+  document.getElementById('mapStatus').textContent='Localizando puntos…';
+  for(const p of pois){
+    try{await geocode(p); if(p.lat) addMarker(p);}catch(e){}
+    await new Promise(r=>setTimeout(r,1050)); // respetar geocodificador público
+  }
+  document.getElementById('mapStatus').textContent='Puntos listos. El botón GPS puede mostrar vuestra posición.';
+  updateNear();
+}
+function iconFor(p){return L.divIcon({className:'',html:`<div style="width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:#fffdf8;border:2px solid #7b1e2b;box-shadow:0 3px 10px #0002;font-size:18px">${p.emoji}</div>`,iconSize:[34,34],iconAnchor:[17,17]})}
+function addMarker(p){
+ const m=L.marker([p.lat,p.lon],{icon:iconFor(p)}).addTo(map);
+ m.bindPopup(`<b>${p.emoji} ${p.name}</b><br><span style="font-size:12px">${p.cost}</span><br><button onclick="openPoi('${p.id}')" style="margin-top:7px">Ver historia</button>`);
+ markers.set(p.id,m);
+}
+window.openPoi=function(id){
+ const p=pois.find(x=>x.id===id); if(!p)return;
+ document.getElementById('dlgTitle').textContent=p.emoji+' '+p.name;
+ document.getElementById('dlgText').textContent=p.story;
+ document.getElementById('navigateDlg').onclick=()=>{if(p.lat)window.open(navUrl(p),'_blank')};
+ document.getElementById('storyDialog').showModal();
+}
+function initMap(){
+ map=L.map('map',{zoomControl:false}).setView([50.0617,19.9373],14);
+ L.control.zoom({position:'topright'}).addTo(map);
+ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap'}).addTo(map);
+ setTimeout(()=>map.invalidateSize(),300);
+ loadPois();
+}
+function locate(){
+ if(!navigator.geolocation){toast('Este navegador no ofrece GPS.');return}
+ document.getElementById('locateBtn').textContent='Buscando ubicación…';
+ watchId=navigator.geolocation.watchPosition(pos=>{
+   userPos={lat:pos.coords.latitude,lon:pos.coords.longitude};
+   if(userMarker)map.removeLayer(userMarker);
+   userMarker=L.marker([userPos.lat,userPos.lon],{icon:L.divIcon({className:'',html:'<div class="loc-dot"></div>',iconSize:[20,20],iconAnchor:[10,10]})}).addTo(map).bindPopup('📍 Estáis aquí');
+   map.setView([userPos.lat,userPos.lon],15);
+   document.getElementById('locateBtn').textContent='✓ Ubicación activa';
+   document.getElementById('missionTitle').textContent='El mapa ha despertado';
+   document.getElementById('missionText').textContent='Ya puedo ordenar sitios por cercanía y recomendar rutas según donde estéis.';
+   updateNear();
+ },err=>{document.getElementById('locateBtn').textContent='📍 Reintentar ubicación';toast('Safari necesita permiso de ubicación. En iPhone: Ajustes → Privacidad y seguridad → Localización.');},{enableHighAccuracy:true,maximumAge:15000,timeout:12000});
+}
+function updateNear(){
+ const ready=pois.filter(p=>p.lat);
+ const list=userPos?ready.map(p=>({...p,dist:hav(userPos,p)})).sort((a,b)=>a.dist-b.dist):ready.slice(0,8);
+ const el=document.getElementById('nearList');el.innerHTML='';
+ list.slice(0,8).forEach(p=>{
+   const d=document.createElement('div');d.className='poi';
+   d.innerHTML=`<div class="row"><div><b>${p.emoji} ${p.name}</b><div class="small">${p.cost} · ${p.time||'—'} min</div></div><div class="distance">${p.dist!=null?(p.dist<1?Math.round(p.dist*1000)+' m':p.dist.toFixed(1)+' km'):''}</div></div>
+   <div class="grid2" style="margin-top:8px"><button class="btn secondary info">Historia</button><button class="btn ghost nav">Ir andando</button></div>`;
+   d.querySelector('.info').onclick=()=>openPoi(p.id);d.querySelector('.nav').onclick=()=>p.lat&&window.open(navUrl(p),'_blank');el.appendChild(d);
+ });
+}
+function recommend(){
+ const now=new Date();
+ if(now>=new Date('2026-08-13T18:30:00+02:00') && now<RETURN_DEPART){
+   document.getElementById('recommendation').innerHTML=`<h2>🚌 Modo regreso activado</h2><p class="story">El bus sale a las 20:00. Priorizad actividades que os acerquen a Kraków MDA y plantead estar en la estación sobre las 19:20–19:30.</p><button class="btn full" id="returnNav">Ir a Kraków MDA</button>`;
+   document.getElementById('returnNav').onclick=()=>window.open(mapsSearch(KRAKOW_BUS),'_blank');return;
+ }
+ const mins=+document.getElementById('freeTime').value,mood=document.getElementById('mood').value,work=document.getElementById('workMode').checked;
+ let candidates=pois.filter(p=>p.lat && !['w94','mda','homewarsaw','zachodnia'].includes(p.id));
+ if(mood==='food') candidates=candidates.filter(p=>['food','shop'].includes(p.type));
+ else if(mood==='free') candidates=candidates.filter(p=>String(p.cost).includes('gratis')||p.cost==='ahorro'||p.cost==='exterior gratis'||p.cost==='exteriores gratis'||p.cost==='patio gratis');
+ else if(mood==='work') candidates=candidates.filter(p=>['shop','base'].includes(p.type)).concat(pois.filter(p=>p.id==='w94'&&p.lat));
+ else if(mood==='rest') candidates=candidates.filter(p=>['walk','explore','history'].includes(p.type));
+ candidates=candidates.filter(p=>(p.time||0)<=Math.max(mins,45));
+ if(work) candidates=candidates.filter(p=>(p.time||0)<=60 && !['museum'].includes(p.type));
+ if(userPos)candidates=candidates.map(p=>({...p,dist:hav(userPos,p)})).sort((a,b)=>a.dist-b.dist);
+ const p=candidates[0]||pois.find(p=>p.id==='rynek');
+ let text=`${p.emoji} <b>${p.name}</b>. ${p.story}`;
+ if(p.dist!=null)text+=` Está a unos ${p.dist<1?Math.round(p.dist*1000)+' m':p.dist.toFixed(1)+' km'} en línea recta desde vuestra posición.`;
+ if(work)text+=' Como está activo el modo trabajo, he evitado una actividad larga.';
+ document.getElementById('recommendation').innerHTML=`<h2>La brújula del dragón propone</h2><p class="story">${text}</p><div class="grid2"><button class="btn secondary" onclick="openPoi('${p.id}')">Historia</button><button class="btn" id="recNav">Ir andando</button></div>`;
+ document.getElementById('recNav').onclick=()=>p.lat&&window.open(navUrl(p),'_blank');
+}
+function renderQuests(){
+ const el=document.getElementById('questList');el.innerHTML='';
+ quests.forEach((q,i)=>{
+   const p=pois.find(x=>x.id===q.poi),done=state.visited.includes(q.poi),allowed=true,c=document.createElement('div');c.className='card mission';
+   const who='🤝 Ismael + Laura';
+   c.innerHTML=`<div class="row"><div><div class="eyebrow" style="color:var(--gold)">Misión ${i+1} · ${who}</div><h3>${p.emoji} ${q.title}</h3></div><span class="score">+${q.points}</span></div><p class="story">${q.text}</p><div class="grid2"><button class="btn secondary storyBtn">Contexto</button><button class="btn ${done?'secondary':''} doneBtn" ${(!allowed&&!done)?'disabled':''}>${done?'✓ Completada':(allowed?'Completar misión':'Le toca a '+q.owner)}</button></div>`;
+   c.querySelector('.storyBtn').onclick=()=>openPoi(p.id);
+   c.querySelector('.doneBtn').onclick=()=>{if(allowed&&!state.visited.includes(q.poi)){state.visited.push(q.poi);save();renderQuests();toast(`${q.owner==='Ambos'?'Misión cooperativa':q.owner}: +${q.points} escamas 🐉`)}};
+   el.appendChild(c);
+ });
+ updateScore();
+}
+function renderStories(){
+ const ids=['florian','rynek','maria','maius','wawel','dragon','szeroka','bernatek','ghetto','podmuseum'];
+ const el=document.getElementById('storyList');el.innerHTML='';
+ ids.forEach((id,i)=>{const p=pois.find(x=>x.id===id),d=document.createElement('div');d.className='card';d.innerHTML=`<div class="eyebrow" style="color:var(--gold)">Parada ${i+1}</div><h3>${p.emoji} ${p.name}</h3><p class="story">${p.story}</p><button class="btn ghost navStory">Abrir cuando estemos allí</button>`;d.querySelector('.navStory').onclick=()=>openPoi(id);el.appendChild(d)})
+}
+function loadBudget(){
+ if(!Array.isArray(state.budget)) state.budget=[0,0,0];
+ ['b1','b2','b3'].forEach((id,i)=>document.getElementById(id).value=state.budget[i]||0);
+}
+function updateBudget(){
+ state.budget=[+document.getElementById('b1').value||0,+document.getElementById('b2').value||0,+document.getElementById('b3').value||0];
+ save();
+ const v=state.budget.reduce((x,y)=>x+y,0),pct=v/VARIABLE_CAP*100;
+ document.getElementById('variableSpend').textContent=v.toFixed(2).replace('.',',')+' € variables';
+ document.getElementById('totalSpend').textContent=(FIXED+v).toFixed(2).replace('.',',')+' € viaje';
+ const bar=document.getElementById('budgetBar');bar.querySelector('i').style.width=Math.min(100,pct)+'%';bar.classList.toggle('over',pct>100);
+ const left=VARIABLE_CAP-v;document.getElementById('budgetMessage').textContent=left>=0?`Quedan ${left.toFixed(2).replace('.',',')} € dentro del objetivo variable conjunto.`:`Vais ${Math.abs(left).toFixed(2).replace('.',',')} € por encima del objetivo conjunto.`;
+ renderDashboard();
+}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));document.querySelectorAll('.panel').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(b.dataset.panel).classList.add('active');if(b.dataset.panel==='mapPanel')setTimeout(()=>map.invalidateSize(),100)});
+
+const settingsSheet=document.getElementById('settingsSheet');
+document.getElementById('openSettings').onclick=()=>settingsSheet.showModal();
+document.getElementById('closeSettings').onclick=()=>settingsSheet.close();
+document.getElementById('settingsHomeMap').onclick=()=>window.open(mapsSearch(HOME_WARSAW),'_blank');
+document.getElementById('settingsStation').onclick=()=>window.open(mapsSearch(WARSAW_BUS),'_blank');
+
+function openPanel(id){
+ document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('active',x.dataset.panel===id));
+ document.querySelectorAll('.panel').forEach(x=>x.classList.toggle('active',x.id===id));
+ if(id==='mapPanel')setTimeout(()=>map.invalidateSize(),100);
+}
+document.getElementById('quickMap').onclick=()=>openPanel('mapPanel');
+document.getElementById('quickFood').onclick=()=>{document.getElementById('mood').value='food';recommend();};
+document.getElementById('quickWork').onclick=()=>{document.getElementById('workMode').checked=true;document.getElementById('mood').value='work';recommend();};
+document.getElementById('quickReturn').onclick=()=>window.open(mapsSearch(KRAKOW_BUS),'_blank');
+
+document.getElementById('locateBtn').onclick=locate;
+document.getElementById('recommendBtn').onclick=recommend;
+document.getElementById('refreshNear').onclick=updateNear;
+document.getElementById('workMode').onchange=e=>{document.getElementById('missionText').textContent=e.target.checked?'Modo trabajo activo: priorizaré planes cortos y fáciles de abandonar.':'Modo viaje activo: puedo proponeros planes más amplios.'};
+document.getElementById('closeDlg').onclick=()=>document.getElementById('storyDialog').close();
+document.getElementById('startTour').onclick=()=>{const candidates=pois.filter(p=>['florian','rynek','maria','maius','wawel','dragon','szeroka','bernatek','ghetto'].includes(p.id)&&p.lat);if(userPos)candidates.sort((a,b)=>hav(userPos,a)-hav(userPos,b));if(candidates[0])openPoi(candidates[0].id)};
+['b1','b2','b3'].forEach((id,i)=>{document.getElementById(id).oninput=updateBudget});loadBudget();
+
+
+function renderDashboard(){
+ const spent=(state.budget||[0,0,0]).reduce((a,b)=>a+(+b||0),0);
+ const done=(state.visited||[]).length;
+ const total=quests.length;
+ const pct=total?Math.round(done/total*100):0;
+ const ds=document.getElementById('dashSpend'); if(ds) ds.textContent=spent.toFixed(2).replace('.',',')+' €';
+ const dm=document.getElementById('dashMissions'); if(dm) dm.textContent=done+' / '+total;
+ const rp=document.getElementById('ringPct'); if(rp) rp.textContent=pct+'%';
+ const circle=document.getElementById('ringProgress'); if(circle){const c=276.46;circle.style.strokeDashoffset=(c*(1-pct/100)).toFixed(2);}
+ const vals=state.budget||[0,0,0], max=Math.max(21,...vals,1);
+ const xs=[10,120,230], ys=vals.map(v=>65-(Math.min(v,max)/max)*50);
+ const line=document.getElementById('spendLine'); if(line) line.setAttribute('points',xs.map((x,i)=>x+','+ys[i]).join(' '));
+ ['sp1c','sp2c','sp3c'].forEach((id,i)=>{const c=document.getElementById(id);if(c)c.setAttribute('cy',ys[i])});
+}
+
+function syncUi(ok,msg){
+  document.getElementById('syncStatus').textContent=ok?'☁️ sincronizado':'solo este iPhone';
+  document.getElementById('syncStatus').className='pill '+(ok?'free':'work');
+  document.getElementById('syncHero').textContent=ok?'☁️ partida compartida':'☁️ sin sincronizar';
+  const dot=document.getElementById('syncDot'),txt=document.getElementById('syncMiniText');
+  if(dot)dot.className='sync-dot '+(ok?'ok':'');
+  if(txt)txt.textContent=ok?'sincronizados':'sin sincronizar';
+  if(msg) document.getElementById('syncHelp').textContent=msg;
+}
+function persistCloudInputs(){
+ cloud.url=document.getElementById('supabaseUrl').value.trim().replace(/\/$/,'');
+ cloud.key=document.getElementById('supabaseKey').value.trim();
+ cloud.code=document.getElementById('adventureCode').value.trim().toUpperCase();
+ cloud.secret=document.getElementById('adventureSecret').value;
+ localStorage.setItem('kpSupabaseUrl',cloud.url);localStorage.setItem('kpSupabaseKey',cloud.key);
+ localStorage.setItem('kpAdventureCode',cloud.code);localStorage.setItem('kpAdventureSecret',cloud.secret);
+}
+async function rpc(name,body){
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),12000);
+ try{
+  const r=await fetch(`${cloud.url}/rest/v1/rpc/${name}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','apikey':cloud.key},
+    body:JSON.stringify(body),
+    signal:controller.signal
+  });
+  const text=await r.text();
+  if(!r.ok){
+    let detail=text;
+    try{const j=JSON.parse(text);detail=j.message||j.error||text}catch(_){ }
+    throw new Error(`HTTP ${r.status}: ${detail||'Error de Supabase'}`);
+  }
+  return text?JSON.parse(text):null;
+ }catch(e){
+  if(e && e.name==='AbortError') throw new Error('Tiempo de espera agotado al conectar con Supabase');
+  throw e;
+ }finally{clearTimeout(timeout)}
+}
+function mergeRemote(remote){
+ if(!remote)return;
+ state.visited=[...new Set([...(state.visited||[]),...(remote.visited||[])])];
+ if(Array.isArray(remote.budget)) state.budget=remote.budget;
+ if(Array.isArray(remote.notes)) state.notes=remote.notes;
+ localStorage.setItem('krakowPocketCoop',JSON.stringify(state));
+ updateScore();renderQuests();loadBudget();renderDashboard();
+}
+async function pullCloud(){
+ if(!cloud.url||!cloud.key||!cloud.code||!cloud.secret)return;
+ const remote=await rpc('adventure_get',{p_code:cloud.code,p_secret:cloud.secret});
+ if(remote){mergeRemote(remote);syncUi(true,'Conectado. La app revisa cambios del otro iPhone cada 4 segundos.');}
+}
+async function pushCloud(){
+ if(!cloud.url||!cloud.key||!cloud.code||!cloud.secret)return;
+ let remote=null;try{remote=await rpc('adventure_get',{p_code:cloud.code,p_secret:cloud.secret})}catch(e){}
+ if(remote){
+   state.visited=[...new Set([...(state.visited||[]),...(remote.visited||[])])];
+   if(Array.isArray(remote.budget) && JSON.stringify(remote.budget)!==JSON.stringify(state.budget)){
+     // El último cambio local sigue mandando al guardar; las misiones sí se fusionan.
+   }
+ }
+ await rpc('adventure_put',{p_code:cloud.code,p_secret:cloud.secret,p_state:state});
+ syncUi(true,'Aventura compartida sincronizada. Los cambios suelen aparecer en el otro iPhone en menos de 4 segundos.');
+}
+async function startSync(){
+ persistCloudInputs();
+ const btn=document.getElementById('connectCloud');
+ if(!cloud.url||!cloud.key||!cloud.code||!cloud.secret){syncUi(false,'Falta URL, publishable key, código o secreto.');toast('Faltan datos');return}
+ const old=btn.textContent;btn.disabled=true;btn.textContent='Conectando…';
+ syncUi(false,'Conectando con Supabase…');
+ try{
+  await pullCloud();
+  clearInterval(syncTimer);
+  syncTimer=setInterval(()=>pullCloud().catch(e=>{console.error('Sync pull:',e)}),4000);
+  syncUi(true,'Supabase conectado · partida compartida activa.');
+  toast('☁️ Supabase conectado');
+ }catch(e){
+  console.error('Supabase connect:',e);
+  syncUi(false,'Error: '+(e?.message||e));
+  toast('No se pudo conectar');
+ }finally{btn.disabled=false;btn.textContent=old}
+}
+async function createCloudGame(){
+ persistCloudInputs();
+ const btn=document.getElementById('createCloud');
+ if(!cloud.url||!cloud.key||!cloud.code||!cloud.secret){syncUi(false,'Rellena los cuatro campos.');toast('Faltan datos');return}
+ const old=btn.textContent;btn.disabled=true;btn.textContent='Creando…';
+ syncUi(false,'Creando partida en Supabase…');
+ try{
+  await rpc('adventure_create',{p_code:cloud.code,p_secret:cloud.secret,p_state:state});
+  syncUi(true,'Partida creada. En el otro iPhone usa el mismo código y secreto y pulsa Conectar.');
+  clearInterval(syncTimer);syncTimer=setInterval(()=>pullCloud().catch(e=>console.error('Sync pull:',e)),4000);
+  toast('☁️ Partida creada');
+ }catch(e){
+  console.error('Supabase create:',e);
+  syncUi(false,'Error: '+(e?.message||e));
+  toast('No se pudo crear');
+ }finally{btn.disabled=false;btn.textContent=old}
+}
+
+document.getElementById('playerSelect').value=currentPlayer;
+
+document.getElementById('supabaseUrl').value=cloud.url;
+document.getElementById('supabaseKey').value=cloud.key;
+document.getElementById('adventureCode').value=cloud.code;
+document.getElementById('adventureCode').readOnly=true;
+document.getElementById('adventureSecret').value=cloud.secret;
+document.getElementById('playerSelect').onchange=e=>{
+ currentPlayer=e.target.value;localStorage.setItem('krakowPlayer',currentPlayer);
+ 
+ loadBudget();renderQuests();updateBudget();
+};
+document.getElementById('createCloud').onclick=createCloudGame;
+document.getElementById('connectCloud').onclick=startSync;
+
+function mapsDirections(origin,destination){
+  return `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}&travelmode=transit`;
+}
+function mapsSearch(query){
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+}
+document.getElementById('homeToStation').onclick=()=>window.open(mapsDirections(HOME_WARSAW,WARSAW_BUS),'_blank');
+document.getElementById('stationToHome').onclick=()=>window.open(mapsDirections(WARSAW_BUS,HOME_WARSAW),'_blank');
+document.getElementById('homeOnMap').onclick=()=>window.open(mapsSearch(HOME_WARSAW),'_blank');
+document.getElementById('stationOnMap').onclick=()=>window.open(mapsSearch(WARSAW_BUS),'_blank');
+
+function fmtCountdown(ms){
+  if(ms<=0)return 'Ya';
+  const mins=Math.floor(ms/60000), days=Math.floor(mins/1440), hours=Math.floor((mins%1440)/60), m=mins%60;
+  if(days>0)return `${days}d ${hours}h`;
+  if(hours>0)return `${hours}h ${m}m`;
+  return `${m} min`;
+}
+function updateTripClock(){
+  const now=new Date(), target=STATION_TARGET;
+  const el=document.getElementById('departureCountdown'), hint=document.getElementById('departureHint');
+  if(!el)return;
+  if(now<target){el.textContent=fmtCountdown(target-now);hint.textContent='hasta estar en Zachodnia';}
+  else if(now<OUTBOUND){el.textContent=fmtCountdown(OUTBOUND-now);hint.textContent='hasta que salga el bus';}
+  else if(now<RETURN_DEPART){el.textContent=fmtCountdown(RETURN_DEPART-now);hint.textContent='hasta el bus de vuelta';}
+  else if(now<RETURN_ARRIVE){el.textContent=fmtCountdown(RETURN_ARRIVE-now);hint.textContent='hasta llegar a Varsovia';}
+  else{el.textContent='🏠';hint.textContent='aventura completada';}
+}
+updateTripClock();setInterval(updateTripClock,30000);
+
+initMap();renderQuests();renderStories();updateBudget();updateScore();renderDashboard();
+if(cloud.url&&cloud.key&&cloud.code&&cloud.secret){
+  syncUi(false,'Conectando automáticamente…');
+  setTimeout(()=>startSync(),350);
+}
+
+if('serviceWorker' in navigator)window.addEventListener('load',()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
