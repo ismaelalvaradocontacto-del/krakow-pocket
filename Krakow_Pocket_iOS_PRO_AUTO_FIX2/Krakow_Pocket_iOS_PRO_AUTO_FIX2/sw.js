@@ -1,4 +1,4 @@
-const CACHE='krakow-pocket-fix2';
+const CACHE='krakow-pocket-icon-v3';
 const ASSETS=['./manifest.webmanifest','./icon-192.svg','./icon-512.svg'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([
