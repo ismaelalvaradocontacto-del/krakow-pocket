@@ -10,9 +10,10 @@
   <meta name="format-detection" content="telephone=no">
   <title>Kraków Pocket · Aventura para dos</title>
   <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icon-192.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="./icon-192.svg">
-  <link rel="preload" href="./assets/game-art.svg?v=710" as="image" type="image/svg+xml">
-  <link rel="preload" href="./assets/characters.svg?v=710" as="image" type="image/svg+xml">
+  <link rel="preload" href="./assets/game-art.svg?v=710" as="fetch" type="image/svg+xml" crossorigin="anonymous">
+  <link rel="preload" href="./assets/characters.svg?v=710" as="fetch" type="image/svg+xml" crossorigin="anonymous">
   <link rel="preload" href="./assets/village.svg?v=710" as="image" type="image/svg+xml">
   <link rel="preload" href="./assets/world-map.svg?v=710" as="image" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
@@ -43,7 +44,7 @@
 </section>
 <section id="quests" class="panel" aria-label="Encargos"></section>
 <section id="diary" class="panel">
-  <div class="segment"><button type="button" class="active" data-diary="stories">📖 Historias</button><button type="button" data-diary="memories">✨ Recuerdos</button></div>
+  <div class="segment"><button type="button" class="active" aria-pressed="true" data-diary="stories">📖 Historias</button><button type="button" aria-pressed="false" data-diary="memories">✨ Recuerdos</button></div>
   <div class="subpanel active" id="diary-stories"><article class="card"><div class="smart-kicker">Free tour para dos</div><h2>Contexto breve, justo donde toca</h2><p class="small">Leed 30–60 segundos, guardad el móvil y buscad el detalle físicamente. No pretende sustituir la ciudad por una pantalla.</p></article><div id="storyList"></div></div>
   <div class="subpanel" id="diary-memories"><article class="card"><div class="row"><div><div class="smart-kicker">Diario compartido</div><h2>Guardar un momento</h2></div><span class="pill gold" id="memoryCount">0 recuerdos</span></div><form id="memoryForm"><label>Título corto<input id="memoryTitle" maxlength="60" autocomplete="off" placeholder="El café donde nos refugiamos…"></label><label class="field-gap">Qué queréis recordar<textarea id="memoryNote" maxlength="500" placeholder="Una frase, una anécdota, algo que os hizo gracia…"></textarea></label><label class="field-gap">Lugar (opcional)<input id="memoryPlace" maxlength="80" autocomplete="off" placeholder="Kazimierz, Wawel…"></label><button class="btn full compact-top" type="submit">Guardar para los dos</button></form></article><div id="memoryList"></div></div>
 </section>
@@ -57,7 +58,7 @@
 <nav class="bottom" aria-label="Navegación principal"><div class="tabs"><button type="button" class="tab active" data-panel="home"><b>🏠</b>Aldea</button><button type="button" class="tab" data-panel="mapPanel"><b>🗺️</b>Mapa</button><button type="button" class="tab" data-panel="quests"><b>📜</b>Encargos</button><button type="button" class="tab" data-panel="diary"><b>📖</b>Crónica</button><button type="button" class="tab" data-panel="budget"><b>🎒</b>Bolsa</button></div></nav>
 <dialog id="settingsSheet" class="sheet"><div class="sheet-head"><div><strong>Menú de partida</strong><div class="small">Jugador, objetivo y sincronización</div></div><button type="button" class="close-btn" id="closeSettings" aria-label="Cerrar">✕</button></div><div class="sheet-body">
   <article class="card card-flat"><div class="row"><div><div class="smart-kicker">Aventura para dos</div><h3>Ismael + Laura</h3></div><span class="pill gold" id="settingsSync">☁️ conectando</span></div><label>Este iPhone es de<select id="playerSelect"><option value="Ismael">🧭 Ismael</option><option value="Laura">🔎 Laura</option></select></label><p class="small compact-top">El nombre solo personaliza quién registra un recuerdo o gasto. El presupuesto, misiones y diario son compartidos.</p></article>
-  <article class="card card-flat"><h3>💰 Vuestro objetivo</h3><div class="grid2"><label>Objetivo diario pareja (€)<input id="dailyTarget" type="number" min="0" step="1" inputmode="numeric"></label><label>Ya pagado/configurado (€)<input id="fixedPaid" type="number" min="0" step=".01" inputmode="decimal"></label></div><p class="small compact-top">Podéis corregir aquí los 72,16 € de la versión anterior si esa cifra no representa exactamente lo que queréis contar.</p></article>
+  <article class="card card-flat"><h3>💰 Vuestro objetivo</h3><div class="grid2"><label>Objetivo diario pareja (€)<input id="dailyTarget" type="number" min="1" step="1" inputmode="numeric"></label><label>Ya pagado/configurado (€)<input id="fixedPaid" type="number" min="0" step=".01" inputmode="decimal"></label></div><p class="small compact-top">Podéis corregir aquí los 72,16 € de la versión anterior si esa cifra no representa exactamente lo que queréis contar.</p></article>
   <article class="card card-flat"><div class="row"><div><h3>☁️ Sincronización</h3><div class="small" id="lastSync">Todavía conectando…</div></div><button type="button" class="btn secondary small-btn" id="reconnectCloud">Reconectar</button></div><p class="small compact-top" id="syncHelp">Los dos iPhone usan la misma partida automáticamente.</p><details><summary class="small">Datos técnicos</summary><div class="small compact-top">Código de aventura: <strong id="syncCode"></strong></div></details></article>
   <article class="card card-flat"><h3>🏠 Varsovia</h3><div class="small">Stalowa 20/22 · Nowa Praga</div><div class="grid2 compact-top"><button type="button" class="btn secondary small-btn" id="homeMapBtn">Ver casa</button><button type="button" class="btn secondary small-btn" id="zachodniaBtn">Ver Zachodnia</button></div></article>
   <article class="card card-flat"><h3>📖 Guardar la aventura</h3><p class="small">Crea un resumen con misiones, gasto y últimos recuerdos.</p><button type="button" class="btn full" id="shareSummary">Compartir resumen</button></article>
