@@ -1,0 +1,1 @@
+Service Worker cache must be invalidated after compatibility runtime deployment.
