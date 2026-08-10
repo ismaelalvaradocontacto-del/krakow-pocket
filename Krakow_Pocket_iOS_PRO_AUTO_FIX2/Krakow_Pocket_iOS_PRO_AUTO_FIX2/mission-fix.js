@@ -96,6 +96,15 @@
     navigator.vibrate?.([35, 45, 35]);
   }
 
+  function celebrateAfterMutation(id, wasDone) {
+    if (!id || wasDone) return;
+    for (const delay of [20, 70, 180]) {
+      setTimeout(() => {
+        if (isDone(read(), id)) celebrate(id);
+      }, delay);
+    }
+  }
+
   let last = snapshot();
   let armed = false;
   let pendingQuest = null;
@@ -140,10 +149,11 @@
   }
 
   function storyIdFromDialog() {
-    const dialog = document.getElementById("storyDialog");
-    if (dialog?.dataset.kpPoi) return dialog.dataset.kpPoi;
     const title = document.getElementById("storyDialogTitle")?.textContent || "";
-    return (D.pois || []).find(x => title.includes(x.name))?.id || activeStory;
+    const fromTitle = (D.pois || []).find(x => title.includes(x.name))?.id;
+    if (fromTitle) return fromTitle;
+    const dialog = document.getElementById("storyDialog");
+    return dialog?.dataset.kpPoi || activeStory || null;
   }
 
   function syncStoryButton(id = storyIdFromDialog()) {
@@ -153,6 +163,12 @@
     const done = qIds.has(id) ? isDone(s, id) : discovered(s, id);
     const label = done ? "↩ Desmarcar descubierto" : "✨ Marcar descubierto";
     if (button.textContent !== label) button.textContent = label;
+  }
+
+  function nudgeCloudSync() {
+    const target = document.getElementById("dailyTarget");
+    if (!target) return;
+    try { target.dispatchEvent(new Event("change", { bubbles: true })); } catch {}
   }
 
   function setDiscovery(id, done) {
@@ -167,16 +183,21 @@
     s.visited = [...visited];
     s.updatedAt = stamp;
     localStorage.setItem(STORAGE, JSON.stringify(s));
-    try { sessionStorage.setItem("kpDiscoveryChanged", id); } catch {}
+    try { window.dispatchEvent(new CustomEvent("kp:statechange", { detail: { source: "discovery", id, done: !!done } })); } catch {}
+    try { window.dispatchEvent(new Event("storage")); } catch {}
+    nudgeCloudSync();
+    syncStoryButton(id);
     toast(done ? "✨ Lugar descubierto" : "↩ Lugar marcado de nuevo como pendiente");
-    setTimeout(() => location.reload(), 220);
   }
 
   document.addEventListener("click", event => {
     const qButton = event.target.closest?.(".q-done[data-poi]");
     if (qButton) {
-      pendingQuest = qButton.dataset.poi || null;
-      if (pendingQuest && isDone(read(), pendingQuest)) closeCelebration();
+      const id = qButton.dataset.poi || null;
+      const wasDone = id ? isDone(read(), id) : false;
+      pendingQuest = id;
+      if (id && wasDone) closeCelebration();
+      celebrateAfterMutation(id, wasDone);
     }
 
     const worldNode = event.target.closest?.(".kp-world-node[data-pixel-poi]");
@@ -187,11 +208,15 @@
 
     const storySource = event.target.closest?.(".q-context[data-poi],.story-open[data-poi],.near-story[data-poi],[data-open-poi]");
     if (storySource) {
-      activeStory = storySource.dataset.poi || storySource.dataset.openPoi || null;
+      const clickedId = storySource.dataset.poi || storySource.dataset.openPoi || null;
+      activeStory = clickedId;
+      const dialog = document.getElementById("storyDialog");
+      if (dialog && clickedId) dialog.dataset.kpPoi = clickedId;
       setTimeout(() => {
-        const dialog = document.getElementById("storyDialog");
-        if (dialog && activeStory && dialog.dataset.kpPoi !== activeStory) dialog.dataset.kpPoi = activeStory;
-        syncStoryButton(activeStory);
+        const currentDialog = document.getElementById("storyDialog");
+        if (currentDialog && clickedId) currentDialog.dataset.kpPoi = clickedId;
+        activeStory = clickedId;
+        syncStoryButton(clickedId);
       }, 0);
     }
 
