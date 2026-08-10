@@ -125,4 +125,5 @@
 })();
 if(!window.__kpNetworkStatusLoader){window.__kpNetworkStatusLoader=true;document.write('<script src="./network-status.js?v=20260810n" data-kp-network-status="1"><\/script>')}
 if(!window.__kpPlayerStabilityLoader){window.__kpPlayerStabilityLoader=true;document.write('<script src="./player-stability.js?v=20260810o" data-kp-player-stability="1"><\/script>')}
-if(!window.__kpInteractionFixLoader){window.__kpInteractionFixLoader=true;document.write('<script src="./interaction-fix.js?v=20260810m" data-kp-interaction-fix="1"><\/script>')}
+if(!window.__kpWorldArtStabilityLoader){window.__kpWorldArtStabilityLoader=true;document.write('<script src="./world-art-stability.js?v=20260810q" data-kp-world-art-stability="1"><\/script>')}
+if(!window.__kpInteractionFixLoader){window.__kpInteractionFixLoader=true;document.write('<script src="./interaction-fix.js?v=20260810p" data-kp-interaction-fix="1"><\/script>')}
