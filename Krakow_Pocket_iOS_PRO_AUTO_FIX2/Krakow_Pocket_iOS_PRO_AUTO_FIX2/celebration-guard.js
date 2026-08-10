@@ -79,3 +79,4 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
   else boot();
 })();
+if(!window.__kpCelebrationStabilityLoader){window.__kpCelebrationStabilityLoader=true;const s=document.createElement("script");s.src="./celebration-stability.js?v=20260810h";s.async=false;(document.head||document.documentElement).appendChild(s)}
