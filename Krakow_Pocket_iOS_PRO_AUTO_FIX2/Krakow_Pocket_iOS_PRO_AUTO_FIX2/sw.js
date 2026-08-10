@@ -1,7 +1,7 @@
-const CACHE="krakow-pocket-v6-20260810d";
-const CORE=["./","./index.html","./styles.css","./data.js","./app.js","./runtime.js","./enhancements.js","./enhancements.css","./game.js","./game.css","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
+const CACHE="krakow-pocket-v6-1-20260810a";
+const CORE=["./","./index.html","./styles.css","./data.js","./app.js","./runtime.js","./enhancements.js","./enhancements.css","./game.js","./game.css","./visuals.js","./visuals.css","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
 const SUPABASE_HOST="ahzmwkztlakejmrvgcdm.supabase.co";
-const SUPABASE_KEY="sb_publishable_sf-RddHTp5jdFCQOfRBBsQ_PZGKOlxJ";
+const SUPABASE_KEY="sb_publishable_sf-RddHTp5jdFCQOfRBBsQ_PZGKOIxJ";
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)))});
 self.addEventListener("activate",e=>{e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))]))});
 self.addEventListener("message",e=>{if(e.data?.type==="SKIP_WAITING")self.skipWaiting()});
