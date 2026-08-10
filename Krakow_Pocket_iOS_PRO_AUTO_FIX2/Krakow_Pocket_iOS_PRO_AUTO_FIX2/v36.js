@@ -6,14 +6,12 @@ const $=s=>document.querySelector(s);
 const read=()=>{try{return JSON.parse(localStorage.getItem(STORAGE)||"{}")}catch{return{}}};
 const done=(s,id)=>s.missionStatus?.[id]?!!s.missionStatus[id].done:(s.visited||[]).includes(id);
 const poi=id=>D.pois.find(p=>p.id===id),questByPoi=id=>D.quests.find(q=>q.poi===id);
-const coords={
- florian:[15,18],rynek:[42,27],maria:[55,22],maius:[33,39],planty:[73,36],wawel:[27,63],dragon:[18,77],szeroka:[65,62],placnowy:[77,72],bernatek:[60,81],ghetto:[78,88],tomasza:[52,43]
-};
+const coords={florian:[15,18],rynek:[42,27],maria:[55,22],maius:[33,39],planty:[73,36],wawel:[27,63],dragon:[18,77],szeroka:[65,62],placnowy:[77,72],bernatek:[60,81],ghetto:[78,88],tomasza:[52,43]};
 const icons={florian:"🛡️",rynek:"🏛️",maria:"⛪",maius:"📚",planty:"🌳",wawel:"🏰",dragon:"🐉",szeroka:"✡️",placnowy:"🥯",bernatek:"🌉",ghetto:"🪑",tomasza:"🍲"};
 const cheers={
  florian:["¡La ciudad os deja pasar!","La puerta medieval ha decidido que sois gente de fiar. De momento."],
  rynek:["¡Ojos de explorador desbloqueados!","Rynek: 0 · Ismael y Laura: 1. Habéis visto algo que el otro casi se pierde."],
- maria:["¡Hejał localizado!","El trompetista invisible aprueba vuestra capacidad para mirar hacia arriba."],
+ maria:["¡Hejnał localizado!","El trompetista invisible aprueba vuestra capacidad para mirar hacia arriba."],
  maius:["¡Secreto universitario descubierto!","Copérnico probablemente estaría orgulloso. O al menos ligeramente impresionado."],
  wawel:["¡Territorio real conquistado!","Sin corona, sin caballo y aun así habéis llegado a Wawel. Nada mal."],
  dragon:["¡ESCAMA LEGENDARIA!","El Dragón de Wawel os reconoce oficialmente como pareja aventurera. No incluye inmunidad al fuego."],
@@ -24,50 +22,19 @@ const cheers={
  tomasza:["¡Maestros del złoty!","Comer caliente sin destruir el presupuesto: habilidad épica desbloqueada."],
  planty:["¡Descanso profesional!","Habéis completado una misión haciendo… nada. Planty estaría orgulloso."]
 };
-let lastCelebrated="";
+let lastCelebrated="",previousState=null;
 function ensure(){
  const panel=$("#quests");if(!panel||$("#kpQuestWorld"))return;
- const world=document.createElement("div");world.id="kpQuestWorld";world.className="kp-quest-world";
- panel.insertBefore(world,panel.firstChild);
- const sheet=document.createElement("div");sheet.id="kpQuestDialog";sheet.className="kp-pixel-dialog";sheet.innerHTML='<div class="kp-pixel-portrait">🐉</div><div class="kp-pixel-copy"><div class="kp-pixel-name" id="kpPixelName"></div><div class="kp-pixel-text" id="kpPixelText"></div><div class="kp-pixel-actions"><button id="kpPixelClose">Cerrar</button><button id="kpPixelContext">Contexto</button><button id="kpPixelDone">Completar</button></div></div>';
- document.body.appendChild(sheet);
- $("#kpPixelClose").onclick=()=>sheet.classList.remove("show");
- const win=document.createElement("div");win.id="kpQuestWin";win.className="kp-quest-win";win.innerHTML='<div class="kp-win-sparkles" aria-hidden="true"><i>✦</i><i>★</i><i>✦</i><i>★</i><i>✦</i></div><div class="kp-win-card"><div class="kp-win-icon" id="kpWinIcon">🐉</div><div class="kp-win-kicker">MISIÓN COMPLETADA</div><div class="kp-win-title" id="kpWinTitle"></div><div class="kp-win-text" id="kpWinText"></div><div class="kp-win-reward" id="kpWinReward"></div><div class="kp-win-milestone" id="kpWinMilestone"></div><button id="kpWinClose">Seguir la aventura</button></div>';
- document.body.appendChild(win);
- $("#kpWinClose").onclick=()=>win.classList.remove("show");
- win.onclick=e=>{if(e.target===win)win.classList.remove("show")};
+ const world=document.createElement("div");world.id="kpQuestWorld";world.className="kp-quest-world";panel.insertBefore(world,panel.firstChild);
+ const sheet=document.createElement("div");sheet.id="kpQuestDialog";sheet.className="kp-pixel-dialog";sheet.innerHTML='<div class="kp-pixel-portrait">🐉</div><div class="kp-pixel-copy"><div class="kp-pixel-name" id="kpPixelName"></div><div class="kp-pixel-text" id="kpPixelText"></div><div class="kp-pixel-actions"><button id="kpPixelClose">Cerrar</button><button id="kpPixelContext">Contexto</button><button id="kpPixelDone">Completar</button></div></div>';document.body.appendChild(sheet);$("#kpPixelClose").onclick=()=>sheet.classList.remove("show");
+ const win=document.createElement("div");win.id="kpQuestWin";win.className="kp-quest-win";win.innerHTML='<div class="kp-win-sparkles" aria-hidden="true"><i>✦</i><i>★</i><i>✦</i><i>★</i><i>✦</i></div><div class="kp-win-card"><div class="kp-win-icon" id="kpWinIcon">🐉</div><div class="kp-win-kicker">MISIÓN COMPLETADA</div><div class="kp-win-title" id="kpWinTitle"></div><div class="kp-win-text" id="kpWinText"></div><div class="kp-win-reward" id="kpWinReward"></div><div class="kp-win-milestone" id="kpWinMilestone"></div><button id="kpWinClose">Seguir la aventura</button></div>';document.body.appendChild(win);$("#kpWinClose").onclick=()=>win.classList.remove("show");win.onclick=e=>{if(e.target===win)win.classList.remove("show")};
 }
-function renderWorld(){
- ensure();const host=$("#kpQuestWorld");if(!host)return;const s=read(),total=D.quests.length,finished=D.quests.filter(q=>done(s,q.poi)).length,score=D.quests.filter(q=>done(s,q.poi)).reduce((a,q)=>a+q.points,0);
- host.innerHTML=`<div class="kp-world-frame"><div class="kp-world-top"><div><div class="kp-world-kicker">Kraków Quest</div><div class="kp-world-title">Las Escamas de Wawel</div></div><div class="kp-world-score"><span>🐉 ${score}</span><small>${finished}/${total} misiones</small></div></div><div class="kp-world-map"><div class="kp-river"></div><div class="kp-road r1"></div><div class="kp-road r2"></div><div class="kp-road r3"></div><div class="kp-tree t1">🌲</div><div class="kp-tree t2">🌳</div><div class="kp-tree t3">🌲</div><div class="kp-tree t4">🌳</div><div class="kp-couple"><span>🧑🏻</span><span>👩🏻</span></div>${D.quests.map(q=>{const p=poi(q.poi),xy=coords[q.poi]||[50,50],isDone=done(s,q.poi);return`<button class="kp-world-node ${isDone?"done":""}" data-pixel-poi="${q.poi}" style="left:${xy[0]}%;top:${xy[1]}%"><span class="kp-node-icon">${icons[q.poi]||p?.emoji||"✨"}</span><span class="kp-node-badge">${isDone?"★":"!"}</span><small>${p?.name||q.title}</small></button>`}).join("")}</div><div class="kp-world-tip">Toca un lugar con <b>!</b> para abrir su misión. Las completadas quedan marcadas con ★.</div></div>`;
- host.querySelectorAll("[data-pixel-poi]").forEach(b=>b.onclick=()=>openPixelMission(b.dataset.pixelPoi));
-}
-function triggerMission(id){const btn=document.querySelector(`.q-done[data-poi="${CSS.escape(id)}"]`);if(btn){btn.click();setTimeout(renderWorld,180);return true}return false}
-function showCelebration(id){
- const q=questByPoi(id),p=poi(id),s=read(),win=$("#kpQuestWin");if(!q||!win)return;
- const token=`${id}:${s.missionStatus?.[id]?.updatedAt||s.updatedAt||""}`;if(token===lastCelebrated)return;lastCelebrated=token;
- const finished=D.quests.filter(x=>done(s,x.poi)).length,total=D.quests.length,score=D.quests.filter(x=>done(s,x.poi)).reduce((a,x)=>a+x.points,0);
- const copy=cheers[id]||["¡Misión superada!","Cracovia acaba de entregaros otra pequeña victoria."],milestones={3:"🌱 Tres misiones. Ya no sois turistas: sois aprendices de dragón.",6:"⚔️ Mitad de la aventura. El dragón empieza a ponerse nervioso.",9:"👑 Nueve misiones. Wawel ya debería ir preparando vuestro retrato.",12:"🏆 ¡LAS 12 ESCAMAS! Cracovia completada. El Dragón de Wawel acepta la derrota."};
- $("#kpWinIcon").textContent=icons[id]||p?.emoji||"🐉";$("#kpWinTitle").textContent=copy[0];$("#kpWinText").textContent=copy[1];$("#kpWinReward").textContent=`+${q.points} 🐉 · ${score} escamas en total · ${finished}/${total}`;const m=$("#kpWinMilestone");m.textContent=milestones[finished]||"";m.style.display=milestones[finished]?"block":"none";win.classList.add("show");
- if(navigator.vibrate)navigator.vibrate([35,45,35]);
-}
-function openPixelMission(id){
- const q=questByPoi(id),p=poi(id),s=read(),isDone=done(s,id),sheet=$("#kpQuestDialog");if(!q||!sheet)return;
- $("#kpPixelName").textContent=`${p?.name||"Cracovia"} · +${q.points} 🐉`;
- $("#kpPixelText").textContent=q.text;
- sheet.querySelector(".kp-pixel-portrait").textContent=icons[id]||p?.emoji||"🐉";
- const doneBtn=$("#kpPixelDone");doneBtn.textContent=isDone?"✓ Completada":"Completar";doneBtn.disabled=isDone;
- doneBtn.onclick=()=>{if(!isDone&&triggerMission(id)){sheet.classList.remove("show")}};
- const ctx=$("#kpPixelContext");ctx.onclick=()=>{const old=document.querySelector(`.q-context[data-poi="${CSS.escape(id)}"]`);if(old){sheet.classList.remove("show");old.click()}};
- sheet.classList.add("show");
-}
-function installCelebrations(){
- document.addEventListener("click",e=>{
-   const b=e.target.closest?.(".q-done[data-poi]");if(!b)return;
-   const id=b.dataset.poi,before=done(read(),id);if(before)return;
-   setTimeout(()=>{if(done(read(),id)){renderWorld();showCelebration(id)}},420);
- },true);
-}
-function init(){ensure();renderWorld();installCelebrations();window.addEventListener("storage",renderWorld);setInterval(renderWorld,4000);const ver=$("#settingsVersion");if(ver)ver.textContent="Kraków Pocket · v3.6.3"}
+function renderWorld(){ensure();const host=$("#kpQuestWorld");if(!host)return;const s=read(),total=D.quests.length,finished=D.quests.filter(q=>done(s,q.poi)).length,score=D.quests.filter(q=>done(s,q.poi)).reduce((a,q)=>a+q.points,0);host.innerHTML=`<div class="kp-world-frame"><div class="kp-world-top"><div><div class="kp-world-kicker">Kraków Quest</div><div class="kp-world-title">Las Escamas de Wawel</div></div><div class="kp-world-score"><span>🐉 ${score}</span><small>${finished}/${total} misiones</small></div></div><div class="kp-world-map"><div class="kp-river"></div><div class="kp-road r1"></div><div class="kp-road r2"></div><div class="kp-road r3"></div><div class="kp-tree t1">🌲</div><div class="kp-tree t2">🌳</div><div class="kp-tree t3">🌲</div><div class="kp-tree t4">🌳</div><div class="kp-couple"><span>🧑🏻</span><span>👩🏻</span></div>${D.quests.map(q=>{const p=poi(q.poi),xy=coords[q.poi]||[50,50],isDone=done(s,q.poi);return`<button class="kp-world-node ${isDone?"done":""}" data-pixel-poi="${q.poi}" style="left:${xy[0]}%;top:${xy[1]}%"><span class="kp-node-icon">${icons[q.poi]||p?.emoji||"✨"}</span><span class="kp-node-badge">${isDone?"★":"!"}</span><small>${p?.name||q.title}</small></button>`}).join("")}</div><div class="kp-world-tip">Toca un lugar con <b>!</b> para abrir su misión. Las completadas quedan marcadas con ★.</div></div>`;host.querySelectorAll("[data-pixel-poi]").forEach(b=>b.onclick=()=>openPixelMission(b.dataset.pixelPoi));}
+function triggerMission(id){const btn=document.querySelector(`.q-done[data-poi="${CSS.escape(id)}"]`);if(btn){btn.click();return true}return false}
+function showCelebration(id){const q=questByPoi(id),p=poi(id),s=read(),win=$("#kpQuestWin");if(!q||!win)return;const stamp=s.missionStatus?.[id]?.updatedAt||s.updatedAt||Date.now();const token=`${id}:${stamp}`;if(token===lastCelebrated)return;lastCelebrated=token;const finished=D.quests.filter(x=>done(s,x.poi)).length,total=D.quests.length,score=D.quests.filter(x=>done(s,x.poi)).reduce((a,x)=>a+x.points,0);const copy=cheers[id]||["¡Misión superada!","Cracovia acaba de entregaros otra pequeña victoria."],milestones={3:"🌱 Tres misiones. Ya no sois turistas: sois aprendices de dragón.",6:"⚔️ Mitad de la aventura. El dragón empieza a ponerse nervioso.",9:"👑 Nueve misiones. Wawel ya debería ir preparando vuestro retrato.",12:"🏆 ¡LAS 12 ESCAMAS! Cracovia completada. El Dragón de Wawel acepta la derrota."};$("#kpWinIcon").textContent=icons[id]||p?.emoji||"🐉";$("#kpWinTitle").textContent=copy[0];$("#kpWinText").textContent=copy[1];$("#kpWinReward").textContent=`+${q.points} 🐉 · ${score} escamas en total · ${finished}/${total}`;const m=$("#kpWinMilestone");m.textContent=milestones[finished]||"";m.style.display=milestones[finished]?"block":"none";win.classList.add("show");if(navigator.vibrate)navigator.vibrate([35,45,35]);}
+function openPixelMission(id){const q=questByPoi(id),p=poi(id),s=read(),isDone=done(s,id),sheet=$("#kpQuestDialog");if(!q||!sheet)return;$("#kpPixelName").textContent=`${p?.name||"Cracovia"} · +${q.points} 🐉`;$("#kpPixelText").textContent=q.text;sheet.querySelector(".kp-pixel-portrait").textContent=icons[id]||p?.emoji||"🐉";const doneBtn=$("#kpPixelDone");doneBtn.textContent=isDone?"✓ Completada":"Completar";doneBtn.disabled=isDone;doneBtn.onclick=()=>{if(!isDone&&triggerMission(id))sheet.classList.remove("show")};const ctx=$("#kpPixelContext");ctx.onclick=()=>{const old=document.querySelector(`.q-context[data-poi="${CSS.escape(id)}"]`);if(old){sheet.classList.remove("show");old.click()}};sheet.classList.add("show");}
+function snapshot(){const s=read(),out={};for(const q of D.quests)out[q.poi]=done(s,q.poi);return out}
+function watchMissionTransitions(){if(!previousState){previousState=snapshot();return}const current=snapshot();for(const q of D.quests){const id=q.poi;if(!previousState[id]&&current[id]){renderWorld();setTimeout(()=>showCelebration(id),80)}}previousState=current}
+function init(){ensure();renderWorld();previousState=snapshot();setInterval(()=>{watchMissionTransitions();renderWorld()},350);window.addEventListener("storage",()=>{watchMissionTransitions();renderWorld()});const ver=$("#settingsVersion");if(ver)ver.textContent="Kraków Pocket · v3.6.4"}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
