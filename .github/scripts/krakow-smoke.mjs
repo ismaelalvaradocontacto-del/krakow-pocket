@@ -10,7 +10,7 @@ async function snapshot(page) {
   for (let attempt = 0; attempt < 6; attempt++) {
     try {
       await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
-      await page.waitForTimeout(350);
+      await page.waitForTimeout(250);
       return await page.evaluate(() => {
         const text = id => document.getElementById(id)?.textContent?.trim() || null;
         const visible = id => {
@@ -24,10 +24,6 @@ async function snapshot(page) {
         });
         const portrait = document.querySelector('#kpGameHud .kp-game-portrait');
         const couple = [...document.querySelectorAll('#kpGameHub .kp-couple-art')];
-        const portraitInline = !!portrait?.querySelector('svg[data-kp-inline]');
-        const coupleInline = couple.filter(el=>el.querySelector('svg[data-kp-inline]')).length;
-        const inlineReady = document.documentElement.classList.contains('kp-inline-art-ready');
-        const inlineFailed = document.documentElement.classList.contains('kp-inline-art-failed');
         return {
           url: location.href,
           title: document.title,
@@ -40,10 +36,10 @@ async function snapshot(page) {
           hud: !!document.getElementById('kpGameHud'),
           objective: !!document.getElementById('kpGameObjective'),
           village: !!document.getElementById('kpGameHub'),
-          portraitInline,
-          coupleInline,
-          inlineReady,
-          inlineFailed,
+          portraitInline: !!portrait?.querySelector('svg[data-kp-inline]'),
+          coupleInline: couple.filter(el=>el.querySelector('svg[data-kp-inline]')).length,
+          inlineReady: document.documentElement.classList.contains('kp-inline-art-ready'),
+          inlineFailed: document.documentElement.classList.contains('kp-inline-art-failed'),
           tabs: [...document.querySelectorAll('.tab')].map(x => x.dataset.panel),
           tabGeometry,
           activePanels: [...document.querySelectorAll('.panel.active')].map(x => x.id),
@@ -55,10 +51,29 @@ async function snapshot(page) {
       });
     } catch (err) {
       lastError = err;
-      await page.waitForTimeout(650);
+      await page.waitForTimeout(500).catch(() => {});
     }
   }
   return { evaluationError: String(lastError) };
+}
+
+function stateIsSettled(s){
+  if(!s||s.evaluationError)return false;
+  const syncOk=s.syncText==='sincronizados'||s.syncText==='sin conexión';
+  const titleOk=!!s.recTitle&&!/^Calculando/i.test(s.recTitle);
+  const artOk=s.inlineReady&&!s.inlineFailed&&s.portraitInline&&s.coupleInline===2;
+  return s.data&&titleOk&&syncOk&&s.hud&&s.objective&&s.village&&artOk;
+}
+
+async function waitForSettledState(page,timeout=18000){
+  const until=Date.now()+timeout;
+  let state=null;
+  while(Date.now()<until){
+    state=await snapshot(page);
+    if(stateIsSettled(state))return state;
+    await page.waitForTimeout(350).catch(()=>{});
+  }
+  return state||await snapshot(page);
 }
 
 for (const [name, engine] of engines) {
@@ -94,27 +109,16 @@ for (const [name, engine] of engines) {
   let response;
   try {
     response = await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForFunction(() => {
-      const title = document.getElementById('recTitle')?.textContent?.trim() || '';
-      return title && !/^Calculando/.test(title) && !!document.getElementById('kpGameHud');
-    }, { timeout: 12000 }).catch(() => {});
-    await page.waitForFunction(() => {
-      const s = document.getElementById('syncText')?.textContent?.trim() || '';
-      return s === 'sincronizados' || s === 'sin conexión';
-    }, { timeout: 12000 }).catch(() => {});
-    await page.waitForFunction(() => document.documentElement.classList.contains('kp-inline-art-ready') || document.documentElement.classList.contains('kp-inline-art-failed'), { timeout: 8000 }).catch(() => {});
-    await page.waitForFunction(() => {
-      const p=!!document.querySelector('#kpGameHud .kp-game-portrait svg[data-kp-inline]');
-      const c=[...document.querySelectorAll('#kpGameHub .kp-couple-art')].filter(el=>el.querySelector('svg[data-kp-inline]')).length;
-      return p&&c===2;
-    }, { timeout: 5000 }).catch(() => {});
-    await page.waitForTimeout(350);
   } catch (err) {
     pageErrors.push(`Navigation: ${err.stack || err}`);
   }
 
+  // A first PWA visit can install a new worker and immediately reload the page.
+  // Judge the application only after the post-reload document has completely settled.
+  let state = await waitForSettledState(page, isLocal ? 12000 : 22000);
   await page.evaluate(() => document.getElementById('kpWinClose')?.click()).catch(() => {});
-  const state = await snapshot(page);
+  if(!stateIsSettled(state)) state=await waitForSettledState(page,5000);
+
   const navResults = {};
   for (const panel of ['home','mapPanel','quests','diary','budget']) {
     try {
@@ -133,6 +137,8 @@ for (const [name, engine] of engines) {
     }
   }
 
+  // Re-read after navigation so the report reflects the stable final document.
+  state = await snapshot(page);
   const meaningfulPageErrors = pageErrors.filter(x => !/sw\.js due to access control checks/i.test(x));
   const authErrors = consoleErrors.filter(x => /401|Invalid API key/i.test(x));
   const report = {
