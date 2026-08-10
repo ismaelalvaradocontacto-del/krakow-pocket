@@ -1,2 +1,16 @@
 [build]
   publish = "Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
+
+# Force fresh production deploy after mission-controls update
+[build.environment]
+  KRAKOW_POCKET_RELEASE = "2026-08-10-0752-v3.3"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
+
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
