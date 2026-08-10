@@ -109,11 +109,21 @@ for (const [name, engine] of engines) {
     await page.locator('#memoryNote').fill('Recuerdo aislado de auditoría');
     await page.locator('#memoryPlace').fill('Cracovia');
     await page.locator('#memoryForm button[type="submit"]').click();
-    await page.waitForTimeout(350);
-    checks.memoryAdded = (await page.locator('#memoryList').textContent()).includes('AUDIT-MEMORY');
-    await page.locator('.memory-delete').first().click();
-    await page.waitForTimeout(300);
-    checks.memoryDeleted = !(await page.locator('#memoryList').textContent()).includes('AUDIT-MEMORY');
+    checks.memoryAdded = await waitFor(async () => (await page.locator('#memoryList').textContent()).includes('AUDIT-MEMORY'), 3000);
+    const auditMemory = (await readState(page)).memories?.find(m => m?.title === 'AUDIT-MEMORY' && !m.deletedAt);
+    debug.memoryId = auditMemory?.id || null;
+    checks.memoryCreatedInState = !!auditMemory?.id;
+    if (auditMemory?.id) {
+      await page.locator(`.memory-delete[data-id="${auditMemory.id}"]`).click();
+      checks.memoryDeletedState = await waitFor(async () => {
+        const m = (await readState(page)).memories?.find(x => x?.id === auditMemory.id);
+        return !!m?.deletedAt;
+      }, 4000);
+      checks.memoryDeleted = await waitFor(async () => !(await page.locator('#memoryList').textContent()).includes('AUDIT-MEMORY'), 4000);
+    } else {
+      checks.memoryDeletedState = false;
+      checks.memoryDeleted = false;
+    }
 
     phase = 'mission-complete';
     await page.locator('.tab[data-panel="quests"]').click();
@@ -186,7 +196,7 @@ for (const [name, engine] of engines) {
     if (await page.locator('#storyDialog').evaluate(el => el.open === true).catch(() => false)) await page.evaluate(() => document.getElementById('storyClose')?.click());
     checks.storyCloses = await page.locator('#storyDialog').evaluate(el => el.open === false);
     checks.noHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
-    checks.syncStillHealthy = await page.locator('#syncText').evaluate(el => el.textContent.trim() === 'sincronizados');
+    checks.syncStillHealthy = await waitFor(async () => await page.locator('#syncText').evaluate(el => el.textContent.trim() === 'sincronizados'), 5000);
     checks.missionUxLoaded = await page.evaluate(() => window.KP_MISSION_UX?.version === '4.2' && window.KP_MISSION_UX?.stateHooks === false && window.KP_MISSION_UX?.networkHooks === false);
     checks.stateBridgeLoaded = await page.evaluate(() => window.KP_STATE_BRIDGE?.version === '1.1' && window.KP_STATE_BRIDGE?.reversibleDiscoveries === true);
     checks.runtimeHealthy = await page.evaluate(() => !!window.KP_RUNTIME_AUDIT && window.KP_RUNTIME_AUDIT.missing.length === 0 && window.KP_RUNTIME_AUDIT.stateOk === true && window.KP_RUNTIME_AUDIT.storageOk === true);
