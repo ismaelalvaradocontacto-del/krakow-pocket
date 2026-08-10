@@ -104,3 +104,27 @@ html.kp-game .row>*,html.kp-game .grid2>*,html.kp-game .grid3>*{min-width:0}
 }
 @media(hover:none) and (pointer:coarse){html.kp-game button:focus-visible,html.kp-game select:focus-visible,html.kp-game input:focus-visible,html.kp-game textarea:focus-visible{outline:none!important;box-shadow:inherit}}
 @media(prefers-reduced-motion:reduce){html.kp-game *{scroll-behavior:auto!important}html.kp-game .kp-couple-art svg{animation:none!important}}
+
+/* Profile polish v6.9 · closer portrait crop + cleaner player identity on mobile */
+html.kp-game .kp-game-portrait{position:relative!important;isolation:isolate;border:3px solid #5d3925!important;background:radial-gradient(circle at 50% 28%,#fff9df 0 24%,#efd79d 58%,#bd874a 100%)!important;box-shadow:inset 0 0 0 2px rgba(255,248,215,.95),inset 0 -9px 16px rgba(83,49,25,.13),0 3px 0 #3b261a,0 5px 12px rgba(50,31,20,.18)!important}
+html.kp-game .kp-game-portrait:after{content:"";position:absolute;right:4px;bottom:4px;z-index:4;width:10px;height:10px;border:2px solid #fff1bf;border-radius:50%;background:#6f9d5c;box-shadow:0 1px 0 #3c5e32}
+html.kp-game .kp-game-portrait .kp-character-asset{position:absolute!important;left:50%!important;top:50%!important;width:108px!important;height:108px!important;max-width:none!important;transform:translate(-50%,-43%)!important;filter:none!important}
+html.kp-game .kp-game-brand{align-items:center!important}
+html.kp-game #settingsSheet .card:first-of-type{border-color:#7d5838!important;background:linear-gradient(180deg,#fff7dc,#efd59c)!important;box-shadow:0 3px 0 #5a3c28,0 8px 18px rgba(62,38,23,.10)!important}
+html.kp-game #settingsSheet .card:first-of-type>label{display:block;margin-top:12px;padding:10px;border:2px solid #b48754;border-radius:12px;background:rgba(255,249,229,.72);font-weight:900;color:#573824}
+html.kp-game #playerSelect{margin-top:6px!important;min-height:52px!important;padding:0 42px 0 14px!important;border:2px solid #775039!important;border-radius:11px!important;background-color:#fffaf0!important;color:#38261b!important;font-size:16px!important;font-weight:900!important;box-shadow:inset 0 1px 0 #fff,0 2px 0 rgba(78,48,28,.14)!important}
+html.kp-game #playerSelect:focus{outline:3px solid rgba(216,178,89,.36)!important;outline-offset:2px!important}
+html.kp-game .kp-hub-couple{filter:drop-shadow(0 7px 3px rgba(43,31,22,.22))!important}
+html.kp-game .kp-couple-art{filter:saturate(.96) contrast(1.02)}
+@media(max-width:480px){
+  html.kp-game .kp-game-portrait .kp-character-asset{width:102px!important;height:102px!important;transform:translate(-50%,-43%)!important}
+  html.kp-game #settingsSheet .card:first-of-type>label{padding:9px!important}
+  html.kp-game #playerSelect{min-height:50px!important;font-size:15px!important}
+}
+@media(max-width:380px){
+  html.kp-game .kp-game-portrait .kp-character-asset{width:92px!important;height:92px!important;transform:translate(-50%,-43%)!important}
+}
+@media(max-width:340px){
+  html.kp-game .kp-game-portrait .kp-character-asset{width:82px!important;height:82px!important;transform:translate(-50%,-43%)!important}
+  html.kp-game .kp-game-portrait:after{right:3px;bottom:3px;width:9px;height:9px}
+}
