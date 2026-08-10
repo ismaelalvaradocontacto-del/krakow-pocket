@@ -1,6 +1,9 @@
 (() => {
 "use strict";
-const STORAGE="krakowPocketCoop",nativeSet=Storage.prototype.setItem;
+const STORAGE="krakowPocketCoop",nativeSet=Storage.prototype.setItem,nativeInterval=window.setInterval.bind(window);
+/* Compatibility throttle for the remaining legacy helper loops. Core 5 s cloud sync is untouched. */
+window.setInterval=function(fn,delay,...args){let ms=Number(delay)||0;if(ms===900)ms=3000;else if(ms===1800)ms=8000;else if(ms===4000)ms=7000;return nativeInterval(fn,ms,...args)};
+window.addEventListener("load",()=>setTimeout(()=>{window.setInterval=nativeInterval},0),{once:true});
 const safeParse=v=>{try{return JSON.parse(v||"{}")}catch{return null}};
 function normalizeMissionState(s){if(!s||typeof s!=="object")return s;if(!Array.isArray(s.visited))s.visited=[];const status=s.missionStatus;if(!status||typeof status!=="object"||Array.isArray(status))return s;const v=new Set(s.visited);for(const [id,op] of Object.entries(status)){if(!op||typeof op!=="object")continue;if(op.done)v.add(id);else v.delete(id)}s.visited=[...v];return s}
 function sameVisited(a,b){const x=[...(a||[])].sort(),y=[...(b||[])].sort();return x.length===y.length&&x.every((v,i)=>v===y[i])}
