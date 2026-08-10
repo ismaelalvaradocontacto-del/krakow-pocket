@@ -1,5 +1,5 @@
-const CACHE="krakow-pocket-v5-20260810b";
-const CORE=["./","./index.html","./styles.css","./data.js","./app.js","./enhancements.js","./enhancements.css","./trip-tools.js","./trip-tools-core.js","./trip-tools.css","./v34.js","./v34.css","./v35.js","./v35.css","./v36.js","./v36.css","./v37.js","./v37.css","./v38.js","./v38.css","./v40.js","./v40.css","./v41.js","./v41.css","./v42.js","./v42.css","./v43.js","./v43.css","./v44.js","./v44.css","./v45.js","./v45.css","./v46.js","./v46.css","./v47.js","./v47.css","./v48.js","./v48.css","./v49.js","./v49.css","./v50.js","./v50.css","./v51.js","./v51.css","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
+const CACHE="krakow-pocket-v6-20260810a";
+const CORE=["./","./index.html","./styles.css","./data.js","./app.js","./enhancements.js","./enhancements.css","./trip-tools-core.js","./trip-tools.css","./game.js","./game.css","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
 const SUPABASE_HOST="ahzmwkztlakejmrvgcdm.supabase.co";
 const SUPABASE_KEY="sb_publishable_sf-RddHTp5jdFCQOfRBBsQ_PZGKOlxJ";
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)))});
