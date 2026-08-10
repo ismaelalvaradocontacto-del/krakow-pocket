@@ -1,5 +1,5 @@
-const CACHE="krakow-pocket-v6-20260810a";
-const CORE=["./","./index.html","./styles.css","./data.js","./app.js","./enhancements.js","./enhancements.css","./trip-tools-core.js","./trip-tools.css","./game.js","./game.css","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
+const CACHE="krakow-pocket-v6-20260810b";
+const CORE=["./","./index.html","./styles.css","./data.js","./app.js","./enhancements.js","./enhancements.css","./game.js","./game.css","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
 const SUPABASE_HOST="ahzmwkztlakejmrvgcdm.supabase.co";
 const SUPABASE_KEY="sb_publishable_sf-RddHTp5jdFCQOfRBBsQ_PZGKOlxJ";
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)))});
