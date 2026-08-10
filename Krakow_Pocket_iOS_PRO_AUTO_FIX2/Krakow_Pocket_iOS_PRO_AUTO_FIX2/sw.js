@@ -1,11 +1,22 @@
-const CACHE="krakow-pocket-v3-20260810i";
+const CACHE="krakow-pocket-v3-20260810j";
 const CORE=["./","./index.html","./styles.css","./data.js","./app.js","./enhancements.js","./enhancements.css","./trip-tools.js","./trip-tools-core.js","./trip-tools.css","./v34.js","./v34.css","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
+const SUPABASE_HOST="ahzmwkztlakejmrvgcdm.supabase.co";
+const SUPABASE_KEY="sb_publishable_sf-RddHTp5jdFCQOfRBBsQ_PZGKOlxJ";
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)))});
 self.addEventListener("activate",event=>{event.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))]))});
 self.addEventListener("message",event=>{if(event.data?.type==="SKIP_WAITING")self.skipWaiting()});
 self.addEventListener("fetch",event=>{
-  if(event.request.method!=="GET")return;
   const url=new URL(event.request.url);
+  if(url.hostname===SUPABASE_HOST){
+    const headers=new Headers(event.request.headers);
+    headers.set("apikey",SUPABASE_KEY);
+    const auth=headers.get("Authorization");
+    if(auth&&auth.startsWith("Bearer sb_publishable_"))headers.set("Authorization",`Bearer ${SUPABASE_KEY}`);
+    const fixed=new Request(event.request,{headers});
+    event.respondWith(fetch(fixed));
+    return;
+  }
+  if(event.request.method!=="GET")return;
   if(event.request.mode==="navigate"){
     event.respondWith(fetch(event.request).then(resp=>{const copy=resp.clone();caches.open(CACHE).then(cache=>cache.put("./index.html",copy));return resp}).catch(()=>caches.match("./index.html")));
     return;
