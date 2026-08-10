@@ -2,7 +2,7 @@
 "use strict";
 const D=window.KP_DATA;
 if(!D)return;
-if(!document.querySelector('link[data-kp-enhancements]')){const link=document.createElement('link');link.rel='stylesheet';link.href='./enhancements.css';link.dataset.kpEnhancements='1';document.head.appendChild(link)}
+if(!document.querySelector('link[href$="enhancements.css"]')){const link=document.createElement('link');link.rel='stylesheet';link.href='./enhancements.css';link.dataset.kpEnhancements='1';document.head.appendChild(link)}
 const STORAGE="krakowPocketCoop";
 const $=s=>document.querySelector(s);
 const esc=(s="")=>String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
@@ -48,11 +48,11 @@ function ensureShell(){
 }
 function renderRoute(state){
   const host=$("#kpRouteCard");if(!host)return;
-  const route=routeForNow(state),visited=state.visited||[],ps=route.ids.map(poi).filter(Boolean),done=ps.filter(p=>visited.includes(p.id)).length,target=+(state.config?.dailyTarget||D.trip.dailyTarget||21),spent=todaySpend(state);
-  const next=ps.find(p=>!visited.includes(p.id)&&!["base","bus"].includes(p.category));
+  const route=routeForNow(state),visited=state.visited||[],ps=route.ids.map(poi).filter(Boolean),trackable=ps.filter(p=>!["base","bus"].includes(p.category)),done=trackable.filter(p=>visited.includes(p.id)).length,target=+(state.config?.dailyTarget||D.trip.dailyTarget||21),spent=todaySpend(state);
+  const next=trackable.find(p=>!visited.includes(p.id));
   host.innerHTML=`<div class="row start"><div><div class="smart-kicker">${esc(route.label)}</div><h2>${esc(route.title)}</h2></div><span class="pill ${spent<=target?"green":"red"}">Hoy ${num(spent)}<span class="kp-unit">€</span> / ${num(target)}<span class="kp-unit">€</span></span></div>
-  <div class="kp-route-progress"><i style="width:${ps.length?Math.round(done/ps.length*100):0}%"></i></div>
-  <div class="kp-route-steps">${ps.map((p,i)=>`<button class="kp-route-step ${visited.includes(p.id)?"done":""}" data-stop="${p.id}"><span class="kp-step-dot">${visited.includes(p.id)?"✓":p.emoji}</span><span><b>${esc(p.name)}</b><small>${visited.includes(p.id)?"hecho":`${p.duration||20} min · ${esc(p.cost)}`}</small></span></button>`).join("")}</div>
+  <div class="kp-route-progress"><i style="width:${trackable.length?Math.round(done/trackable.length*100):0}%"></i></div>
+  <div class="kp-route-steps">${ps.map(p=>{const logistics=["base","bus"].includes(p.category),isDone=visited.includes(p.id);return`<button class="kp-route-step ${isDone?"done":""}" data-stop="${p.id}"><span class="kp-step-dot">${isDone?"✓":p.emoji}</span><span><b>${esc(p.name)}</b><small>${isDone?"hecho":logistics?"logística de la ruta":`${p.duration||20} min · ${esc(p.cost)}`}</small></span></button>`}).join("")}</div>
   <div class="kp-route-actions"><button class="btn secondary" id="kpRouteOpen">🗺️ Abrir ruta</button>${next?`<button class="btn" id="kpNextMission">${quest(next.id)?"🧩 Siguiente misión":"📍 Siguiente parada"}</button>`:""}</div>`;
   $("#kpRouteOpen").onclick=()=>window.open(mapsRouteUrl(route.ids),"_blank");
   if(next&&$("#kpNextMission"))$("#kpNextMission").onclick=()=>window.open(mapsStopUrl(next),"_blank");
@@ -78,7 +78,7 @@ function renderShare(state){
 }
 function renderNetwork(){const chip=$("#kpOffline");if(chip)chip.classList.toggle("show",!navigator.onLine)}
 let lastSig="";
-function renderAll(){ensureShell();const state=readState(),sig=JSON.stringify({v:state.visited,e:state.expenses,m:state.memories,c:state.config,d:dateKey(new Date())});if(sig!==lastSig){lastSig=sig;renderRoute(state);renderDistricts(state);renderShare(state)}renderNetwork()}
+function renderAll(){ensureShell();const state=readState(),sig=JSON.stringify({v:state.visited,e:state.expenses,m:state.memories,c:state.config,d:dateKey(new Date())});if(sig!==lastSig){lastSig=sig;renderRoute(state);renderDistricts(state);renderShare(state)}const ver=$("#settingsVersion");if(ver)ver.textContent="Kraków Pocket · v3.1";renderNetwork()}
 window.addEventListener("online",()=>{renderNetwork();setTimeout(renderAll,250)});window.addEventListener("offline",renderNetwork);window.addEventListener("storage",renderAll);
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",renderAll);else renderAll();
 setInterval(renderAll,1800);
