@@ -15,8 +15,7 @@
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./enhancements.css">
   <link rel="stylesheet" href="./trip-tools.css">
-  <link rel="stylesheet" href="./v34.css">
-  <link rel="stylesheet" href="./v35.css">
+  <link rel="stylesheet" href="./game.css">
 </head>
 <body>
 <div class="update-banner" id="updateBanner"><span>Hay una versión nueva de Kraków Pocket.</span><button id="applyUpdate">Actualizar</button></div>
@@ -57,8 +56,8 @@
 </section>
 </main>
 </div>
-<nav class="bottom" aria-label="Navegación principal"><div class="tabs"><button class="tab active" data-panel="home"><b>🐉</b>Ahora</button><button class="tab" data-panel="mapPanel"><b>🗺️</b>Mapa</button><button class="tab" data-panel="quests"><b>🧩</b>Misiones</button><button class="tab" data-panel="diary"><b>📖</b>Diario</button><button class="tab" data-panel="budget"><b>💰</b>Gasto</button></div></nav>
-<dialog id="settingsSheet" class="sheet"><div class="sheet-head"><div><strong>Ajustes</strong><div class="small">Lo esencial, sin claves que copiar</div></div><button class="close-btn" id="closeSettings" aria-label="Cerrar">✕</button></div><div class="sheet-body">
+<nav class="bottom" aria-label="Navegación principal"><div class="tabs"><button class="tab active" data-panel="home"><b>🏠</b>Aldea</button><button class="tab" data-panel="mapPanel"><b>🗺️</b>Mapa</button><button class="tab" data-panel="quests"><b>📜</b>Encargos</button><button class="tab" data-panel="diary"><b>📖</b>Crónica</button><button class="tab" data-panel="budget"><b>🎒</b>Bolsa</button></div></nav>
+<dialog id="settingsSheet" class="sheet"><div class="sheet-head"><div><strong>Menú de partida</strong><div class="small">Jugador, objetivo y sincronización</div></div><button class="close-btn" id="closeSettings" aria-label="Cerrar">✕</button></div><div class="sheet-body">
   <article class="card card-flat"><div class="row"><div><div class="smart-kicker">Aventura para dos</div><h3>Ismael + Laura</h3></div><span class="pill gold" id="settingsSync">☁️ conectando</span></div><label>Este iPhone es de<select id="playerSelect"><option value="Ismael">🧭 Ismael</option><option value="Laura">🔎 Laura</option></select></label><p class="small" style="margin:9px 0 0">El nombre solo personaliza quién registra un recuerdo o gasto. El presupuesto, misiones y diario son compartidos.</p></article>
   <article class="card card-flat"><h3>💰 Vuestro objetivo</h3><div class="grid2"><label>Objetivo diario pareja (€)<input id="dailyTarget" type="number" min="0" step="1"></label><label>Ya pagado/configurado (€)<input id="fixedPaid" type="number" min="0" step=".01"></label></div><p class="small" style="margin:9px 0 0">Podéis corregir aquí los 72,16 € de la versión anterior si esa cifra no representa exactamente lo que queréis contar.</p></article>
   <article class="card card-flat"><div class="row"><div><h3>☁️ Sincronización</h3><div class="small" id="lastSync">Todavía conectando…</div></div><button class="btn secondary small-btn" id="reconnectCloud">Reconectar</button></div><p class="small" id="syncHelp" style="margin-top:8px">Los dos iPhone usan la misma partida automáticamente.</p><details><summary class="small">Datos técnicos</summary><div class="small" style="margin-top:8px">Código de aventura: <strong id="syncCode"></strong></div></details></article>
@@ -67,6 +66,11 @@
 </div></dialog>
 <dialog id="storyDialog" class="story-dialog"><div class="dialog-body"><div class="smart-kicker">Crónica de Cracovia</div><h2 id="storyDialogTitle"></h2><div class="small" id="storyDialogMeta"></div><p class="story-text" id="storyDialogText"></p><div class="grid2"><button class="btn secondary" id="storyClose">Cerrar</button><button class="btn" id="storyGo">Ir andando</button></div><button class="btn ghost full" id="storyMark" style="margin-top:8px">Marcar descubierto</button></div></dialog>
 <div class="toast" id="toast"></div>
-<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script><script src="./data.js"></script><script src="./app.js"></script><script src="./enhancements.js"></script><script src="./trip-tools.js"></script><script src="./v34.js"></script><script src="./v35.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="./data.js"></script>
+<script src="./app.js"></script>
+<script src="./enhancements.js"></script>
+<script src="./trip-tools-core.js"></script>
+<script src="./game.js"></script>
 </body>
 </html>
