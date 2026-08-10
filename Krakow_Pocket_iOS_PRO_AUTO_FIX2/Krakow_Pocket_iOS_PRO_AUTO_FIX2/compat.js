@@ -31,5 +31,6 @@ function bind(){ensureProfileStyles();const observer=new MutationObserver(schedu
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind,{once:true});else bind();
 })();
 if(!window.__kpStateBridgeLoader){window.__kpStateBridgeLoader=true;document.write('<script src="./state-bridge.js?v=20260810h" data-kp-state-bridge="1"><\/script>')}
+if(!window.__kpPortraitStabilityLoader){window.__kpPortraitStabilityLoader=true;document.write('<script src="./portrait-stability.js?v=20260810k" data-kp-portrait-stability="1"><\/script>')}
 if(!window.__kpMissionFixLoader){window.__kpMissionFixLoader=true;document.write('<script src="./mission-fix.js?v=20260810h" data-kp-mission-fix="1"><\/script>')}
-if(!window.__kpCelebrationGuardLoader){window.__kpCelebrationGuardLoader=true;document.write('<script src="./celebration-guard.js?v=20260810h" data-kp-celebration-guard="1"><\/script>')}
+if(!window.__kpCelebrationGuardLoader){window.__kpCelebrationGuardLoader=true;document.write('<script src="./celebration-guard.js?v=20260810k" data-kp-celebration-guard="1"><\/script>')}
