@@ -1,4 +1,4 @@
-const CACHE="krakow-pocket-v7-1-20260810b";
+const CACHE="krakow-pocket-v7-1-20260810c";
 const CORE=["./","./index.html","./styles.css?v=710","./game.css?v=710","./visuals.css?v=710","./data.js?v=710","./app.js?v=710","./game.js?v=710","./visuals.js?v=710","./assets/game-art.svg?v=710","./assets/characters.svg?v=710","./assets/village.svg?v=710","./assets/world-map.svg?v=710","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)))});
 self.addEventListener("activate",e=>{e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))]))});
