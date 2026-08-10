@@ -22,17 +22,28 @@ async function snapshot(page) {
           const s = getComputedStyle(el);
           return {panel:el.dataset.panel,width:r.width,height:r.height,visible:s.display!=='none'&&s.visibility!=='hidden',disabled:!!el.disabled};
         });
+        const portrait = document.querySelector('#kpGameHud .kp-game-portrait');
+        const couple = [...document.querySelectorAll('#kpGameHub .kp-couple-art')];
+        const portraitInline = !!portrait?.querySelector('svg[data-kp-inline]');
+        const coupleInline = couple.filter(el=>el.querySelector('svg[data-kp-inline]')).length;
+        const inlineReady = document.documentElement.classList.contains('kp-inline-art-ready');
+        const inlineFailed = document.documentElement.classList.contains('kp-inline-art-failed');
         return {
           url: location.href,
           title: document.title,
           data: !!window.KP_DATA,
           appApi: !!window.KP_APP,
           runtimeAudit: window.KP_RUNTIME_AUDIT || null,
+          visualAudit: window.KP_VISUAL_AUDIT || null,
           recTitle: text('recTitle'),
           syncText: text('syncText'),
           hud: !!document.getElementById('kpGameHud'),
           objective: !!document.getElementById('kpGameObjective'),
           village: !!document.getElementById('kpGameHub'),
+          portraitInline,
+          coupleInline,
+          inlineReady,
+          inlineFailed,
           tabs: [...document.querySelectorAll('.tab')].map(x => x.dataset.panel),
           tabGeometry,
           activePanels: [...document.querySelectorAll('.panel.active')].map(x => x.id),
@@ -58,8 +69,6 @@ for (const [name, engine] of engines) {
     ...(isLocal ? { serviceWorkers: 'block' } : {})
   });
 
-  // Local smoke tests must never depend on or mutate the real shared adventure.
-  // Live Cloudflare tests intentionally use the real read path to prove production sync.
   if (isLocal) {
     let mockState = {visited:[],budget:[0,0,0],expenses:[],memories:[],config:{dailyTarget:21,fixedPaid:72.16},updatedAt:'2026-08-10T16:00:00.000Z'};
     await context.route('https://ahzmwkztlakejmrvgcdm.supabase.co/rest/v1/rpc/**', async route => {
@@ -93,12 +102,17 @@ for (const [name, engine] of engines) {
       const s = document.getElementById('syncText')?.textContent?.trim() || '';
       return s === 'sincronizados' || s === 'sin conexión';
     }, { timeout: 12000 }).catch(() => {});
+    await page.waitForFunction(() => document.documentElement.classList.contains('kp-inline-art-ready') || document.documentElement.classList.contains('kp-inline-art-failed'), { timeout: 8000 }).catch(() => {});
+    await page.waitForFunction(() => {
+      const p=!!document.querySelector('#kpGameHud .kp-game-portrait svg[data-kp-inline]');
+      const c=[...document.querySelectorAll('#kpGameHub .kp-couple-art')].filter(el=>el.querySelector('svg[data-kp-inline]')).length;
+      return p&&c===2;
+    }, { timeout: 5000 }).catch(() => {});
     await page.waitForTimeout(350);
   } catch (err) {
     pageErrors.push(`Navigation: ${err.stack || err}`);
   }
 
-  // A celebration is a legitimate blocking modal. Close it before generic navigation checks.
   await page.evaluate(() => document.getElementById('kpWinClose')?.click()).catch(() => {});
   const state = await snapshot(page);
   const navResults = {};
@@ -140,7 +154,8 @@ for (const [name, engine] of engines) {
   const tabsOk = Array.isArray(state.tabGeometry) && state.tabGeometry.length === 5 && state.tabGeometry.every(t => t.visible && !t.disabled && t.width >= 30 && t.height >= 30);
   const layoutOk = state.bodyOverflow === false;
   const syncOk = state.syncText === 'sincronizados' || state.syncText === 'sin conexión';
-  if (!mustBoot || !runtimeOk || !navOk || !tabsOk || !layoutOk || !syncOk || meaningfulPageErrors.length || authErrors.length) failed = true;
+  const artOk = state.inlineReady && !state.inlineFailed && state.portraitInline && state.coupleInline === 2 && !state.visualAudit?.characters?.blankPortrait && !state.visualAudit?.characters?.missingCouple && !state.visualAudit?.characters?.identityMismatch;
+  if (!mustBoot || !runtimeOk || !navOk || !tabsOk || !layoutOk || !syncOk || !artOk || meaningfulPageErrors.length || authErrors.length) failed = true;
   await page.screenshot({ path: `audit-${name}.png`, fullPage: true }).catch(() => {});
   await browser.close();
 }
