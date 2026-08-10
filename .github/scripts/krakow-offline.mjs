@@ -51,9 +51,10 @@ const state = await page.evaluate(() => ({
   guard: window.KP_CELEBRATION_GUARD || null,
   missionUx: window.KP_MISSION_UX || null,
   stateBridge: window.KP_STATE_BRIDGE || null,
+  network: window.KP_NETWORK_STATUS || null,
   portrait: window.KP_PORTRAIT_STABILITY || null
 }));
-const ok = state.data && state.hud && state.village && state.tabs === 5 && state.controller && state.overflow === false && state.sync === 'sin conexión' && state.runtime?.stateOk === true && state.runtime?.storageOk === true && state.guard?.duplicateOverlayBlocked === true && state.missionUx?.version === '4.2' && state.stateBridge?.reversibleDiscoveries === true && state.portrait?.profilesVerified === true && errors.length === 0;
+const ok = state.data && state.hud && state.village && state.tabs === 5 && state.controller && state.overflow === false && state.sync === 'sin conexión' && state.runtime?.online === false && state.runtime?.stateOk === true && state.runtime?.storageOk === true && state.guard?.duplicateOverlayBlocked === true && state.missionUx?.version === '4.2' && state.stateBridge?.reversibleDiscoveries === true && state.network?.offlineUiGuard === true && state.network?.online === false && state.portrait?.profilesVerified === true && errors.length === 0;
 console.log(JSON.stringify({ state, errors, ok }, null, 2));
 if (!ok) {
   const msg = `state=${JSON.stringify(state)}; errors=${errors.join(' | ') || 'none'}`.replace(/%/g,'%25').replace(/\r/g,'%0D').replace(/\n/g,'%0A');
