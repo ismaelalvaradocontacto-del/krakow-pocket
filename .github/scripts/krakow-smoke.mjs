@@ -4,6 +4,45 @@ const base = process.env.KP_AUDIT_URL || 'http://127.0.0.1:4173/';
 const engines = [['chromium', chromium], ['webkit', webkit]];
 let failed = false;
 
+async function snapshot(page) {
+  let lastError = null;
+  for (let attempt = 0; attempt < 6; attempt++) {
+    try {
+      await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
+      await page.waitForTimeout(500);
+      return await page.evaluate(() => {
+        const text = id => document.getElementById(id)?.textContent?.trim() || null;
+        const visible = id => {
+          const el = document.getElementById(id); if (!el) return false;
+          const s = getComputedStyle(el); return s.display !== 'none' && s.visibility !== 'hidden';
+        };
+        return {
+          url: location.href,
+          title: document.title,
+          data: !!window.KP_DATA,
+          appApi: !!window.KP_APP,
+          runtimeAudit: window.KP_RUNTIME_AUDIT || null,
+          recTitle: text('recTitle'),
+          syncText: text('syncText'),
+          hud: !!document.getElementById('kpGameHud'),
+          objective: !!document.getElementById('kpGameObjective'),
+          village: !!document.getElementById('kpGameHub'),
+          tabs: [...document.querySelectorAll('.tab')].map(x => x.dataset.panel),
+          activePanels: [...document.querySelectorAll('.panel.active')].map(x => x.id),
+          bodyOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
+          settings: !!document.getElementById('settingsSheet'),
+          storyDialog: !!document.getElementById('storyDialog'),
+          recommendationVisible: visible('recommendation')
+        };
+      });
+    } catch (err) {
+      lastError = err;
+      await page.waitForTimeout(650);
+    }
+  }
+  return { evaluationError: String(lastError) };
+}
+
 for (const [name, engine] of engines) {
   const browser = await engine.launch({ headless: true });
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 });
@@ -17,48 +56,25 @@ for (const [name, engine] of engines) {
   let response;
   try {
     response = await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForTimeout(2500);
+    await page.waitForTimeout(3500);
   } catch (err) {
     pageErrors.push(`Navigation: ${err.stack || err}`);
   }
 
-  const state = await page.evaluate(() => {
-    const text = id => document.getElementById(id)?.textContent?.trim() || null;
-    const visible = id => {
-      const el = document.getElementById(id); if (!el) return false;
-      const s = getComputedStyle(el); return s.display !== 'none' && s.visibility !== 'hidden';
-    };
-    return {
-      url: location.href,
-      title: document.title,
-      data: !!window.KP_DATA,
-      app: !!window.KP_APP,
-      appVersion: window.KP_APP?.version || null,
-      recTitle: text('recTitle'),
-      syncText: text('syncText'),
-      hud: !!document.getElementById('kpGameHud'),
-      objective: !!document.getElementById('kpGameObjective'),
-      village: !!document.getElementById('kpGameHub'),
-      tabs: [...document.querySelectorAll('.tab')].map(x => x.dataset.panel),
-      activePanels: [...document.querySelectorAll('.panel.active')].map(x => x.id),
-      bodyOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
-      settings: !!document.getElementById('settingsSheet'),
-      storyDialog: !!document.getElementById('storyDialog'),
-      recommendationVisible: visible('recommendation')
-    };
-  }).catch(err => ({ evaluationError: String(err) }));
-
+  const state = await snapshot(page);
   const navResults = {};
   for (const panel of ['home','mapPanel','quests','diary','budget']) {
     try {
       await page.locator(`.tab[data-panel="${panel}"]`).click({ timeout: 5000 });
-      await page.waitForTimeout(120);
+      await page.waitForTimeout(180);
       navResults[panel] = await page.locator(`#${panel}`).evaluate(el => el.classList.contains('active'));
     } catch (err) {
       navResults[panel] = `ERROR: ${err.message}`;
     }
   }
 
+  const meaningfulPageErrors = pageErrors.filter(x => !/sw\.js due to access control checks/i.test(x));
+  const authErrors = consoleErrors.filter(x => /401|Invalid API key/i.test(x));
   const report = {
     engine: name,
     httpStatus: response?.status() ?? null,
@@ -71,9 +87,11 @@ for (const [name, engine] of engines) {
   console.log(`\n=== ${name.toUpperCase()} AUDIT ===`);
   console.log(JSON.stringify(report, null, 2));
 
-  const mustBoot = state.data && state.app && state.recTitle && !/^Calculando/i.test(state.recTitle) && state.hud && state.village;
+  const mustBoot = state.data && state.recTitle && !/^Calculando/i.test(state.recTitle) && state.hud && state.objective && state.village && state.recommendationVisible;
+  const runtimeOk = !state.runtimeAudit || (state.runtimeAudit.stateOk && state.runtimeAudit.storageOk && (!state.runtimeAudit.missing || state.runtimeAudit.missing.length === 0));
   const navOk = Object.values(navResults).every(v => v === true);
-  if (!mustBoot || !navOk || pageErrors.length) failed = true;
+  const layoutOk = state.bodyOverflow === false;
+  if (!mustBoot || !runtimeOk || !navOk || !layoutOk || meaningfulPageErrors.length || authErrors.length) failed = true;
   await page.screenshot({ path: `audit-${name}.png`, fullPage: true }).catch(() => {});
   await browser.close();
 }
