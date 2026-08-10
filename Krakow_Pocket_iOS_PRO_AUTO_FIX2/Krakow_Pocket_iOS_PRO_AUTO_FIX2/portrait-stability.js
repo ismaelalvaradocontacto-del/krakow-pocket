@@ -12,6 +12,21 @@
     return document.querySelector(`#kpPlayerPicker [data-kp-player="${name}"] .kp-picker-face svg`);
   }
 
+  function profileHealth() {
+    const faces = [...document.querySelectorAll("#kpGameHud .kp-profile-face[data-kp-profile]")];
+    const names = new Set(faces.map(face => face.dataset.kpProfile));
+    return faces.length === 2 && names.has("Ismael") && names.has("Laura");
+  }
+
+  function updateMarker() {
+    window.KP_PORTRAIT_STABILITY = {
+      version: "1.2",
+      dualPortraitRepair: true,
+      synchronousUiRepair: true,
+      profilesVerified: profileHealth()
+    };
+  }
+
   function ensurePortrait() {
     if (repairing) return false;
     const portrait = document.querySelector("#kpGameHud .kp-game-portrait");
@@ -64,6 +79,7 @@
   function repair() {
     scheduled = 0;
     if (ensurePortrait()) paintSelection();
+    updateMarker();
   }
 
   function schedule() {
@@ -104,7 +120,7 @@
     window.addEventListener("kp:game-render", repairAfterUiMutation);
     window.addEventListener("kp:statechange", repairAfterUiMutation);
     window.addEventListener("orientationchange", () => setTimeout(repairAfterUiMutation, 100), { passive: true });
-    window.KP_PORTRAIT_STABILITY = { version: "1.1", dualPortraitRepair: true, synchronousUiRepair: true };
+    updateMarker();
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
