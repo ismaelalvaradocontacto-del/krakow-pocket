@@ -17,7 +17,6 @@
   <link rel="preload" href="./assets/world-map.svg" as="image" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="./styles.css">
-  <link rel="stylesheet" href="./enhancements.css">
   <link rel="stylesheet" href="./game.css">
   <link rel="stylesheet" href="./visuals.css">
 </head>
@@ -66,15 +65,14 @@
   <article class="card card-flat"><h3>💰 Vuestro objetivo</h3><div class="grid2"><label>Objetivo diario pareja (€)<input id="dailyTarget" type="number" min="0" step="1"></label><label>Ya pagado/configurado (€)<input id="fixedPaid" type="number" min="0" step=".01"></label></div><p class="small" style="margin:9px 0 0">Podéis corregir aquí los 72,16 € de la versión anterior si esa cifra no representa exactamente lo que queréis contar.</p></article>
   <article class="card card-flat"><div class="row"><div><h3>☁️ Sincronización</h3><div class="small" id="lastSync">Todavía conectando…</div></div><button class="btn secondary small-btn" id="reconnectCloud">Reconectar</button></div><p class="small" id="syncHelp" style="margin-top:8px">Los dos iPhone usan la misma partida automáticamente.</p><details><summary class="small">Datos técnicos</summary><div class="small" style="margin-top:8px">Código de aventura: <strong id="syncCode"></strong></div></details></article>
   <article class="card card-flat"><h3>🏠 Varsovia</h3><div class="small">Stalowa 20/22 · Nowa Praga</div><div class="grid2" style="margin-top:9px"><button class="btn secondary small-btn" id="homeMapBtn">Ver casa</button><button class="btn secondary small-btn" id="zachodniaBtn">Ver Zachodnia</button></div></article>
+  <article class="card card-flat"><h3>📖 Guardar la aventura</h3><p class="small">Crea un resumen con misiones, gasto y últimos recuerdos.</p><button class="btn full" id="shareSummary">Compartir resumen</button></article>
   <div class="privacy-note">🔒 La ubicación GPS no se guarda en Supabase ni se comparte entre vuestros móviles. Solo se usa en el dispositivo para ordenar distancias.</div><div class="small" id="settingsVersion" style="text-align:center;margin-top:12px">Kraków Pocket</div>
 </div></dialog>
 <dialog id="storyDialog" class="story-dialog"><div class="dialog-body"><div class="smart-kicker">Crónica de Cracovia</div><h2 id="storyDialogTitle"></h2><div class="small" id="storyDialogMeta"></div><p class="story-text" id="storyDialogText"></p><div class="grid2"><button class="btn secondary" id="storyClose">Cerrar</button><button class="btn" id="storyGo">Ir andando</button></div><button class="btn ghost full" id="storyMark" style="margin-top:8px">Marcar descubierto</button></div></dialog>
 <div class="toast" id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="./data.js"></script>
-<script src="./runtime.js"></script>
 <script src="./app.js"></script>
-<script src="./enhancements.js"></script>
 <script src="./game.js"></script>
 <script src="./visuals.js"></script>
 </body>
