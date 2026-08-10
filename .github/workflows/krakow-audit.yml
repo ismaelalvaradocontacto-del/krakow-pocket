@@ -18,7 +18,7 @@ jobs:
         run: |
           set -euxo pipefail
           APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
-          for f in "$APP_DIR"/*.js; do
+          for f in "$APP_DIR"/*.js .github/scripts/*.mjs; do
             echo "Checking $f"
             node --check "$f"
           done
@@ -34,22 +34,27 @@ jobs:
           sleep 2
           curl -fsS -I http://127.0.0.1:4173/
           curl -fsS http://127.0.0.1:4173/stability.js | grep -q 'automaticReloadsBlocked'
+          curl -fsS http://127.0.0.1:4173/mission-fix.js | grep -q '__kpMissionUxV4'
       - name: Run local Chromium and WebKit smoke audit
         run: node .github/scripts/krakow-smoke.mjs
       - name: Run isolated write-flow interaction audit
-        run: node .github/scripts/krakow-interactions.mjs
+        run: timeout 180s node .github/scripts/krakow-interactions.mjs
       - name: Prove local app does not reload itself
         run: node .github/scripts/krakow-reload-stability.mjs
       - name: Wait for Cloudflare Pages production
         run: |
-          for i in {1..30}; do
-            if curl -fsS https://krakow-pocket.pages.dev/stability.js | grep -q 'automaticReloadsBlocked'; then
-              echo "Cloudflare is serving the reload-loop guard"
+          for i in {1..45}; do
+            MISSION_OK=0
+            CACHE_OK=0
+            curl -fsS https://krakow-pocket.pages.dev/mission-fix.js | grep -q '__kpMissionUxV4' && MISSION_OK=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v9-audit-20260810e' && CACHE_OK=1 || true
+            if [ "$MISSION_OK" = "1" ] && [ "$CACHE_OK" = "1" ]; then
+              echo "Cloudflare is serving the audited mission UX and PWA cache"
               exit 0
             fi
             sleep 4
           done
-          echo "Cloudflare production did not converge to the reload-loop guard in time"
+          echo "Cloudflare production did not converge to the audited build in time"
           exit 1
       - name: Run live Cloudflare Chromium and WebKit audit
         env:
