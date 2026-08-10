@@ -2,10 +2,9 @@
 <defs>
   <linearGradient id="skinI" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f2b794"/><stop offset=".55" stop-color="#dc9271"/><stop offset="1" stop-color="#bf765d"/></linearGradient>
   <linearGradient id="skinL" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f5c09c"/><stop offset=".58" stop-color="#e1a17e"/><stop offset="1" stop-color="#c98567"/></linearGradient>
-  <linearGradient id="hairI" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#7a523c"/><stop offset=".48" stop-color="#4f3427"/><stop offset="1" stop-color="#2d201a"/></linearGradient>
+  <linearGradient id="hairI" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#ddd8cf"/><stop offset=".48" stop-color="#b4ada2"/><stop offset="1" stop-color="#817a71"/></linearGradient>
   <linearGradient id="hairL" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4c332a"/><stop offset=".5" stop-color="#2c201c"/><stop offset="1" stop-color="#171312"/></linearGradient>
   <linearGradient id="green" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b725b"/><stop offset=".55" stop-color="#25503f"/><stop offset="1" stop-color="#17372d"/></linearGradient>
-  <linearGradient id="greenLight" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#70967c"/><stop offset="1" stop-color="#3d6c58"/></linearGradient>
   <linearGradient id="cream" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fffdf7"/><stop offset="1" stop-color="#e7dfd0"/></linearGradient>
   <linearGradient id="olive" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#81886a"/><stop offset="1" stop-color="#4e573e"/></linearGradient>
   <linearGradient id="tan" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#c7ab7e"/><stop offset="1" stop-color="#987652"/></linearGradient>
@@ -23,10 +22,10 @@
     <path d="M43 151q47-20 94 0" fill="none" stroke="#6f9c82" stroke-width="3" opacity=".45"/>
     <path d="M70 105h40v27H70z" fill="url(#skinI)" stroke="#4a3128" stroke-width="3.2"/>
     <path d="M50 62c1-34 17-51 40-51 26 0 41 18 40 52v21c0 31-17 49-40 49S49 115 49 84z" fill="url(#skinI)" stroke="#4a3128" stroke-width="3.5"/>
-    <path d="M49 65c-1-34 14-54 40-57 28-3 45 15 46 47-11-7-23-10-35-10-11-6-24-5-35 2-6 4-11 10-16 18z" fill="url(#hairI)" stroke="#30221c" stroke-width="3.7"/>
-    <path d="M55 43q13-17 31-21m-17 14q15-12 32-12m-18 9q17-8 33-3m-9 8q11-4 20-1" fill="none" stroke="#9a7055" stroke-width="3.1" stroke-linecap="round" opacity=".78"/>
+    <path d="M49 65c-1-34 14-54 40-57 28-3 45 15 46 47-11-7-23-10-35-10-11-6-24-5-35 2-6 4-11 10-16 18z" fill="url(#hairI)" stroke="#625b52" stroke-width="3.7"/>
+    <path d="M55 43q13-17 31-21m-17 14q15-12 32-12m-18 9q17-8 33-3m-9 8q11-4 20-1" fill="none" stroke="#eeeae2" stroke-width="3.1" stroke-linecap="round" opacity=".78"/>
     <path d="M53 70c-6 1-9 7-8 14 1 7 5 11 11 10m70-24c6 1 9 7 8 14-1 7-5 11-11 10" fill="url(#skinI)" stroke="#4a3128" stroke-width="3.1"/>
-    <path d="M63 66q10-7 21 0m12 0q10-7 22 0" fill="none" stroke="#56372c" stroke-width="3.7" stroke-linecap="round"/>
+    <path d="M63 66q10-7 21 0m12 0q10-7 22 0" fill="none" stroke="#65564a" stroke-width="3.7" stroke-linecap="round"/>
     <ellipse cx="76" cy="77" rx="7" ry="8" fill="#744a29"/><ellipse cx="105" cy="77" rx="7" ry="8" fill="#744a29"/>
     <ellipse cx="76" cy="78" rx="3" ry="4.4" fill="#1d1816"/><ellipse cx="105" cy="78" rx="3" ry="4.4" fill="#1d1816"/>
     <circle cx="78" cy="74" r="1.9" fill="#fff"/><circle cx="107" cy="74" r="1.9" fill="#fff"/>
@@ -34,8 +33,8 @@
     <ellipse cx="62" cy="89" rx="11" ry="7" fill="url(#cheek)"/><ellipse cx="119" cy="89" rx="11" ry="7" fill="url(#cheek)"/>
     <path d="M68 99q22 15 44 0" fill="#a95550" stroke="#754039" stroke-width="2.2"/>
     <path d="M75 102q15 8 30 0" fill="#fff7ef" stroke="#dfc0ad" stroke-width="1.4"/>
-    <path d="M58 91q5 28 32 33 28-5 33-33" fill="none" stroke="#684438" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="2.2 3" opacity=".92"/>
-    <path d="M64 94q3 10 11 15m42-15q-3 10-11 15" fill="none" stroke="#4d332b" stroke-width="2.2" opacity=".68"/>
+    <path d="M58 91q5 28 32 33 28-5 33-33" fill="none" stroke="#665247" stroke-width="3.5" stroke-linecap="round" stroke-dasharray="2.2 3" opacity=".92"/>
+    <path d="M64 94q3 10 11 15m42-15q-3 10-11 15" fill="none" stroke="#514238" stroke-width="2.2" opacity=".68"/>
     <path d="M80 117q10 4 20 0" fill="none" stroke="#5b3b30" stroke-width="1.8" opacity=".52"/>
   </g>
 
@@ -68,14 +67,14 @@
     <path d="M69 106h42v29H69z" fill="url(#cream)" stroke="#4a3328" stroke-width="2.5"/>
     <path d="M61 104l-8 21m74-21 8 21" stroke="url(#leather)" stroke-width="6" stroke-linecap="round"/>
     <circle cx="90" cy="55" r="35" fill="url(#skinI)" stroke="#443027" stroke-width="3.7"/>
-    <path d="M55 56c-2-31 14-45 35-47 24-1 38 15 39 42-12-8-23-10-35-8-11-5-24-2-39 13z" fill="url(#hairI)" stroke="#32231d" stroke-width="3.8"/>
-    <path d="M62 38q13-14 29-16m-14 9q14-9 30-6m-2 6q10-3 18 0" fill="none" stroke="#946b51" stroke-width="2.7" stroke-linecap="round" opacity=".8"/>
-    <path d="M65 52q8-5 18 0m14 0q8-5 18 0" fill="none" stroke="#54362b" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="M55 56c-2-31 14-45 35-47 24-1 38 15 39 42-12-8-23-10-35-8-11-5-24-2-39 13z" fill="url(#hairI)" stroke="#625b52" stroke-width="3.8"/>
+    <path d="M62 38q13-14 29-16m-14 9q14-9 30-6m-2 6q10-3 18 0" fill="none" stroke="#eeeae2" stroke-width="2.7" stroke-linecap="round" opacity=".82"/>
+    <path d="M65 52q8-5 18 0m14 0q8-5 18 0" fill="none" stroke="#65564a" stroke-width="2.8" stroke-linecap="round"/>
     <ellipse cx="76" cy="60" rx="5.4" ry="6.2" fill="#704826"/><ellipse cx="104" cy="60" rx="5.4" ry="6.2" fill="#704826"/>
     <circle cx="78" cy="58" r="1.4" fill="#fff"/><circle cx="106" cy="58" r="1.4" fill="#fff"/>
     <path d="M79 74q11 8 22 0" fill="#aa5650" stroke="#754039" stroke-width="1.9"/>
     <path d="M83 76q7 4 14 0" fill="none" stroke="#fff5ed" stroke-width="1.5"/>
-    <path d="M64 69q4 16 26 19 22-3 26-19" fill="none" stroke="#654236" stroke-width="2.8" stroke-dasharray="2 2.6"/>
+    <path d="M64 69q4 16 26 19 22-3 26-19" fill="none" stroke="#665247" stroke-width="2.8" stroke-dasharray="2 2.6"/>
     <path d="M50 118q-13 8-12 25m93-25q13 8 12 25" fill="none" stroke="#493027" stroke-width="6" stroke-linecap="round"/>
     <path d="M65 140l-7 25h24l8-25 8 25h24l-7-25z" fill="url(#tan)" stroke="#493027" stroke-width="3.6"/>
     <path d="M57 164h26m14 0h26" stroke="url(#boot)" stroke-width="8" stroke-linecap="round"/>
@@ -142,11 +141,4 @@
 <symbol id="char-laura-v4-world" viewBox="0 0 180 180"><use href="#art-laura-world"/></symbol>
 <symbol id="npc-dragon-v4" viewBox="0 0 180 180"><use href="#art-dragon"/></symbol>
 <symbol id="npc-guardian-v1" viewBox="0 0 180 180"><use href="#art-guardian"/></symbol>
-
-<!-- Compatibility aliases so every legacy slot resolves to the exact same identity. -->
-<symbol id="char-ismael-v3-portrait" viewBox="0 0 180 180"><use href="#art-ismael-portrait"/></symbol>
-<symbol id="char-laura-v3-portrait" viewBox="0 0 180 180"><use href="#art-laura-portrait"/></symbol>
-<symbol id="char-ismael-v3-chibi" viewBox="0 0 180 180"><use href="#art-ismael-world"/></symbol>
-<symbol id="char-laura-v3-chibi" viewBox="0 0 180 180"><use href="#art-laura-world"/></symbol>
-<symbol id="npc-dragon-v2" viewBox="0 0 180 180"><use href="#art-dragon"/></symbol>
 </svg>
