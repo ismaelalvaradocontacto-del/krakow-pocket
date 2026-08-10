@@ -18,11 +18,11 @@ const cheers={
  wawel:["¡Territorio real conquistado!","Sin corona, sin caballo y aun así habéis llegado a Wawel. Nada mal."],
  dragon:["¡ESCAMA LEGENDARIA!","El Dragón de Wawel os reconoce oficialmente como pareja aventurera. No incluye inmunidad al fuego."],
  szeroka:["¡Kazimierz os cuenta sus capas!","Habéis hecho lo difícil: mirar el barrio en vez de simplemente atravesarlo."],
- placnowy:["¡Economía de mercado dominada!","Comparar precios antes de comprar: +10 escamas y -37 % de probabilidad de turistada."],
+ placnowy:["¡Economía de mercado dominada!","Comparar precios antes de comprar: +10 escamas y menos posibilidades de turistada."],
  bernatek:["¡Puente entre mundos cruzado!","Un barrio detrás, otro delante y vosotros dos en medio. Cinematográfico."],
  ghetto:["Misión de memoria completada","Aquí no toca bromear demasiado. Gracias por parar, mirar y dedicarle tiempo al lugar."],
  tomasza:["¡Maestros del złoty!","Comer caliente sin destruir el presupuesto: habilidad épica desbloqueada."],
- planty:["¡Descanso profesional!","Habéis completado una misión haciendo… nada. Planty estaría orgulloso."],
+ planty:["¡Descanso profesional!","Habéis completado una misión haciendo… nada. Planty estaría orgulloso."]
 };
 let lastCelebrated="";
 function ensure(){
@@ -61,7 +61,13 @@ function openPixelMission(id){
  const ctx=$("#kpPixelContext");ctx.onclick=()=>{const old=document.querySelector(`.q-context[data-poi="${CSS.escape(id)}"]`);if(old){sheet.classList.remove("show");old.click()}};
  sheet.classList.add("show");
 }
-function installCelebrations(){document.addEventListener("click",e=>{const b=e.target.closest?.(".q-done[data-poi]");if(!b)return;const id=b.dataset.poi,before=done(read(),id);if(before)return;setTimeout(()=>{if(done(read(),id)){renderWorld();showCelebration(id)}},320)},false)}
-function init(){ensure();renderWorld();installCelebrations();window.addEventListener("storage",renderWorld);setInterval(renderWorld,4000);const ver=$("#settingsVersion");if(ver)ver.textContent="Kraków Pocket · v3.6.1"}
+function installCelebrations(){
+ document.addEventListener("click",e=>{
+   const b=e.target.closest?.(".q-done[data-poi]");if(!b)return;
+   const id=b.dataset.poi,before=done(read(),id);if(before)return;
+   setTimeout(()=>{if(done(read(),id)){renderWorld();showCelebration(id)}},420);
+ },true);
+}
+function init(){ensure();renderWorld();installCelebrations();window.addEventListener("storage",renderWorld);setInterval(renderWorld,4000);const ver=$("#settingsVersion");if(ver)ver.textContent="Kraków Pocket · v3.6.3"}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
