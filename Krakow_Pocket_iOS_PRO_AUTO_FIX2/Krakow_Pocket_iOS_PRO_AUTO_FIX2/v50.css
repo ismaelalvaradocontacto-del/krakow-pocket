@@ -1,0 +1,47 @@
+/* Kraków Pocket v5.0 · deeper illustrated RPG finish */
+html.kp-rpg-v50{--v50-wood:#4a2d1c;--v50-wood-hi:#7c4c2d;--v50-gold:#d8b15a;--v50-paper:#fff1c7;--v50-paper2:#edd299;--v50-ink:#3a281d}
+html.kp-rpg-v50 body{background:linear-gradient(#cfb27b,#b78d53)!important}
+html.kp-rpg-v50 .app{background:linear-gradient(90deg,#b98f52 0 8px,#ebd39a 8px calc(100% - 8px),#b98f52 calc(100% - 8px))!important}
+html.kp-rpg-v50 #kpMasterHud{overflow:visible!important;border-color:var(--v50-wood)!important;background:radial-gradient(circle at 18% 10%,rgba(255,255,255,.36),transparent 25%),linear-gradient(#faeabb,#e2bf72)!important;box-shadow:0 7px 0 #321f15,0 14px 30px rgba(52,32,19,.22)!important}
+html.kp-rpg-v50 #kpMasterHud:after{content:"";position:absolute;inset:5px;border:1px solid rgba(126,83,43,.35);border-radius:12px;pointer-events:none}
+html.kp-rpg-v50 .kp45-logo strong{font-size:30px!important;letter-spacing:-.045em!important;text-shadow:0 2px 0 #fff1bd,0 3px 0 rgba(91,49,28,.12)!important}
+html.kp-rpg-v50 .kp45-logo span{background:linear-gradient(#b54147,#8a2730)!important;border-color:#653222!important;box-shadow:0 3px 0 #48251b!important}
+html.kp-rpg-v50 .kp45-resource{position:relative;overflow:hidden;background:linear-gradient(#fff8df,#ecd293)!important;border-color:#8d633c!important;box-shadow:inset 0 1px #fff,0 3px 0 rgba(77,48,28,.25)!important}
+html.kp-rpg-v50 .kp45-resource:after{content:"";position:absolute;inset:2px;border-radius:7px;border:1px solid rgba(178,133,68,.22);pointer-events:none}
+html.kp-rpg-v50 #kp45QuestStrip{position:relative;overflow:hidden;background:linear-gradient(100deg,#fff6d7,#e8c983)!important;border-color:var(--v50-wood)!important}
+html.kp-rpg-v50 #kp45QuestStrip:after{content:"";position:absolute;right:-18px;top:-24px;width:95px;height:95px;border-radius:50%;background:radial-gradient(circle,#f7e5aa 0 34%,transparent 35%);opacity:.28;pointer-events:none}
+html.kp-rpg-v50 .kp45-questico{background:radial-gradient(circle at 35% 30%,#fff2c6,#e3b95e)!important;border-color:#9b6f37!important;box-shadow:inset 0 1px #fff,0 3px 0 rgba(73,46,26,.18)!important}
+/* Mission board becomes a framed illustrated scene */
+html.kp-rpg-v50 .kp-world-frame{border:7px solid var(--v50-wood)!important;border-radius:22px!important;box-shadow:0 9px 0 #2f1e14,0 20px 42px rgba(47,29,17,.24)!important}
+html.kp-rpg-v50 .kp-world-top{background:linear-gradient(#825031,#60371f)!important;padding:15px 17px 16px!important}
+html.kp-rpg-v50 .kp-world-top:before{content:""!important;position:absolute!important;left:12px!important;right:12px!important;top:7px!important;height:2px!important;background:linear-gradient(90deg,transparent,#c99552 15%,#dfbd72 50%,#c99552 85%,transparent)!important;opacity:.65!important}
+html.kp-rpg-v50 .kp-world-title{font-size:26px!important;text-shadow:0 2px 0 #3a2317!important}
+html.kp-rpg-v50 .kp-world-score{padding:5px 9px;border:2px solid rgba(245,218,156,.35);border-radius:9px;background:rgba(45,27,17,.14)}
+html.kp-rpg-v50 .kp-world-map{height:850px!important;background:#8fbd67!important}
+html.kp-rpg-v50 .kp49-worldart{filter:saturate(1.04) contrast(1.02)}
+/* Landmarks float naturally on map instead of looking like web buttons */
+html.kp-rpg-v50 .kp-node-icon{width:92px!important;height:88px!important;padding:3px!important;background:transparent!important;box-shadow:none!important;border-radius:0!important}
+html.kp-rpg-v50 .kp-node-icon:before{content:"";position:absolute;left:12%;right:12%;bottom:3px;height:17px;border-radius:50%;background:rgba(55,39,26,.24);filter:blur(3px);z-index:-1}
+html.kp-rpg-v50 .kp47-node-art{width:86px!important;height:86px!important;filter:drop-shadow(0 3px 0 rgba(58,38,24,.25)) drop-shadow(0 7px 7px rgba(57,37,23,.12))!important}
+html.kp-rpg-v50 .kp-world-node small{margin-top:-1px!important;min-width:96px!important;max-width:120px!important;padding:5px 8px 6px!important;border:2px solid #624026!important;border-radius:7px!important;background:linear-gradient(#fff6d8,#e9cf94)!important;box-shadow:0 3px 0 #452c1d,0 5px 8px rgba(57,37,23,.10)!important;font-size:10px!important}
+html.kp-rpg-v50 .kp-node-badge{width:33px!important;height:33px!important;right:0!important;top:1px!important;border-width:3px!important;box-shadow:0 3px 0 #6f2724,0 4px 8px rgba(70,27,24,.18)!important}
+html.kp-rpg-v50 .kp-world-node.done{filter:saturate(.82) brightness(1.05)}
+/* Decorative scene overlay supplied by v50.js */
+.kp50-scene-decor{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.kp50-cloud{position:absolute;width:84px;height:32px;border-radius:50px;background:rgba(255,255,255,.35);filter:blur(.2px);box-shadow:24px 6px 0 rgba(255,255,255,.25),-20px 7px 0 rgba(255,255,255,.2)}
+.kp50-cloud.c1{top:5%;left:8%;transform:scale(.75)}.kp50-cloud.c2{top:21%;right:5%;transform:scale(.55)}
+.kp50-rock{position:absolute;width:28px;height:18px;border-radius:50% 55% 45% 40%;background:linear-gradient(#9a8a69,#71674f);box-shadow:inset 0 2px rgba(255,255,255,.18),0 3px 0 rgba(72,54,37,.16)}
+.kp50-rock.r1{left:7%;top:53%}.kp50-rock.r2{right:9%;top:44%;transform:scale(.8)}.kp50-rock.r3{left:44%;top:72%;transform:scale(.65)}
+.kp50-bush{position:absolute;width:34px;height:24px;border-radius:50%;background:radial-gradient(circle at 30% 35%,#81b85e 0 34%,transparent 35%),radial-gradient(circle at 67% 42%,#5f984d 0 39%,transparent 40%),#4d853f;filter:drop-shadow(0 3px 0 rgba(47,69,35,.18))}
+.kp50-bush.b1{left:4%;top:28%}.kp50-bush.b2{right:4%;top:65%}.kp50-bush.b3{left:67%;top:88%}
+/* Richer bottom inventory */
+html.kp-rpg-v50 .bottom{background:linear-gradient(#e8c477,#c88f42)!important;border-color:var(--v50-wood)!important;box-shadow:0 7px 0 #301e14,0 12px 28px rgba(52,33,20,.22)!important}
+html.kp-rpg-v50 .tab{min-height:68px!important}
+html.kp-rpg-v50 .tab b{height:36px!important}
+html.kp-rpg-v50 .tab.active{background:radial-gradient(circle at 50% 20%,#fff8d5,#efd487)!important;border-color:#8f642f!important;box-shadow:inset 0 0 0 2px #ffea9f,0 3px 0 #755027!important}
+html.kp-rpg-v50 .tab.active:after{content:"";position:absolute;left:24%;right:24%;bottom:3px;height:3px;border-radius:5px;background:#a5353c}
+/* Improve character presentation */
+html.kp-rpg-v50 .kp45-portrait{width:61px!important;height:61px!important;background:radial-gradient(circle at 50% 40%,#d5e6d5,#c7a95e)!important}
+html.kp-rpg-v50 .kp45-portrait .kp47-svg{transform:scale(1.08)}
+html.kp-rpg-v50 .kp-world-tip{text-align:center;font-weight:700;color:#5a3a26!important}
+@media(max-width:430px){html.kp-rpg-v50 .kp-world-map{height:815px!important}.kp-rpg-v50 .kp-node-icon{width:83px!important;height:80px!important}.kp-rpg-v50 .kp47-node-art{width:77px!important;height:77px!important}.kp-rpg-v50 .kp-world-node small{min-width:88px!important;max-width:108px!important;font-size:9px!important}.kp-rpg-v50 .kp-world-title{font-size:23px!important}.kp-rpg-v50 .kp45-logo strong{font-size:28px!important}}
