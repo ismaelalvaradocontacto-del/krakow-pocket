@@ -1,5 +1,5 @@
-const CACHE="krakow-pocket-v10-celebration-guard-20260810g";
-const CORE=["./","./index.html","./styles.css","./game.css","./storybook.css","./compat.css","./profiles.css","./data.js","./compat.js","./mission-fix.js","./celebration-guard.js","./runtime.js","./stability.js","./app.js","./enhancements.js","./game.js","./visuals.js","./assets/game-art.svg","./assets/characters.svg","./assets/village.svg","./assets/world-map.svg","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
+const CACHE="krakow-pocket-v11-state-audit-20260810h";
+const CORE=["./","./index.html","./styles.css","./game.css","./storybook.css","./compat.css","./profiles.css","./data.js","./compat.js","./state-bridge.js","./mission-fix.js","./runtime.js","./stability.js","./app.js","./enhancements.js","./game.js","./visuals.js","./assets/game-art.svg","./assets/characters.svg","./assets/village.svg","./assets/world-map.svg","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)))});
 self.addEventListener("activate",e=>{e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))]))});
 self.addEventListener("message",e=>{if(e.data?.type==="SKIP_WAITING")self.skipWaiting()});
