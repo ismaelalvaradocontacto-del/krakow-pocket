@@ -128,10 +128,11 @@
     const dialog = document.getElementById("kpQuestDialog");
     const button = document.getElementById("kpPixelDone");
     if (!dialog || !button || !id) return;
-    dialog.dataset.kpPoi = id;
+    if (dialog.dataset.kpPoi !== id) dialog.dataset.kpPoi = id;
     const done = isDone(read(), id);
-    button.disabled = false;
-    button.textContent = done ? "↩ Desmarcar" : "Completar";
+    if (button.disabled) button.disabled = false;
+    const label = done ? "↩ Desmarcar" : "Completar";
+    if (button.textContent !== label) button.textContent = label;
   }
 
   function storyIdFromDialog() {
@@ -146,7 +147,8 @@
     if (!button || !id) return;
     const state = read();
     const done = qIds.has(id) ? isDone(state, id) : discovered(state, id);
-    button.textContent = done ? "↩ Desmarcar descubierto" : "✨ Marcar descubierto";
+    const label = done ? "↩ Desmarcar descubierto" : "✨ Marcar descubierto";
+    if (button.textContent !== label) button.textContent = label;
   }
 
   function mergeRecords(a = [], b = []) {
@@ -244,7 +246,7 @@
       activeStory = storySource.dataset.poi || storySource.dataset.openPoi || null;
       setTimeout(() => {
         const dialog = document.getElementById("storyDialog");
-        if (dialog && activeStory) dialog.dataset.kpPoi = activeStory;
+        if (dialog && activeStory && dialog.dataset.kpPoi !== activeStory) dialog.dataset.kpPoi = activeStory;
         syncStoryButton(activeStory);
       }, 0);
     }
@@ -284,22 +286,33 @@
     }
   }, true);
 
-  const observer = new MutationObserver(() => {
-    const missionDialog = document.getElementById("kpQuestDialog");
-    if (missionDialog?.classList.contains("show") && missionDialog.dataset.kpPoi) setMissionDialogState(missionDialog.dataset.kpPoi);
-    const storyDialog = document.getElementById("storyDialog");
-    if (storyDialog?.open) {
-      const id = storyIdFromDialog();
-      if (id) {
-        storyDialog.dataset.kpPoi = id;
-        activeStory = id;
-        syncStoryButton(id);
+  const observer = new MutationObserver(records => {
+    let missionChanged = false;
+    let storyChanged = false;
+    for (const record of records) {
+      const target = record.target;
+      if (target?.id === "kpQuestDialog" || target?.closest?.("#kpQuestDialog")) missionChanged = true;
+      if (target?.id === "storyDialog" || target?.closest?.("#storyDialog")) storyChanged = true;
+    }
+    if (missionChanged) {
+      const missionDialog = document.getElementById("kpQuestDialog");
+      if (missionDialog?.classList.contains("show") && missionDialog.dataset.kpPoi) setMissionDialogState(missionDialog.dataset.kpPoi);
+    }
+    if (storyChanged) {
+      const storyDialog = document.getElementById("storyDialog");
+      if (storyDialog?.open) {
+        const id = storyIdFromDialog();
+        if (id) {
+          if (storyDialog.dataset.kpPoi !== id) storyDialog.dataset.kpPoi = id;
+          activeStory = id;
+          syncStoryButton(id);
+        }
       }
     }
   });
-  const startObserver = () => observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "open"] });
+  const startObserver = () => observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ["class", "open"] });
   if (document.body) startObserver();
   else document.addEventListener("DOMContentLoaded", startObserver, { once: true });
 
-  window.KP_MISSION_UX = { version: "4.0", stateHooks: false, networkHooks: false };
+  window.KP_MISSION_UX = { version: "4.1", stateHooks: false, networkHooks: false };
 })();
