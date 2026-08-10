@@ -2,6 +2,12 @@
 
 PWA móvil para la escapada de Ismael y Laura a Cracovia del 11–13 de agosto de 2026, diseñada como una aventura cooperativa con estética de RPG acogedor.
 
+## Producción
+https://krakow-pocket.pages.dev/
+
+## Versión activa
+`7.1.0`
+
 ## Funciones activas
 - Mapa real de Cracovia con OpenStreetMap/Leaflet.
 - GPS opcional y exclusivamente local para ordenar lugares por cercanía.
@@ -11,70 +17,100 @@ PWA móvil para la escapada de Ismael y Laura a Cracovia del 11–13 de agosto d
 - Crónica y recuerdos compartidos.
 - Presupuesto conjunto con gastos por categoría.
 - Sincronización automática entre los dos dispositivos.
-- Navegación mediante Google Maps sin crear una pestaña intermedia innecesaria.
+- Navegación mediante Google Maps en la misma pestaña.
 - PWA con recursos esenciales disponibles desde caché.
 
 ## Arquitectura de producción
-La aplicación tiene cuatro capas JavaScript con responsabilidades separadas y tres hojas de estilo activas. No hay loaders de versiones antiguas ni capas de compatibilidad/sincronización superpuestas.
+La aplicación mantiene una sola implementación por responsabilidad y no carga capas históricas.
 
 ### JavaScript
-- `data.js`: datos estáticos del viaje, lugares, planning y misiones.
-- `app.js`: único núcleo funcional. Gestiona estado, gastos, recuerdos, mapa, GPS, recomendaciones, sincronización, PWA, compartir y estado reversible de misiones.
-- `game.js`: estructura de la experiencia RPG: HUD, Aldea, mapa de encargos, diálogos y celebraciones.
-- `visuals.js`: render de arte SVG, adaptación Safari/iPhone, VFX, responsive y auditor automático.
-
-`game.js` usa firmas de estado para no reconstruir HUD, Aldea o tablero de misiones cuando una sincronización no ha cambiado nada. La navegación se genera una sola vez por carga. Las celebraciones de misión ya no dependen de un estado temporal heredado: se lanzan directamente tras confirmar el cambio de misión.
+1. `data.js` — datos estáticos del viaje, lugares, planning y misiones.
+2. `app.js` — núcleo funcional: estado, presupuesto, recuerdos, recomendaciones, mapa, GPS, sincronización, PWA y compartir.
+3. `game.js` — estructura RPG: HUD, Aldea, Encargos, diálogos y celebraciones.
+4. `visuals.js` — carga e inserción del arte SVG, responsive y auditor automático en ejecución.
 
 ### CSS
-- `styles.css`: componentes funcionales reutilizados por mapa, formularios, diario, presupuesto, tarjetas y diálogos.
-- `game.css`: geometría y estructura de los componentes RPG generados dinámicamente.
-- `visuals.css`: acabado artístico, personajes, responsive, safe areas, iluminación y VFX.
+1. `styles.css` — componentes funcionales.
+2. `game.css` — estructura y geometría del juego.
+3. `visuals.css` — acabado artístico, responsive, safe areas, iluminación, VFX y accesibilidad visual.
 
-`game.css` ya no contiene reglas para la antigua cabecera oculta ni para la antigua lista visual de misiones, porque esos elementos dejaron de existir en el HTML de producción.
+No se cargan `runtime`, `enhancements`, `compat`, `trip-tools` ni la antigua cadena `v34`–`v51`.
 
-### Arte activo
-- `assets/characters.svg`: Ismael, Laura, Dragón de Wawel y Guardián.
-- `assets/game-art.svg`: monumentos e iconos del juego.
-- `assets/village.svg`: escenario de Aldea.
-- `assets/world-map.svg`: escenario del mapa de encargos.
+## Render y rendimiento
+`game.js` usa firmas independientes para HUD, Aldea y Encargos. Una sincronización que no modifica el estado visible ya no reconstruye esos bloques.
+
+`app.js` compara la firma del estado antes y después de sincronizar. Si la nube devuelve exactamente la misma partida, no ejecuta un `renderAll()` completo. El polling de sincronización se pausa cuando la aplicación queda oculta y se reanuda al volver a primer plano.
+
+`visuals.js` carga cada paquete SVG una sola vez. Al insertar un símbolo resuelve sus referencias `<use>` y copia únicamente los gradientes/filtros necesarios como definiciones compartidas del paquete, evitando duplicar dentro de cada personaje todos los grupos de arte del archivo original.
 
 ## Estado y sincronización
-La partida utiliza un único estado local/remoto. Las misiones se almacenan con una operación por misión (`done` + fecha de modificación), por lo que completar, deshacer o reiniciar puede reconciliarse entre dispositivos sin que una unión antigua de `visited` vuelva a activar una misión.
+La partida utiliza un único estado local/remoto.
 
-Gastos y recuerdos se fusionan por identificador y fecha de modificación. Los borrados se conservan como tombstones para impedir que reaparezcan después de sincronizar. Si la nube aún no contiene una partida, el estado local actúa como punto de partida.
+- Las misiones guardan `done + updatedAt`, permitiendo completar, deshacer y reiniciar correctamente entre dos dispositivos.
+- Gastos y recuerdos se fusionan por identificador y fecha de modificación.
+- Los borrados se conservan como tombstones para impedir reapariciones.
+- La configuración económica dispone de `configUpdatedAt`; un cambio de presupuesto ya no puede ganar o perder prioridad simplemente porque otra acción no relacionada actualizó el estado global.
+- Un estado remoto vacío no sustituye una partida local válida.
+- El Service Worker no modifica las peticiones de Supabase.
 
-El Service Worker no altera las peticiones de sincronización. La autenticación de la API pertenece únicamente al núcleo funcional de la app.
+## Personajes y arte
+`assets/characters.svg` es la única fuente de personajes:
+- Ismael: retrato y personaje de Aldea comparten pelo rubio ceniza, ojos marrones, barba, ropa verde y la misma paleta facial.
+- Laura: retrato y personaje de Aldea comparten pelo oscuro, ojos marrones, expresión y paleta de ropa.
+- Dragón de Wawel: un único diseño se reutiliza como NPC y como icono de su misión.
+- Guardián del viaje: personaje independiente.
 
-## Personajes
-Ismael y Laura tienen una identidad gráfica única. El retrato de cabecera y el sprite de Aldea comparten paleta y rasgos, adaptados a escalas distintas. El render visual inserta los símbolos SVG dentro del DOM para que Safari utilice exactamente el mismo arte que el resto de la aplicación.
+Se eliminaron los alias gráficos v3 y los personajes provisionales que aún quedaban en `game-art.svg`. `assets/game-art.svg` contiene únicamente monumentos e iconos de navegación.
 
-## Auditoría automática
+## Mapa y funcionamiento sin red
+Leaflet se inicializa únicamente cuando se abre Mapa o una acción necesita enfocarlo. Si la librería no está disponible, el panel muestra un mensaje útil en lugar de quedarse vacío o provocar una excepción. El resto de la aventura continúa funcionando con el estado local.
+
+La geolocalización nunca se sincroniza. Las distancias GPS viven únicamente en el dispositivo.
+
+## PWA y caché
+La revisión 7.1 utiliza recursos con versión `?v=710` para evitar que Safari/Cloudflare mezclen JavaScript, CSS o SVG de revisiones diferentes.
+
+`sw.js`:
+- usa una caché exclusiva de v7.1;
+- precachea exactamente los recursos activos con sus URLs versionadas;
+- usa network-first para HTML, JS, CSS y manifest;
+- usa caché para assets estáticos después de cargarlos;
+- deja pasar las peticiones remotas sin alterarlas;
+- elimina cachés antiguas al activarse.
+
+## Accesibilidad y móvil
+- Targets táctiles funcionales de al menos 44 px.
+- Inputs de 16 px para evitar zoom involuntario en iOS.
+- Foco visible para teclado/tecnologías de asistencia.
+- `aria-live` en estados relevantes y toast.
+- `aria-current` en navegación y siguiente misión.
+- `aria-pressed` en filtros y selector de Crónica.
+- Safe area superior e inferior.
+- Diálogos limitados por `100dvh`.
+- La posición del foco de Encargos se conserva sin bucles de refocus cuando llega una sincronización remota.
+- `prefers-reduced-motion` y `prefers-contrast` reciben estilos específicos.
+
+## Auditor automático
 `window.KP_AUDIT` / `window.KP_VISUAL_AUDIT` comprueba en ejecución:
-- estructura principal presente;
+- estructura principal;
 - exactamente un panel y una pestaña activos;
 - cinco destinos de navegación;
-- forma del estado local;
-- datos de las 12 misiones;
-- carga de assets;
-- identidad de personajes;
-- colisiones entre protagonistas y etiquetas;
-- colisiones de etiquetas del mapa de encargos;
+- integridad del estado y configuración;
+- 12 misiones, duplicados y misiones huérfanas;
+- símbolos SVG obligatorios;
+- identidad real de Ismael, Laura y NPC;
+- colisiones de protagonistas con edificios/etiquetas;
+- colisiones entre etiquetas de Encargos;
 - overflow horizontal y de componentes;
-- controles táctiles demasiado pequeños;
-- diálogos que excedan el viewport;
-- altura real de la navegación inferior;
-- soporte PWA, contexto seguro y estado de red.
+- targets táctiles inferiores a 44 px;
+- diálogos fuera del viewport;
+- IDs DOM duplicados;
+- controles interactivos sin nombre accesible;
+- altura real de la navegación;
+- Service Worker, contexto seguro, red, viewport y DPR.
 
-Las correcciones de geometría se realizan con tamaños, posiciones y clases específicas; no se oculta contenido como solución genérica a un overflow.
+## Archivos de soporte
+- `SUPABASE_SETUP.sql` — recuperación/configuración de infraestructura; no se ejecuta en el cliente.
+- `AUDIT_CURRENT.md` — único informe de auditoría vigente.
 
-## Limpieza realizada
-Se eliminaron del runtime todos los módulos antiguos `v34`–`v51`, `trip-tools`, `runtime`, `enhancements`, `compat` y auditorías históricas que ya no aportaban ejecución. El HTML no carga ninguno de ellos. Se mantienen únicamente los archivos activos, los cuatro assets SVG, los iconos, el manifest, el Service Worker, esta documentación y `SUPABASE_SETUP.sql` como infraestructura de recuperación/configuración.
-
-## PWA
-`sw.js` cachea únicamente los archivos activos. HTML, JavaScript, CSS y manifest intentan obtener la versión reciente y utilizan caché como respaldo; los assets estáticos se sirven desde caché cuando están disponibles. Cada revisión de producción cambia el nombre de la caché para retirar la anterior.
-
-## Privacidad
-La posición GPS no forma parte del estado compartido. Se usa únicamente en el dispositivo para distancias y recomendaciones.
-
-## Producción
-https://krakow-pocket.pages.dev/
+Las auditorías históricas superadas se eliminan en vez de acumularse.
