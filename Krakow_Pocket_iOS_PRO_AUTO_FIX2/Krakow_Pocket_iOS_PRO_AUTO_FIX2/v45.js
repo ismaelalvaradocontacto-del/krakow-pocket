@@ -10,6 +10,7 @@ const questDone=s=>D.quests.filter(q=>done(s,q.poi));
 const score=s=>questDone(s).reduce((a,q)=>a+(+q.points||0),0);
 const spent=s=>activeExpenses(s).reduce((a,x)=>a+(+x.amount||0),0);
 function charHtml(who,mini=false,name=false){return `<span class="kp45-char ${who.toLowerCase()}${mini?" mini":""}"><i class="hair"></i><i class="head"></i><i class="eye e1"></i><i class="eye e2"></i><i class="body"></i>${name?`<em class="name">${who}</em>`:""}</span>`}
+function loadV46(){if(!document.querySelector('link[href*="v46.css"]')){const l=document.createElement("link");l.rel="stylesheet";l.href="./v46.css?v=4600";document.head.appendChild(l)}if(!document.querySelector('script[src*="v46.js"]')){const s=document.createElement("script");s.src="./v46.js?v=4600";document.body.appendChild(s)}}
 function buildHeader(){
  let hud=$("#kpMasterHud");if(!hud)return;
  if(hud.dataset.v45==="1")return;
@@ -33,14 +34,14 @@ function ensureQuestStrip(){
 }
 function updateGameChrome(){
  buildHeader();ensureQuestStrip();const s=read(),qd=questDone(s),player=localStorage.getItem(PLAYER)||"Ismael";
- const portrait=$("#kp45Portrait");if(portrait)portrait.innerHTML=charHtml(player,false,false);
+ const portrait=$("#kp45Portrait");if(portrait&&!document.documentElement.classList.contains("kp-rpg-v46"))portrait.innerHTML=charHtml(player,false,false);
  if($("#kp45Score"))$("#kp45Score").textContent=`🐉 ${score(s)}`;
  if($("#kp45Money"))$("#kp45Money").textContent=`${spent(s).toFixed(2).replace('.',',')} €`;
  if($("#kp45Missions"))$("#kp45Missions").textContent=`${qd.length}/${D.quests.length}`;
  const o=objective(),strip=$("#kp45QuestStrip");if(strip)strip.innerHTML=`<div class="kp45-questico">${o[0]}</div><div class="kp45-questcopy"><b>${o[1]}</b><span>${o[2]}</span></div><div class="kp45-questcount">📋 ${qd.length}/${D.quests.length}</div>`;
 }
 function installCharacters(){
- const couple=$("#kpGameHub .kp-game-couple");if(couple){couple.innerHTML=charHtml("Ismael",false,true)+charHtml("Laura",false,true)}
+ const couple=$("#kpGameHub .kp-game-couple");if(couple&&!document.documentElement.classList.contains("kp-rpg-v46")){couple.innerHTML=charHtml("Ismael",false,true)+charHtml("Laura",false,true)}
 }
 function labels(){
  const map={home:["🏠","Aldea"],mapPanel:["🗺️","Mapa"],quests:["📜","Encargos"],diary:["📖","Crónica"],budget:["🎒","Bolsa"]};
@@ -52,7 +53,7 @@ function polishQuestBoard(){
  const h=$("#quests>article:first-of-type h2");if(h)h.textContent="Las Escamas de Wawel";
  const k=$("#quests>article:first-of-type .smart-kicker");if(k)k.textContent="Kraków Quest";
 }
-function install(){document.documentElement.classList.add("kp-rpg-v45");updateGameChrome();installCharacters();labels();polishQuestBoard();setTimeout(()=>{updateGameChrome();installCharacters();labels();polishQuestBoard()},350);setTimeout(()=>{updateGameChrome();installCharacters()},1200)}
+function install(){document.documentElement.classList.add("kp-rpg-v45");loadV46();updateGameChrome();installCharacters();labels();polishQuestBoard();setTimeout(()=>{updateGameChrome();installCharacters();labels();polishQuestBoard()},350);setTimeout(()=>{updateGameChrome();installCharacters()},1200)}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",install,{once:true});else install();
 window.addEventListener("storage",()=>{updateGameChrome();setTimeout(installCharacters,0)});
 window.addEventListener("online",updateGameChrome);window.addEventListener("offline",updateGameChrome);
