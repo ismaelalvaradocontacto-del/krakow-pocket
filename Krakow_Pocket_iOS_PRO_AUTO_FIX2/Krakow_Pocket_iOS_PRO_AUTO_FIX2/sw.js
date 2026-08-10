@@ -1,5 +1,5 @@
-const CACHE="krakow-pocket-v4-20260810d";
-const CORE=["./","./index.html","./styles.css","./data.js","./app.js","./enhancements.js","./enhancements.css","./trip-tools.js","./trip-tools-core.js","./trip-tools.css","./v34.js","./v34.css","./v35.js","./v35.css","./v36.js","./v36.css","./v37.js","./v37.css","./v38.js","./v38.css","./v40.js","./v40.css","./v41.js","./v41.css","./v42.js","./v42.css","./v43.js","./v43.css","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
+const CACHE="krakow-pocket-v4-20260810e";
+const CORE=["./","./index.html","./styles.css","./data.js","./app.js","./enhancements.js","./enhancements.css","./trip-tools.js","./trip-tools-core.js","./trip-tools.css","./v34.js","./v34.css","./v35.js","./v35.css","./v36.js","./v36.css","./v37.js","./v37.css","./v38.js","./v38.css","./v40.js","./v40.css","./v41.js","./v41.css","./v42.js","./v42.css","./v43.js","./v43.css","./v44.js","./v44.css","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
 const SUPABASE_HOST="ahzmwkztlakejmrvgcdm.supabase.co";
 const SUPABASE_KEY="sb_publishable_sf-RddHTp5jdFCQOfRBBsQ_PZGKOlxJ";
 self.addEventListener("install",event=>{event.waitUntil(caches.open(CACHE).then(cache=>cache.addAll(CORE)))});
