@@ -22,7 +22,8 @@ const cheers={
  tomasza:["¡Maestros del złoty!","Comer caliente sin destruir el presupuesto: habilidad épica desbloqueada."],
  planty:["¡Descanso profesional!","Habéis completado una misión haciendo… nada. Planty estaría orgulloso."]
 };
-let lastCelebrated="",previousState=null;
+let lastCelebrated="",previousState=null,lastToastText="";
+const norm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9]+/g," ").trim();
 function ensure(){
  const panel=$("#quests");if(!panel||$("#kpQuestWorld"))return;
  const world=document.createElement("div");world.id="kpQuestWorld";world.className="kp-quest-world";panel.insertBefore(world,panel.firstChild);
@@ -35,6 +36,8 @@ function showCelebration(id){const q=questByPoi(id),p=poi(id),s=read(),win=$("#k
 function openPixelMission(id){const q=questByPoi(id),p=poi(id),s=read(),isDone=done(s,id),sheet=$("#kpQuestDialog");if(!q||!sheet)return;$("#kpPixelName").textContent=`${p?.name||"Cracovia"} · +${q.points} 🐉`;$("#kpPixelText").textContent=q.text;sheet.querySelector(".kp-pixel-portrait").textContent=icons[id]||p?.emoji||"🐉";const doneBtn=$("#kpPixelDone");doneBtn.textContent=isDone?"✓ Completada":"Completar";doneBtn.disabled=isDone;doneBtn.onclick=()=>{if(!isDone&&triggerMission(id))sheet.classList.remove("show")};const ctx=$("#kpPixelContext");ctx.onclick=()=>{const old=document.querySelector(`.q-context[data-poi="${CSS.escape(id)}"]`);if(old){sheet.classList.remove("show");old.click()}};sheet.classList.add("show");}
 function snapshot(){const s=read(),out={};for(const q of D.quests)out[q.poi]=done(s,q.poi);return out}
 function watchMissionTransitions(){if(!previousState){previousState=snapshot();return}const current=snapshot();for(const q of D.quests){const id=q.poi;if(!previousState[id]&&current[id]){renderWorld();setTimeout(()=>showCelebration(id),80)}}previousState=current}
-function init(){ensure();renderWorld();previousState=snapshot();setInterval(()=>{watchMissionTransitions();renderWorld()},350);window.addEventListener("storage",()=>{watchMissionTransitions();renderWorld()});const ver=$("#settingsVersion");if(ver)ver.textContent="Kraków Pocket · v3.6.4"}
+function findMissionFromToast(text){const n=norm(text);if(!n||(!n.includes("complet")&&!n.includes("escama")))return null;for(const q of D.quests){const p=poi(q.poi),candidates=[q.title,p?.name].filter(Boolean).map(norm);if(candidates.some(x=>x&&n.includes(x)))return q.poi}const s=read();const completed=D.quests.filter(q=>done(s,q.poi));return completed.length?completed[completed.length-1].poi:null}
+function installToastCelebrationBridge(){const toast=document.getElementById("toast");if(!toast)return;const inspect=()=>{const text=toast.textContent.trim();if(!text||text===lastToastText)return;lastToastText=text;const id=findMissionFromToast(text);if(!id)return;toast.style.display="none";setTimeout(()=>{renderWorld();showCelebration(id)},60)};new MutationObserver(inspect).observe(toast,{childList:true,characterData:true,subtree:true,attributes:true,attributeFilter:["style"]});inspect()}
+function init(){ensure();renderWorld();previousState=snapshot();installToastCelebrationBridge();setInterval(()=>{watchMissionTransitions();renderWorld()},350);window.addEventListener("storage",()=>{watchMissionTransitions();renderWorld()});const ver=$("#settingsVersion");if(ver)ver.textContent="Kraków Pocket · v3.6.5"}
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",init);else init();
 })();
