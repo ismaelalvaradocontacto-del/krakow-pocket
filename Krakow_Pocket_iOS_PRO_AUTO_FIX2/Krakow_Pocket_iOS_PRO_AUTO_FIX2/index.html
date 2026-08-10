@@ -17,14 +17,14 @@
   <link rel="preload" href="./assets/world-map.svg" as="image" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="./styles.css">
-  <link rel="stylesheet" href="./enhancements.css">
   <link rel="stylesheet" href="./game.css">
-  <link rel="stylesheet" href="./visuals.css">
+  <link rel="stylesheet" href="./storybook.css">
+  <link rel="stylesheet" href="./compat.css" data-kp-compat="1">
 </head>
 <body>
 <div class="update-banner" id="updateBanner"><span>Hay una versión nueva de Kraków Pocket.</span><button id="applyUpdate">Actualizar</button></div>
 <div class="app">
-<header class="hero">
+<header class="hero" aria-hidden="true">
   <div class="hero-top"><div class="hero-copy"><div class="eyebrow" id="phaseLabel">Kraków Pocket</div><h1 id="heroTitle">Preparando la aventura…</h1><div class="hero-sub" id="heroSub">Ismael + Laura · Cracovia · 11–13 agosto 2026</div></div><button class="icon-btn" id="openSettings" aria-label="Abrir ajustes">⚙️</button></div>
   <div class="phase-row"><span class="hero-pill" id="heroPlayer">🧭 Ismael</span><span class="hero-pill" id="heroSync">☁️ conectando</span></div>
   <div class="hero-metrics"><div class="hero-metric"><strong id="heroScore">0 🐉</strong><span>escamas</span></div><div class="hero-metric"><strong id="heroSpend">0,00 €</strong><span>variable</span></div><div class="hero-metric"><strong id="heroTarget">21 €/día</strong><span>objetivo pareja</span></div></div>
@@ -72,6 +72,7 @@
 <div class="toast" id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
 <script src="./data.js"></script>
+<script src="./compat.js" data-kp-compat="1"></script>
 <script src="./runtime.js"></script>
 <script src="./stability.js"></script>
 <script src="./app.js"></script>
