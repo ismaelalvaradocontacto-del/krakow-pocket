@@ -50,7 +50,7 @@ pass(Object.keys(D?.expenseCategories || {}).length >= 5, 'Expense categories mi
 
 const requiredFiles = [
   'index.html','manifest.webmanifest','sw.js','data.js','app.js','enhancements.js','runtime.js','stability.js',
-  'compat.js','state-bridge.js','mission-fix.js','celebration-guard.js','game.js','visuals.js','styles.css','game.css','storybook.css',
+  'compat.js','state-bridge.js','mission-fix.js','celebration-guard.js','celebration-stability.js','game.js','visuals.js','styles.css','game.css','storybook.css',
   'compat.css','profiles.css','assets/game-art.svg','assets/characters.svg','assets/village.svg','assets/world-map.svg',
   'icon-192.svg','icon-512.svg'
 ];
@@ -66,6 +66,8 @@ const compat = fs.readFileSync(path.join(root, 'compat.js'), 'utf8');
 for (const script of ['state-bridge.js','mission-fix.js','celebration-guard.js']) {
   pass(compat.includes(script), `compat.js does not load ${script}`);
 }
+const celebrationGuard = fs.readFileSync(path.join(root, 'celebration-guard.js'), 'utf8');
+pass(celebrationGuard.includes('celebration-stability.js'), 'celebration-guard.js does not load celebration-stability.js');
 
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.webmanifest'), 'utf8'));
 pass(typeof manifest.name === 'string' && manifest.name.trim(), 'Manifest name missing');
@@ -73,7 +75,7 @@ pass(Array.isArray(manifest.icons) && manifest.icons.length >= 2, 'Manifest icon
 pass(manifest.display === 'standalone' || manifest.display === 'fullscreen', 'Manifest is not installable standalone/fullscreen');
 
 const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
-for (const file of ['index.html','compat.js','state-bridge.js','mission-fix.js','celebration-guard.js','app.js','enhancements.js','manifest.webmanifest']) {
+for (const file of ['index.html','compat.js','state-bridge.js','mission-fix.js','celebration-guard.js','celebration-stability.js','app.js','enhancements.js','manifest.webmanifest']) {
   pass(sw.includes(file), `Service worker core does not include ${file}`);
 }
 
