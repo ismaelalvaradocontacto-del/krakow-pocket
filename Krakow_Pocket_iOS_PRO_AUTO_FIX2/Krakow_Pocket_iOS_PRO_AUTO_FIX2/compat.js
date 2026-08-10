@@ -31,3 +31,4 @@ function bind(){ensureProfileStyles();const observer=new MutationObserver(schedu
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind,{once:true});else bind();
 })();
 if(!window.__kpMissionFixLoader){window.__kpMissionFixLoader=true;document.write('<script src="./mission-fix.js?v=20260810f" data-kp-mission-fix="1"><\/script>')}
+if(!window.__kpCelebrationGuardLoader){window.__kpCelebrationGuardLoader=true;document.write('<script src="./celebration-guard.js?v=20260810g" data-kp-celebration-guard="1"><\/script>')}
