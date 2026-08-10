@@ -39,6 +39,7 @@ jobs:
           curl -fsS http://127.0.0.1:4173/state-bridge.js | grep -q '__kpStateBridge'
           curl -fsS http://127.0.0.1:4173/mission-fix.js | grep -q '__kpMissionUxV4'
           curl -fsS http://127.0.0.1:4173/celebration-guard.js | grep -q '__kpCelebrationGuard'
+          curl -fsS http://127.0.0.1:4173/celebration-stability.js | grep -q '__kpCelebrationStability'
       - name: Run local Chromium and WebKit smoke audit
         run: node .github/scripts/krakow-smoke.mjs
       - name: Run mobile viewport matrix audit
@@ -55,13 +56,15 @@ jobs:
             STATE_OK=0
             MISSION_OK=0
             GUARD_OK=0
+            CELEBRATION_OK=0
             CACHE_OK=0
             curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q '__kpStateBridge' && STATE_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/mission-fix.js | grep -q '__kpMissionUxV4' && MISSION_OK=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/celebration-guard.js | grep -q '__kpCelebrationGuard' && GUARD_OK=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v11-state-audit-20260810h' && CACHE_OK=1 || true
-            if [ "$STATE_OK" = "1" ] && [ "$MISSION_OK" = "1" ] && [ "$GUARD_OK" = "1" ] && [ "$CACHE_OK" = "1" ]; then
-              echo "Cloudflare is serving the audited shared-state, mission UX, celebration guard and PWA cache"
+            curl -fsS https://krakow-pocket.pages.dev/celebration-guard.js | grep -q 'celebration-stability.js' && GUARD_OK=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/celebration-stability.js | grep -q 'delayedDuplicateBlocked' && CELEBRATION_OK=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v12-full-audit-20260810i' && CACHE_OK=1 || true
+            if [ "$STATE_OK" = "1" ] && [ "$MISSION_OK" = "1" ] && [ "$GUARD_OK" = "1" ] && [ "$CELEBRATION_OK" = "1" ] && [ "$CACHE_OK" = "1" ]; then
+              echo "Cloudflare is serving the full audited build"
               exit 0
             fi
             sleep 4
