@@ -2,7 +2,7 @@
 
 PWA móvil para la escapada de Ismael y Laura a Cracovia del 11–13 de agosto de 2026, diseñada como una aventura cooperativa con estética de RPG acogedor.
 
-## Funciones
+## Funciones activas
 - Mapa real de Cracovia con OpenStreetMap/Leaflet.
 - GPS opcional y exclusivamente local para ordenar lugares por cercanía.
 - Recomendaciones según tiempo, tipo de plan, presupuesto y momento del viaje.
@@ -11,22 +11,26 @@ PWA móvil para la escapada de Ismael y Laura a Cracovia del 11–13 de agosto d
 - Crónica y recuerdos compartidos.
 - Presupuesto conjunto con gastos por categoría.
 - Sincronización automática entre los dos dispositivos.
-- Navegación mediante Google Maps sin dejar pestañas vacías al volver.
+- Navegación mediante Google Maps sin crear una pestaña intermedia innecesaria.
 - PWA con recursos esenciales disponibles desde caché.
 
-## Arquitectura actual · v7.0
-La aplicación se consolidó para que cada responsabilidad tenga un único propietario. Ya no existen capas de compatibilidad o sincronización superpuestas.
+## Arquitectura de producción
+La aplicación tiene cuatro capas JavaScript con responsabilidades separadas y tres hojas de estilo activas. No hay loaders de versiones antiguas ni capas de compatibilidad/sincronización superpuestas.
 
 ### JavaScript
 - `data.js`: datos estáticos del viaje, lugares, planning y misiones.
-- `app.js`: único núcleo funcional. Gestiona estado, gastos, recuerdos, mapa, GPS, recomendaciones, sincronización, PWA, compartir y el estado reversible de las misiones.
-- `game.js`: estructura de la interfaz RPG, Aldea, HUD, mapa de encargos, diálogos y celebraciones.
-- `visuals.js`: único renderizador de arte SVG y auditor automático de estilo/funcionamiento visible.
+- `app.js`: único núcleo funcional. Gestiona estado, gastos, recuerdos, mapa, GPS, recomendaciones, sincronización, PWA, compartir y estado reversible de misiones.
+- `game.js`: estructura de la experiencia RPG: HUD, Aldea, mapa de encargos, diálogos y celebraciones.
+- `visuals.js`: render de arte SVG, adaptación Safari/iPhone, VFX, responsive y auditor automático.
+
+`game.js` usa firmas de estado para no reconstruir HUD, Aldea o tablero de misiones cuando una sincronización no ha cambiado nada. La navegación se genera una sola vez por carga. Las celebraciones de misión ya no dependen de un estado temporal heredado: se lanzan directamente tras confirmar el cambio de misión.
 
 ### CSS
-- `styles.css`: componentes funcionales base utilizados por mapa, formularios, diario, presupuesto, tarjetas y diálogos.
-- `game.css`: estructura y componentes propios de la interfaz de juego.
-- `visuals.css`: acabado artístico, personajes, responsive, safe areas, VFX y correcciones específicas de móvil.
+- `styles.css`: componentes funcionales reutilizados por mapa, formularios, diario, presupuesto, tarjetas y diálogos.
+- `game.css`: geometría y estructura de los componentes RPG generados dinámicamente.
+- `visuals.css`: acabado artístico, personajes, responsive, safe areas, iluminación y VFX.
+
+`game.css` ya no contiene reglas para la antigua cabecera oculta ni para la antigua lista visual de misiones, porque esos elementos dejaron de existir en el HTML de producción.
 
 ### Arte activo
 - `assets/characters.svg`: Ismael, Laura, Dragón de Wawel y Guardián.
@@ -34,15 +38,15 @@ La aplicación se consolidó para que cada responsabilidad tenga un único propi
 - `assets/village.svg`: escenario de Aldea.
 - `assets/world-map.svg`: escenario del mapa de encargos.
 
-## Estado compartido
-La partida utiliza un único estado local y remoto. Las misiones se almacenan con una operación por misión (`done` + fecha de modificación), por lo que completar, deshacer o reiniciar una misión puede reconciliarse correctamente entre dispositivos sin que una unión antigua de `visited` vuelva a activarla.
+## Estado y sincronización
+La partida utiliza un único estado local/remoto. Las misiones se almacenan con una operación por misión (`done` + fecha de modificación), por lo que completar, deshacer o reiniciar puede reconciliarse entre dispositivos sin que una unión antigua de `visited` vuelva a activar una misión.
 
-Gastos y recuerdos se fusionan por identificador y fecha de modificación. Los borrados se conservan como tombstones para que no reaparezcan después de sincronizar.
+Gastos y recuerdos se fusionan por identificador y fecha de modificación. Los borrados se conservan como tombstones para impedir que reaparezcan después de sincronizar. Si la nube aún no contiene una partida, el estado local actúa como punto de partida.
 
-Si la nube todavía no contiene una partida, el estado local se sube como punto de partida; un resultado remoto vacío no puede sustituir la configuración local por valores por defecto.
+El Service Worker no altera las peticiones de sincronización. La autenticación de la API pertenece únicamente al núcleo funcional de la app.
 
 ## Personajes
-Ismael y Laura tienen una identidad gráfica única. El retrato de cabecera y el sprite de Aldea reutilizan la misma paleta y rasgos, adaptados a dos escalas distintas. El renderizador normal y Safari utilizan exactamente los mismos símbolos, insertados en línea para evitar SVG externos vacíos.
+Ismael y Laura tienen una identidad gráfica única. El retrato de cabecera y el sprite de Aldea comparten paleta y rasgos, adaptados a escalas distintas. El render visual inserta los símbolos SVG dentro del DOM para que Safari utilice exactamente el mismo arte que el resto de la aplicación.
 
 ## Auditoría automática
 `window.KP_AUDIT` / `window.KP_VISUAL_AUDIT` comprueba en ejecución:
@@ -52,8 +56,8 @@ Ismael y Laura tienen una identidad gráfica única. El retrato de cabecera y el
 - forma del estado local;
 - datos de las 12 misiones;
 - carga de assets;
-- identidad de los personajes;
-- colisiones de protagonistas y etiquetas;
+- identidad de personajes;
+- colisiones entre protagonistas y etiquetas;
 - colisiones de etiquetas del mapa de encargos;
 - overflow horizontal y de componentes;
 - controles táctiles demasiado pequeños;
@@ -61,16 +65,16 @@ Ismael y Laura tienen una identidad gráfica única. El retrato de cabecera y el
 - altura real de la navegación inferior;
 - soporte PWA, contexto seguro y estado de red.
 
-Las correcciones visuales de diagnóstico se aplican mediante clases controladas y no ocultan contenido como solución a un overflow.
+Las correcciones de geometría se realizan con tamaños, posiciones y clases específicas; no se oculta contenido como solución genérica a un overflow.
 
-## Rendimiento
-La versión 7 elimina los antiguos `runtime`, `enhancements` y `compat`, así como sus polling, MutationObserver generales y renderizadores duplicados. El mapa real se inicializa únicamente cuando se utiliza. El renderizador gráfico reacciona a eventos explícitos de la app y solo observa el tamaño de la navegación inferior.
+## Limpieza realizada
+Se eliminaron del runtime todos los módulos antiguos `v34`–`v51`, `trip-tools`, `runtime`, `enhancements`, `compat` y auditorías históricas que ya no aportaban ejecución. El HTML no carga ninguno de ellos. Se mantienen únicamente los archivos activos, los cuatro assets SVG, los iconos, el manifest, el Service Worker, esta documentación y `SUPABASE_SETUP.sql` como infraestructura de recuperación/configuración.
 
 ## PWA
-`sw.js` cachea únicamente los archivos activos. HTML, JavaScript, CSS y manifest usan estrategia network-first; los assets estáticos usan cache-first. Las peticiones de sincronización no son modificadas por el Service Worker.
+`sw.js` cachea únicamente los archivos activos. HTML, JavaScript, CSS y manifest intentan obtener la versión reciente y utilizan caché como respaldo; los assets estáticos se sirven desde caché cuando están disponibles. Cada revisión de producción cambia el nombre de la caché para retirar la anterior.
 
 ## Privacidad
-La ubicación GPS no forma parte del estado compartido. Se usa únicamente en el dispositivo para distancias y recomendaciones.
+La posición GPS no forma parte del estado compartido. Se usa únicamente en el dispositivo para distancias y recomendaciones.
 
 ## Producción
 https://krakow-pocket.pages.dev/
