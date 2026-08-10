@@ -11,10 +11,14 @@
   <title>Kraków Pocket · Aventura para dos</title>
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="apple-touch-icon" href="./icon-192.svg">
+  <link rel="preload" href="./assets/game-art.svg" as="image" type="image/svg+xml">
+  <link rel="preload" href="./assets/village.svg" as="image" type="image/svg+xml">
+  <link rel="preload" href="./assets/world-map.svg" as="image" type="image/svg+xml">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="./styles.css">
   <link rel="stylesheet" href="./enhancements.css">
   <link rel="stylesheet" href="./game.css">
+  <link rel="stylesheet" href="./visuals.css">
 </head>
 <body>
 <div class="update-banner" id="updateBanner"><span>Hay una versión nueva de Kraków Pocket.</span><button id="applyUpdate">Actualizar</button></div>
@@ -71,5 +75,6 @@
 <script src="./runtime.js"></script>
 <script src="./enhancements.js"></script>
 <script src="./game.js"></script>
+<script src="./visuals.js"></script>
 </body>
 </html>
