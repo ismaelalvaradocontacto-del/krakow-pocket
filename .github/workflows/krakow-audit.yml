@@ -36,6 +36,8 @@ jobs:
           curl -fsS http://127.0.0.1:4173/data.js | head -c 80
       - name: Run local Chromium and WebKit smoke audit
         run: node .github/scripts/krakow-smoke.mjs
+      - name: Run isolated write-flow interaction audit
+        run: node .github/scripts/krakow-interactions.mjs
       - name: Wait for Cloudflare Pages production
         run: |
           for i in {1..30}; do
