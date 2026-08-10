@@ -1,0 +1,65 @@
+/* Kraków Pocket v4.3 · full-screen adventure game shell */
+html.kp-rpg-v43{--game-bg:#e9d2a6;--game-paper:#fff1ca;--game-paper-hi:#fff8e7;--game-wood:#6b432b;--game-wood-dark:#43291c;--game-gold:#c79a3b;--game-red:#812735;--game-green:#4c9464;--game-ink:#38271d;--game-muted:#74604f}
+html.kp-rpg-v43 body{background:linear-gradient(90deg,#d9bc86 0 7px,#ead7b0 7px calc(100% - 7px),#d9bc86 calc(100% - 7px));color:var(--game-ink)}
+html.kp-rpg-v43 .app{background:transparent;min-height:100dvh}
+html.kp-rpg-v43 .content{position:relative;padding-top:12px;background:linear-gradient(180deg,rgba(255,247,226,.82),rgba(239,219,179,.92));border-left:3px solid rgba(107,67,43,.18);border-right:3px solid rgba(107,67,43,.18)}
+/* One continuous game HUD rather than a website hero */
+html.kp-rpg-v43 .hero{margin:0 8px!important;border:4px solid var(--game-wood)!important;border-top:0!important;border-radius:0 0 20px 20px!important;background:linear-gradient(180deg,#8c2938,#74212f)!important;box-shadow:0 6px 0 var(--game-wood-dark),0 11px 22px rgba(54,34,24,.16)!important;padding-bottom:14px!important}
+html.kp-rpg-v43 .hero:after{content:"KRAKÓW POCKET · AVENTURA PARA DOS";display:block;margin:12px 0 0;padding-top:9px;border-top:1px solid rgba(255,241,204,.22);font-size:9px;font-weight:1000;letter-spacing:.16em;color:#f7d990;text-align:center}
+html.kp-rpg-v43 .hero h1{font-family:Georgia,"Times New Roman",serif;text-shadow:0 2px 0 rgba(62,20,25,.35)}
+html.kp-rpg-v43 .icon-btn{border:2px solid rgba(255,238,194,.46)!important;background:#6b2932!important;box-shadow:0 3px 0 #4b2025!important}
+html.kp-rpg-v43 .hero-pill,html.kp-rpg-v43 .hero-metric{border:2px solid rgba(255,239,199,.24)!important;background:rgba(255,246,220,.10)!important}
+/* Every panel is a game scene */
+html.kp-rpg-v43 .panel{position:relative}
+html.kp-rpg-v43 .panel:before{display:block;margin:0 2px 10px;padding:7px 10px;border:2px solid #caa96d;border-radius:10px;background:linear-gradient(#f9e5a9,#f2d68c);box-shadow:0 3px 0 #a67c42;color:#67451e;font-size:10px;font-weight:1000;letter-spacing:.12em;text-transform:uppercase;text-align:center}
+html.kp-rpg-v43 #home:before{content:"🏡 Aldea · centro de la aventura"}
+html.kp-rpg-v43 #mapPanel:before{content:"🗺️ Mapa del mundo · Cracovia"}
+html.kp-rpg-v43 #quests:before{content:"📜 Tablón de encargos · Escamas de Wawel"}
+html.kp-rpg-v43 #diary:before{content:"📖 Crónica · historias y recuerdos"}
+html.kp-rpg-v43 #budget:before{content:"💰 Bolsa común · inventario de viaje"}
+/* Convert cards to a unified RPG window system */
+html.kp-rpg-v43 .card,html.kp-rpg-v43 .smart-card{border:3px solid #cdb386!important;border-radius:14px!important;background:linear-gradient(180deg,var(--game-paper-hi),var(--game-paper))!important;box-shadow:0 4px 0 #a98c63,0 8px 18px rgba(67,43,32,.08)!important}
+html.kp-rpg-v43 .card:focus-within,html.kp-rpg-v43 .smart-card:focus-within{border-color:#bd944e!important}
+html.kp-rpg-v43 h2,html.kp-rpg-v43 h3,html.kp-rpg-v43 .smart-title{color:var(--game-ink)}
+html.kp-rpg-v43 .smart-kicker{color:#a67829!important;letter-spacing:.13em!important}
+html.kp-rpg-v43 .small{color:var(--game-muted)}
+html.kp-rpg-v43 .metric{background:rgba(255,255,255,.30);border:1px solid rgba(116,79,45,.10);border-radius:11px;padding:8px}
+/* Inputs/buttons become game controls */
+html.kp-rpg-v43 input,html.kp-rpg-v43 select,html.kp-rpg-v43 textarea{border:2px solid #d3b98d!important;border-radius:11px!important;background:#fffaf0!important;color:var(--game-ink)!important}
+html.kp-rpg-v43 .btn,html.kp-rpg-v43 .quick{border:3px solid var(--game-wood)!important;border-radius:12px!important;box-shadow:0 4px 0 var(--game-wood-dark)!important;background:#f1dfbf!important;color:var(--game-ink)!important;font-weight:950!important}
+html.kp-rpg-v43 .btn:not(.secondary):not(.ghost){background:var(--game-green)!important;color:#fff!important}
+html.kp-rpg-v43 .btn:active,html.kp-rpg-v43 .quick:active{transform:translateY(3px)!important;box-shadow:0 1px 0 var(--game-wood-dark)!important}
+html.kp-rpg-v43 .quick-grid{gap:9px}
+html.kp-rpg-v43 .quick{min-height:86px;text-align:left}
+html.kp-rpg-v43 .quick strong{font-size:14px}
+html.kp-rpg-v43 .quick span{font-size:10px;color:#705d4d}
+/* Quests: actual quest log */
+html.kp-rpg-v43 #quests .quest{border:3px solid #c9a96f!important;background:linear-gradient(180deg,#fff4d5,#f8e6be)!important;box-shadow:0 4px 0 #9d7a4d!important}
+html.kp-rpg-v43 #quests .quest.done{opacity:.88;border-color:#78a982!important;background:linear-gradient(#f3efd1,#e3edcf)!important}
+html.kp-rpg-v43 .progress{height:12px;border:2px solid #9b7848;background:#e4d2b3;overflow:hidden}
+html.kp-rpg-v43 .progress i{background:linear-gradient(90deg,#8a2b38,#c49a3e)}
+/* Map is framed like the world map */
+html.kp-rpg-v43 #map{border:4px solid var(--game-wood)!important;border-radius:12px!important;box-shadow:0 5px 0 var(--game-wood-dark)!important;overflow:hidden}
+html.kp-rpg-v43 .map-tools{background:#f3dfb5;border:2px solid #c8a771;border-radius:10px;padding:7px}
+/* Diary feels like book pages */
+html.kp-rpg-v43 #diary .segment{border:3px solid var(--game-wood);background:#e8cf9f;box-shadow:0 4px 0 var(--game-wood-dark);border-radius:12px}
+html.kp-rpg-v43 #diary .segment button.active{background:#fff4d5;color:var(--game-red);box-shadow:inset 0 0 0 2px #d7bc8b}
+html.kp-rpg-v43 #diary .memory{background:linear-gradient(100deg,#fff5da,#f4dfb5)!important}
+/* Budget as inventory */
+html.kp-rpg-v43 #budget .expense{border-bottom:2px dashed #dbc59f}
+html.kp-rpg-v43 #budget .expense:last-child{border-bottom:0}
+/* Dialogs are game windows */
+html.kp-rpg-v43 dialog{background:transparent!important}
+html.kp-rpg-v43 .sheet,html.kp-rpg-v43 .story-dialog .dialog-body{border:4px solid var(--game-wood)!important;background:linear-gradient(#fff6df,#f5e3bd)!important;box-shadow:0 7px 0 var(--game-wood-dark),0 20px 50px rgba(43,29,21,.28)!important}
+html.kp-rpg-v43 .sheet-head{background:#efd49f;border-bottom:3px solid #c3a16c}
+/* Bottom bar becomes the permanent game menu */
+html.kp-rpg-v43 .bottom{left:7px!important;right:7px!important;bottom:calc(6px + env(safe-area-inset-bottom))!important;width:auto!important;border:4px solid var(--game-wood)!important;border-radius:16px!important;background:linear-gradient(#ecd09b,#dfbb7e)!important;box-shadow:0 5px 0 var(--game-wood-dark),0 10px 24px rgba(52,34,24,.20)!important;padding:5px!important}
+html.kp-rpg-v43 .tabs{gap:3px}
+html.kp-rpg-v43 .tab{border:2px solid transparent!important;border-radius:10px!important;color:#624a38!important;font-weight:900!important}
+html.kp-rpg-v43 .tab.active{background:#fff0bd!important;border-color:#b88630!important;color:#7c2632!important;box-shadow:inset 0 0 0 1px #ffe7a3,0 2px 0 #9a6b31!important}
+html.kp-rpg-v43 .tab b{filter:drop-shadow(0 1px 0 rgba(255,255,255,.5))}
+/* Hide web-app-ish technical chrome in normal play */
+html.kp-rpg-v43 #settingsVersion{opacity:.55;font-size:9px}
+html.kp-rpg-v43 .privacy-note{border:2px dashed #c9ad7d;background:#f7e7c8;border-radius:10px;padding:10px}
+html.kp-rpg-v43 .toast,html.kp-rpg-v43 .kp-action-toast{border:3px solid #f1d894!important;border-radius:12px!important;background:#3f2c22!important;color:#fff5dc!important;box-shadow:0 4px 0 #211711!important}
+@media(max-width:430px){html.kp-rpg-v43 .content{padding-left:10px!important;padding-right:10px!important;padding-bottom:calc(138px + env(safe-area-inset-bottom))!important}html.kp-rpg-v43 .hero{margin:0 5px!important}html.kp-rpg-v43 .panel:before{margin-left:0;margin-right:0}html.kp-rpg-v43 .card,html.kp-rpg-v43 .smart-card{padding:14px!important}html.kp-rpg-v43 .bottom{left:5px!important;right:5px!important}html.kp-rpg-v43 .tab{font-size:9.5px!important}html.kp-rpg-v43 .tab b{font-size:23px!important}}
