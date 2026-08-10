@@ -1,4 +1,4 @@
-/* Kraków Pocket · profile system v7.1 */
+/* Kraków Pocket · profile system v7.2 */
 /* iPhone / Safari safe area: keep the game HUD clearly below the status bar. */
 html.kp-game .app{padding-top:max(28px,env(safe-area-inset-top))!important}
 html.kp-game #kpGameHud{margin-top:0!important}
@@ -31,6 +31,12 @@ html.kp-game .kp-player-check{position:absolute;right:7px;top:7px;width:20px;hei
 html.kp-game .kp-player-card.active .kp-player-check{opacity:1;transform:scale(1)}
 html.kp-game .kp-native-player-select{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;clip-path:inset(50%)!important;white-space:nowrap!important;border:0!important}
 
+/* Settings sheet: keep controls away from the iPhone status/browser areas and make close easy to hit. */
+html.kp-game #settingsSheet{width:min(100% - 12px,760px)!important;max-height:calc(100dvh - max(64px,env(safe-area-inset-top)))!important;margin:max(48px,calc(env(safe-area-inset-top) + 16px)) auto 6px!important;border-radius:20px 20px 0 0!important;overflow:auto!important}
+html.kp-game #settingsSheet .sheet-head{padding:14px 12px 14px 15px!important;min-height:72px!important;align-items:center!important}
+html.kp-game #settingsSheet .sheet-head>div{min-width:0;padding-right:6px}
+html.kp-game #settingsSheet .close-btn{flex:0 0 50px!important;width:50px!important;height:50px!important;min-width:50px!important;min-height:50px!important;display:grid!important;place-items:center!important;margin:0!important;border-radius:50%!important;font-size:21px!important;line-height:1!important;position:relative!important;z-index:5!important;touch-action:manipulation}
+
 @media(max-width:480px){
   html.kp-game .app{padding-top:max(30px,env(safe-area-inset-top))!important}
   html.kp-game .kp-game-brand{grid-template-columns:78px minmax(0,1fr) 40px!important;gap:6px!important}
@@ -39,6 +45,9 @@ html.kp-game .kp-native-player-select{position:absolute!important;width:1px!impo
   html.kp-game .kp-profile-face+.kp-profile-face{margin-left:-19px}
   html.kp-game .kp-profile-face .kp-character-asset{width:69px!important;height:69px!important;transform:translate(-50%,-40%)!important}
   html.kp-game .kp-game-logo strong{font-size:clamp(21px,6.4vw,27px)!important}
+  html.kp-game #settingsSheet{width:calc(100vw - 12px)!important;max-height:calc(100dvh - max(70px,env(safe-area-inset-top)))!important;margin:max(54px,calc(env(safe-area-inset-top) + 18px)) 6px 6px!important}
+  html.kp-game #settingsSheet .sheet-head{min-height:74px!important;padding:12px!important}
+  html.kp-game #settingsSheet .close-btn{width:52px!important;height:52px!important;min-width:52px!important;min-height:52px!important;font-size:22px!important}
 }
 @media(max-width:380px){
   html.kp-game .kp-game-brand{grid-template-columns:70px minmax(0,1fr) 38px!important;gap:5px!important}
