@@ -5,18 +5,8 @@
   window.__kpMissionUxV4 = true;
 
   const STORAGE = "krakowPocketCoop";
-  const CLOUD = {
-    url: "https://ahzmwkztlakejmrvgcdm.supabase.co",
-    key: "sb_publishable_sf-RddHTp5jdFCQOfRBBsQ_PZGKOlxJ",
-    code: "WAWEL-ISMAEL-LAURA",
-    secret: "krakow2026"
-  };
   const qIds = new Set((D.quests || []).map(q => q.poi));
   const now = () => new Date().toISOString();
-  const time = value => {
-    const n = new Date(value || 0).getTime();
-    return Number.isFinite(n) ? n : 0;
-  };
   const read = () => {
     try { return JSON.parse(localStorage.getItem(STORAGE) || "{}"); }
     catch { return {}; }
@@ -35,8 +25,13 @@
     if (!el) return;
     el.textContent = text;
     el.style.display = "block";
-    clearTimeout(el._kpUxTimer);
-    el._kpUxTimer = setTimeout(() => { el.style.display = "none"; }, ms);
+    clearTimeout(el._kpMissionUxTimer);
+    el._kpMissionUxTimer = setTimeout(() => { el.style.display = "none"; }, ms);
+  }
+
+  function closeCelebration() {
+    document.getElementById("kpQuestWin")?.classList.remove("show");
+    try { sessionStorage.removeItem("kpCelebrateMission"); } catch {}
   }
 
   function ensureCelebration() {
@@ -47,8 +42,8 @@
     win.className = "kp-quest-win";
     win.innerHTML = '<div class="kp-win-card"><div class="kp-win-icon" id="kpWinIcon">🐉</div><div class="kp-win-kicker">MISIÓN COMPLETADA</div><div class="kp-win-title" id="kpWinTitle"></div><div class="kp-win-text" id="kpWinText"></div><div class="kp-win-reward" id="kpWinReward"></div><div class="kp-win-milestone" id="kpWinMilestone"></div><button id="kpWinClose">Seguir la aventura</button></div>';
     document.body.appendChild(win);
-    win.querySelector("#kpWinClose").onclick = () => win.classList.remove("show");
-    win.onclick = e => { if (e.target === win) win.classList.remove("show"); };
+    win.querySelector("#kpWinClose").onclick = closeCelebration;
+    win.onclick = event => { if (event.target === win) closeCelebration(); };
     return win;
   }
 
@@ -67,9 +62,16 @@
     planty: ["¡Descanso profesional!", "A veces completar una misión consiste precisamente en parar."]
   };
 
+  let lastCelebratedId = null;
+  let lastCelebratedAt = 0;
   function celebrate(id) {
     const q = (D.quests || []).find(x => x.poi === id);
-    if (!q) return;
+    if (!q || !isDone(read(), id)) return;
+    const t = Date.now();
+    if (lastCelebratedId === id && t - lastCelebratedAt < 1600) return;
+    lastCelebratedId = id;
+    lastCelebratedAt = t;
+
     const p = (D.pois || []).find(x => x.id === id);
     const s = read();
     const completed = (D.quests || []).filter(x => isDone(s, x.poi));
@@ -108,6 +110,8 @@
     for (const id of Object.keys(next)) {
       if (!last[id] && next[id]) {
         if (!pendingQuest || pendingQuest === id) celebrate(id);
+      } else if (last[id] && !next[id]) {
+        closeCelebration();
       }
     }
     last = next;
@@ -130,7 +134,7 @@
     if (!dialog || !button || !id) return;
     if (dialog.dataset.kpPoi !== id) dialog.dataset.kpPoi = id;
     const done = isDone(read(), id);
-    if (button.disabled) button.disabled = false;
+    button.disabled = false;
     const label = done ? "↩ Desmarcar" : "Completar";
     if (button.textContent !== label) button.textContent = label;
   }
@@ -145,95 +149,35 @@
   function syncStoryButton(id = storyIdFromDialog()) {
     const button = document.getElementById("storyMark");
     if (!button || !id) return;
-    const state = read();
-    const done = qIds.has(id) ? isDone(state, id) : discovered(state, id);
+    const s = read();
+    const done = qIds.has(id) ? isDone(s, id) : discovered(s, id);
     const label = done ? "↩ Desmarcar descubierto" : "✨ Marcar descubierto";
     if (button.textContent !== label) button.textContent = label;
   }
 
-  function mergeRecords(a = [], b = []) {
-    const map = new Map();
-    for (const item of [...b, ...a]) {
-      if (!item?.id) continue;
-      const prev = map.get(item.id);
-      if (!prev || time(item.updatedAt || item.ts) >= time(prev.updatedAt || prev.ts)) map.set(item.id, item);
-    }
-    return [...map.values()];
-  }
-
-  function mergeTimedObjects(a = {}, b = {}) {
-    const out = {};
-    for (const src of [a, b]) for (const [id, op] of Object.entries(src || {})) {
-      if (!op || typeof op !== "object") continue;
-      const prev = out[id];
-      if (!prev || time(op.updatedAt) >= time(prev.updatedAt)) out[id] = { ...op };
-    }
-    return out;
-  }
-
-  async function rpc(name, body) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
-    try {
-      const response = await fetch(`${CLOUD.url}/rest/v1/rpc/${name}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", apikey: CLOUD.key },
-        body: JSON.stringify(body),
-        signal: controller.signal
-      });
-      const text = await response.text();
-      if (!response.ok) throw new Error(text || `HTTP ${response.status}`);
-      return text ? JSON.parse(text) : null;
-    } finally {
-      clearTimeout(timeout);
-    }
-  }
-
-  async function undoNonQuest(id) {
-    const local = read();
-    const t = now();
-    local.discoveryStatus = { ...(local.discoveryStatus || {}), [id]: { done: false, updatedAt: t } };
-    local.visited = (local.visited || []).filter(x => x !== id);
-    local.updatedAt = t;
-    localStorage.setItem(STORAGE, JSON.stringify(local));
-    toast("↩ Lugar marcado de nuevo como pendiente");
-
-    try {
-      const remote = await rpc("adventure_get", { p_code: CLOUD.code, p_secret: CLOUD.secret }) || {};
-      const visited = new Set([...(remote.visited || []), ...(local.visited || [])]);
-      visited.delete(id);
-      const merged = {
-        ...remote,
-        ...local,
-        visited: [...visited],
-        expenses: mergeRecords(local.expenses || [], remote.expenses || []),
-        memories: mergeRecords(local.memories || [], remote.memories || []),
-        missionStatus: mergeTimedObjects(remote.missionStatus || {}, local.missionStatus || {}),
-        discoveryStatus: mergeTimedObjects(remote.discoveryStatus || {}, local.discoveryStatus || {}),
-        updatedAt: t
-      };
-      await rpc("adventure_put", { p_code: CLOUD.code, p_secret: CLOUD.secret, p_state: merged });
-      localStorage.setItem(STORAGE, JSON.stringify(merged));
-    } catch (error) {
-      console.warn("Kraków Pocket discovery undo sync", error);
-    }
-  }
-
-  function enforceDiscoveryTombstones() {
+  function setDiscovery(id, done) {
     const s = read();
-    if (!s.discoveryStatus || !Array.isArray(s.visited)) return;
-    const blocked = Object.entries(s.discoveryStatus).filter(([, op]) => op && op.done === false).map(([id]) => id);
-    if (!blocked.some(id => s.visited.includes(id))) return;
-    s.visited = s.visited.filter(id => !blocked.includes(id));
+    const stamp = now();
+    s.discoveryStatus = {
+      ...(s.discoveryStatus || {}),
+      [id]: { done: !!done, updatedAt: stamp }
+    };
+    const visited = new Set(s.visited || []);
+    if (done) visited.add(id); else visited.delete(id);
+    s.visited = [...visited];
+    s.updatedAt = stamp;
     localStorage.setItem(STORAGE, JSON.stringify(s));
+    try { sessionStorage.setItem("kpDiscoveryChanged", id); } catch {}
+    toast(done ? "✨ Lugar descubierto" : "↩ Lugar marcado de nuevo como pendiente");
+    setTimeout(() => location.reload(), 220);
   }
-  window.addEventListener("kp:statechange", enforceDiscoveryTombstones);
-  window.addEventListener("storage", enforceDiscoveryTombstones);
-  enforceDiscoveryTombstones();
 
   document.addEventListener("click", event => {
     const qButton = event.target.closest?.(".q-done[data-poi]");
-    if (qButton) pendingQuest = qButton.dataset.poi || null;
+    if (qButton) {
+      pendingQuest = qButton.dataset.poi || null;
+      if (pendingQuest && isDone(read(), pendingQuest)) closeCelebration();
+    }
 
     const worldNode = event.target.closest?.(".kp-world-node[data-pixel-poi]");
     if (worldNode) {
@@ -257,6 +201,7 @@
       if (id && isDone(read(), id)) {
         event.preventDefault();
         event.stopImmediatePropagation();
+        closeCelebration();
         pendingQuest = id;
         document.querySelector(`.q-done[data-poi="${CSS.escape(id)}"]`)?.click();
         document.getElementById("kpQuestDialog")?.classList.remove("show");
@@ -272,18 +217,17 @@
     if (qIds.has(id)) {
       event.preventDefault();
       event.stopImmediatePropagation();
+      if (isDone(read(), id)) closeCelebration();
       pendingQuest = id;
       document.querySelector(`.q-done[data-poi="${CSS.escape(id)}"]`)?.click();
       document.getElementById("storyDialog")?.close();
       return;
     }
 
-    if (discovered(read(), id)) {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      document.getElementById("storyDialog")?.close();
-      undoNonQuest(id).catch(() => {});
-    }
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    document.getElementById("storyDialog")?.close();
+    setDiscovery(id, !discovered(read(), id));
   }, true);
 
   const observer = new MutationObserver(records => {
@@ -314,5 +258,5 @@
   if (document.body) startObserver();
   else document.addEventListener("DOMContentLoaded", startObserver, { once: true });
 
-  window.KP_MISSION_UX = { version: "4.1", stateHooks: false, networkHooks: false };
+  window.KP_MISSION_UX = { version: "4.2", stateHooks: false, networkHooks: false };
 })();
