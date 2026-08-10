@@ -1,6 +1,7 @@
 import { chromium, webkit } from 'playwright';
 
 const base = process.env.KP_AUDIT_URL || 'http://127.0.0.1:4173/';
+const isLocal = /^http:\/\/(127\.0\.0\.1|localhost)/.test(base);
 const engines = [['chromium', chromium], ['webkit', webkit]];
 let failed = false;
 
@@ -45,11 +46,33 @@ async function snapshot(page) {
 
 for (const [name, engine] of engines) {
   const browser = await engine.launch({ headless: true });
-  const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3 });
+  const context = await browser.newContext({
+    viewport: { width: 390, height: 844 },
+    deviceScaleFactor: 3,
+    ...(isLocal ? { serviceWorkers: 'block' } : {})
+  });
+
+  // Local smoke tests must never depend on or mutate the real shared adventure.
+  // Live Cloudflare tests intentionally use the real read path to prove production sync.
+  if (isLocal) {
+    let mockState = {visited:[],budget:[0,0,0],expenses:[],memories:[],config:{dailyTarget:21,fixedPaid:72.16},updatedAt:'2026-08-10T16:00:00.000Z'};
+    await context.route('https://ahzmwkztlakejmrvgcdm.supabase.co/rest/v1/rpc/**', async route => {
+      const req = route.request();
+      const fn = new URL(req.url()).pathname.split('/').pop();
+      let body = {};
+      try { body = JSON.parse(req.postData() || '{}'); } catch {}
+      if (fn === 'adventure_put' && body.p_state) mockState = structuredClone(body.p_state);
+      await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(mockState) });
+    });
+  }
+
+  const page = await context.newPage();
   const consoleErrors = [];
   const pageErrors = [];
   const failedRequests = [];
-  page.on('console', msg => { if (msg.type() === 'error') consoleErrors.push(msg.text()); });
+  page.on('console', msg => {
+    if (msg.type() === 'error' && !(isLocal && /Service Worker registration blocked/i.test(msg.text()))) consoleErrors.push(msg.text());
+  });
   page.on('pageerror', err => pageErrors.push(err.stack || err.message || String(err)));
   page.on('requestfailed', req => failedRequests.push(`${req.url()} :: ${req.failure()?.errorText || 'failed'}`));
 
@@ -63,6 +86,8 @@ for (const [name, engine] of engines) {
 
   const state = await snapshot(page);
   const navResults = {};
+  // A celebration is a legitimate blocking modal. Close it before the generic navigation check.
+  await page.evaluate(() => document.getElementById('kpWinClose')?.click()).catch(() => {});
   for (const panel of ['home','mapPanel','quests','diary','budget']) {
     try {
       await page.locator(`.tab[data-panel="${panel}"]`).click({ timeout: 5000 });
@@ -77,6 +102,7 @@ for (const [name, engine] of engines) {
   const authErrors = consoleErrors.filter(x => /401|Invalid API key/i.test(x));
   const report = {
     engine: name,
+    mode: isLocal ? 'isolated-local' : 'live-production',
     httpStatus: response?.status() ?? null,
     state,
     navResults,
