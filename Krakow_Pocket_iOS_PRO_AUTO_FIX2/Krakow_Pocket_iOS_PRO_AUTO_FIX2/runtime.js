@@ -1,0 +1,12 @@
+(() => {
+"use strict";
+const STORAGE="krakowPocketCoop";
+const nativeInterval=window.setInterval.bind(window);
+window.setInterval=function(fn,delay,...args){let ms=Number(delay)||0;if(ms===900)ms=3000;else if(ms===1800)ms=8000;else if(ms===4000)ms=6000;return nativeInterval(fn,ms,...args)};
+window.addEventListener("load",()=>setTimeout(()=>{window.setInterval=nativeInterval},0),{once:true});
+const read=()=>{try{return JSON.parse(localStorage.getItem(STORAGE)||"{}")}catch{return{}}};
+const num=n=>Number(n||0).toFixed(2).replace(".",",");
+function summary(){const D=window.KP_DATA||{quests:[]},s=read(),visited=s.visited||[],missionStatus=s.missionStatus||{},isDone=id=>missionStatus[id]?!!missionStatus[id].done:visited.includes(id),done=(D.quests||[]).filter(q=>isDone(q.poi)),score=done.reduce((a,q)=>a+(+q.points||0),0),expenses=(s.expenses||[]).filter(x=>x&&!x.deletedAt),spent=expenses.reduce((a,x)=>a+(+x.amount||0),0),memories=(s.memories||[]).filter(x=>x&&!x.deletedAt).sort((a,b)=>new Date(b.ts||0)-new Date(a.ts||0)),lines=["Kraków Pocket · Ismael + Laura",`Misiones: ${done.length}/${D.quests?.length||12} · ${score} escamas`,`Gasto variable: ${num(spent)}€`,`Recuerdos guardados: ${memories.length}`];if(memories.length){lines.push("","Últimos recuerdos:");memories.slice(0,5).forEach(m=>lines.push(`• ${m.title||"Recuerdo"}${m.place?` · ${m.place}`:""}${m.note?`: ${m.note}`:""}`))}lines.push("",`${location.origin}${location.pathname}`);return lines.join("\n")}
+async function share(){const text=summary();try{if(navigator.share){await navigator.share({title:"Kraków Pocket · nuestro viaje",text});return}await navigator.clipboard.writeText(text);alert("Resumen copiado al portapapeles.")}catch(e){if(e?.name!=="AbortError")prompt("Copia vuestro resumen:",text)}}
+document.addEventListener("click",e=>{const b=e.target.closest?.("#kpShareSummary");if(!b)return;e.preventDefault();e.stopImmediatePropagation();share()},true);
+})();
