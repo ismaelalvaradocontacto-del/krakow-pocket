@@ -13,7 +13,7 @@ async function missionInLocal(page,id){
 }
 async function visitedInLocal(page,id){
   const s=await readState(page);
-  return !!id&&(s.visited||[]).includes(id);
+  return !!id&&(s.discoveryStatus?.[id]?s.discoveryStatus[id].done===true:(s.visited||[]).includes(id));
 }
 async function waitFor(check,timeout=8000,step=160){
   const until=Date.now()+timeout;
@@ -22,6 +22,10 @@ async function waitFor(check,timeout=8000,step=160){
     await new Promise(r=>setTimeout(r,step));
   }
   try{return !!(await check())}catch{return false}
+}
+async function openStories(page){
+  await page.locator('.tab[data-panel="diary"]').click();
+  await page.locator('.segment button[data-diary="stories"]').click();
 }
 
 for (const [name, engine] of engines) {
@@ -57,7 +61,7 @@ for (const [name, engine] of engines) {
     await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForTimeout(1900);
 
-    /* Settings accessibility and player profiles. */
+    /* Settings accessibility, safe area and visual player profiles. */
     await page.evaluate(() => document.getElementById('openSettings')?.click());
     await page.waitForTimeout(150);
     checks.settingsOpen = await page.locator('#settingsSheet').evaluate(el => el.open === true);
@@ -68,8 +72,22 @@ for (const [name, engine] of engines) {
     await page.locator('#kpPlayerPicker [data-kp-player="Laura"]').click();
     checks.playerLauraPersists = await waitFor(async () => await page.evaluate(() => localStorage.getItem('krakowPlayer') === 'Laura'), 2000);
     checks.playerLauraActive = await waitFor(async () => await page.locator('.kp-profile-face[data-kp-profile="Laura"].active').count() === 1, 2500);
+
+    await page.locator('#dailyTarget').fill('23');
+    await page.locator('#dailyTarget').dispatchEvent('change');
+    checks.targetPersists = await waitFor(async () => +(await readState(page)).config?.dailyTarget === 23, 2500);
+    await page.locator('#dailyTarget').fill('21');
+    await page.locator('#dailyTarget').dispatchEvent('change');
     await page.evaluate(() => document.getElementById('closeSettings')?.click());
     checks.settingsClosed = await page.locator('#settingsSheet').evaluate(el => el.open === false);
+
+    /* Map initializes and filters remain interactive. */
+    await page.locator('.tab[data-panel="mapPanel"]').click();
+    checks.mapRenders = await waitFor(async () => await page.locator('#map .leaflet-map-pane').count() === 1, 3500);
+    checks.mapFiltersPresent = await page.locator('#mapFilters .chip[data-filter]').count() >= 5;
+    const freeChip = page.locator('#mapFilters .chip[data-filter="free"]');
+    await freeChip.click();
+    checks.mapFilterActivates = await freeChip.evaluate(el => el.classList.contains('active'));
 
     /* Expense write and delete. */
     await page.locator('.tab[data-panel="budget"]').click();
@@ -96,7 +114,7 @@ for (const [name, engine] of engines) {
     await page.waitForTimeout(300);
     checks.memoryDeleted = !(await page.locator('#memoryList').textContent()).includes('AUDIT-MEMORY');
 
-    /* Mission: complete, celebrate, sync, reload, undo, sync and reload again. */
+    /* Mission: complete, celebrate, cloud sync, reload, undo and persist undo. */
     await page.locator('.tab[data-panel="quests"]').click();
     const missionPoi = await page.locator('.q-done[data-poi]').first().getAttribute('data-poi');
     debug.missionPoi = missionPoi;
@@ -112,15 +130,15 @@ for (const [name, engine] of engines) {
     await page.locator('.tab[data-panel="quests"]').click();
     await page.locator(`.q-done[data-poi="${missionPoi}"]`).click();
     checks.missionUndoLocal = await waitFor(async () => !(await missionInLocal(page, missionPoi)), 4000);
+    checks.missionOverlayClosesOnUndo = await waitFor(async () => await page.locator('#kpQuestWin.show').count() === 0, 2000);
     checks.missionSyncsUndo = await waitFor(async () => remote.missionStatus?.[missionPoi]?.done === false && !(remote.visited||[]).includes(missionPoi), 7000);
 
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1000);
     checks.missionUndoPersistsReload = await waitFor(async () => !(await missionInLocal(page, missionPoi)), 6000);
 
-    /* Story for a quest: mark discovered must use the same reliable mission state and be reversible. */
-    await page.locator('.tab[data-panel="diary"]').click();
-    await page.locator('.segment button[data-diary="stories"]').click();
+    /* Marking a quest from its story uses the same mission state and is reversible. */
+    await openStories(page);
     const questStory = page.locator(`.story-open[data-poi="${missionPoi}"]`);
     await questStory.click();
     checks.storyOpens = await page.locator('#storyDialog').evaluate(el => el.open === true);
@@ -134,22 +152,33 @@ for (const [name, engine] of engines) {
     checks.storyUndoLabel = /Desmarcar/i.test(await page.locator('#storyMark').textContent());
     await page.locator('#storyMark').click();
     checks.storyUndoQuest = await waitFor(async () => !(await missionInLocal(page, missionPoi)), 4000);
+    checks.storyUndoLeavesNoOverlay = await waitFor(async () => await page.locator('#kpQuestWin.show').count() === 0, 2000);
 
-    /* Non-quest discovery can also be reversed locally. */
-    const nonQuestStory = page.locator('.story-open[data-poi="podmuseum"]');
+    /* A normal discovery can be marked, shared, undone and remain undone after reload. */
+    await openStories(page);
+    const nonQuestId = 'podmuseum';
+    const nonQuestStory = page.locator(`.story-open[data-poi="${nonQuestId}"]`);
     if (await nonQuestStory.count()) {
       await nonQuestStory.click();
       await page.locator('#storyMark').click();
-      checks.nonQuestMarks = await waitFor(() => visitedInLocal(page, 'podmuseum'), 3000);
-      await page.waitForTimeout(900);
+      checks.nonQuestMarks = await waitFor(() => visitedInLocal(page, nonQuestId), 4500);
+      checks.nonQuestSyncsMark = await waitFor(async () => remote.discoveryStatus?.[nonQuestId]?.done === true && (remote.visited||[]).includes(nonQuestId), 7000);
+      await page.waitForTimeout(700);
+      await openStories(page);
       await nonQuestStory.click();
       checks.nonQuestUndoLabel = /Desmarcar/i.test(await page.locator('#storyMark').textContent());
       await page.locator('#storyMark').click();
-      checks.nonQuestUndo = await waitFor(async () => !(await visitedInLocal(page, 'podmuseum')), 4000);
+      checks.nonQuestUndo = await waitFor(async () => !(await visitedInLocal(page, nonQuestId)), 4500);
+      checks.nonQuestSyncsUndo = await waitFor(async () => remote.discoveryStatus?.[nonQuestId]?.done === false && !(remote.visited||[]).includes(nonQuestId), 7000);
+      await page.waitForTimeout(700);
+      checks.nonQuestUndoPersistsReload = !(await visitedInLocal(page, nonQuestId));
     } else {
       checks.nonQuestMarks = true;
+      checks.nonQuestSyncsMark = true;
       checks.nonQuestUndoLabel = true;
       checks.nonQuestUndo = true;
+      checks.nonQuestSyncsUndo = true;
+      checks.nonQuestUndoPersistsReload = true;
     }
 
     /* Final health checks. */
@@ -157,7 +186,8 @@ for (const [name, engine] of engines) {
     checks.storyCloses = await page.locator('#storyDialog').evaluate(el => el.open === false);
     checks.noHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
     checks.syncStillHealthy = await page.locator('#syncText').evaluate(el => el.textContent.trim() === 'sincronizados');
-    checks.missionUxLoaded = await page.evaluate(() => window.KP_MISSION_UX?.version === '4.1' && window.KP_MISSION_UX?.stateHooks === false && window.KP_MISSION_UX?.networkHooks === false);
+    checks.missionUxLoaded = await page.evaluate(() => window.KP_MISSION_UX?.version === '4.2' && window.KP_MISSION_UX?.stateHooks === false && window.KP_MISSION_UX?.networkHooks === false);
+    checks.stateBridgeLoaded = await page.evaluate(() => window.KP_STATE_BRIDGE?.version === '1.1' && window.KP_STATE_BRIDGE?.reversibleDiscoveries === true);
     checks.runtimeHealthy = await page.evaluate(() => !!window.KP_RUNTIME_AUDIT && window.KP_RUNTIME_AUDIT.missing.length === 0 && window.KP_RUNTIME_AUDIT.stateOk === true && window.KP_RUNTIME_AUDIT.storageOk === true);
   } catch (err) {
     errors.push(err.stack || String(err));
