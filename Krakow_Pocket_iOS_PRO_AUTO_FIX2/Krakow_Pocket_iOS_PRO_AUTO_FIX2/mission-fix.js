@@ -1,13 +1,19 @@
 (() => {
   "use strict";
   const D = window.KP_DATA;
-  if (!D || window.__kpMissionReliabilityV3) return;
-  window.__kpMissionReliabilityV3 = true;
+  if (!D || window.__kpMissionUxV4) return;
+  window.__kpMissionUxV4 = true;
 
   const STORAGE = "krakowPocketCoop";
+  const CLOUD = {
+    url: "https://ahzmwkztlakejmrvgcdm.supabase.co",
+    key: "sb_publishable_sf-RddHTp5jdFCQOfRBBsQ_PZGKOlxJ",
+    code: "WAWEL-ISMAEL-LAURA",
+    secret: "krakow2026"
+  };
   const qIds = new Set((D.quests || []).map(q => q.poi));
   const now = () => new Date().toISOString();
-  const stamp = value => {
+  const time = value => {
     const n = new Date(value || 0).getTime();
     return Number.isFinite(n) ? n : 0;
   };
@@ -15,100 +21,13 @@
     try { return JSON.parse(localStorage.getItem(STORAGE) || "{}"); }
     catch { return {}; }
   };
+  const isDone = (s, id) => s?.missionStatus?.[id] ? !!s.missionStatus[id].done : (s?.visited || []).includes(id);
+  const discovered = (s, id) => s?.discoveryStatus?.[id] ? !!s.discoveryStatus[id].done : (s?.visited || []).includes(id);
 
-  function mergeStatus(a = {}, b = {}) {
+  function snapshot(s = read()) {
     const out = {};
-    for (const src of [a, b]) {
-      for (const [id, op] of Object.entries(src || {})) {
-        if (!op || typeof op !== "object") continue;
-        const prev = out[id];
-        if (!prev || stamp(op.updatedAt) >= stamp(prev.updatedAt)) {
-          out[id] = { done: !!op.done, updatedAt: op.updatedAt || "1970-01-01T00:00:00.000Z" };
-        }
-      }
-    }
+    for (const q of D.quests || []) out[q.poi] = isDone(s, q.poi);
     return out;
-  }
-
-  function normalize(input, previous = null) {
-    const s = input && typeof input === "object" ? input : {};
-    if (!Array.isArray(s.visited)) s.visited = [];
-    if (!Array.isArray(s.expenses)) s.expenses = [];
-    if (!Array.isArray(s.memories)) s.memories = [];
-    if (!s.config || typeof s.config !== "object") s.config = {};
-    if (!s.missionStatus || typeof s.missionStatus !== "object" || Array.isArray(s.missionStatus)) s.missionStatus = {};
-    if (previous?.missionStatus) s.missionStatus = mergeStatus(s.missionStatus, previous.missionStatus);
-
-    const legacyStamp = s.updatedAt || "1970-01-01T00:00:00.000Z";
-    for (const id of s.visited) {
-      if (!s.missionStatus[id]) s.missionStatus[id] = { done: true, updatedAt: legacyStamp };
-    }
-
-    const visited = new Set(s.visited);
-    for (const [id, op] of Object.entries(s.missionStatus)) {
-      if (op?.done) visited.add(id); else visited.delete(id);
-    }
-    s.visited = [...visited];
-    return s;
-  }
-
-  const isDone = (s, id) => {
-    s = normalize(s);
-    return s.missionStatus?.[id] ? !!s.missionStatus[id].done : s.visited.includes(id);
-  };
-
-  function writeStatus(id, done) {
-    const s = normalize(read());
-    const t = now();
-    s.missionStatus[id] = { done: !!done, updatedAt: t };
-    if (done) {
-      if (!s.visited.includes(id)) s.visited.push(id);
-    } else {
-      s.visited = s.visited.filter(x => x !== id);
-    }
-    s.updatedAt = t;
-    localStorage.setItem(STORAGE, JSON.stringify(s));
-    window.dispatchEvent(new CustomEvent("kp:statechange", { detail: { source: "mission-fix", id, done: !!done } }));
-    window.dispatchEvent(new Event("storage"));
-    return s;
-  }
-
-  const nativeSetItem = Storage.prototype.setItem;
-  Storage.prototype.setItem = function(key, value) {
-    if (this === localStorage && key === STORAGE) {
-      try {
-        const previous = read();
-        const incoming = JSON.parse(value || "{}");
-        value = JSON.stringify(normalize(incoming, previous));
-      } catch {}
-    }
-    return nativeSetItem.call(this, key, value);
-  };
-
-  const nativeFetch = window.fetch.bind(window);
-  window.fetch = function(input, init) {
-    try {
-      const url = typeof input === "string" ? input : input?.url || "";
-      if (url.includes("/rest/v1/rpc/adventure_put") && init?.body) {
-        const payload = JSON.parse(init.body);
-        if (payload?.p_state) {
-          const current = normalize(read());
-          const outgoing = normalize(payload.p_state);
-          outgoing.missionStatus = mergeStatus(outgoing.missionStatus, current.missionStatus);
-          payload.p_state = normalize(outgoing);
-          init = { ...init, body: JSON.stringify(payload) };
-        }
-      }
-    } catch {}
-    return nativeFetch(input, init);
-  };
-
-  function nudgeCloudSync() {
-    const target = document.getElementById("dailyTarget");
-    if (target) {
-      try { target.dispatchEvent(new Event("change", { bubbles: true })); }
-      catch {}
-    }
   }
 
   function toast(text, ms = 2300) {
@@ -116,8 +35,8 @@
     if (!el) return;
     el.textContent = text;
     el.style.display = "block";
-    clearTimeout(el._kpReliableTimer);
-    el._kpReliableTimer = setTimeout(() => { el.style.display = "none"; }, ms);
+    clearTimeout(el._kpUxTimer);
+    el._kpUxTimer = setTimeout(() => { el.style.display = "none"; }, ms);
   }
 
   function ensureCelebration() {
@@ -152,9 +71,9 @@
     const q = (D.quests || []).find(x => x.poi === id);
     if (!q) return;
     const p = (D.pois || []).find(x => x.id === id);
-    const s = normalize(read());
-    const finished = (D.quests || []).filter(x => isDone(s, x.poi)).length;
-    const score = (D.quests || []).filter(x => isDone(s, x.poi)).reduce((sum, x) => sum + (+x.points || 0), 0);
+    const s = read();
+    const completed = (D.quests || []).filter(x => isDone(s, x.poi));
+    const score = completed.reduce((sum, x) => sum + (+x.points || 0), 0);
     const copy = cheers[id] || ["¡Misión superada!", "Cracovia acaba de entregaros otra pequeña victoria."];
     const milestones = {
       3: "🌱 Tres misiones completadas. La aventura ya tiene ritmo.",
@@ -166,13 +85,44 @@
     win.querySelector("#kpWinIcon").textContent = p?.emoji || "🐉";
     win.querySelector("#kpWinTitle").textContent = copy[0];
     win.querySelector("#kpWinText").textContent = copy[1];
-    win.querySelector("#kpWinReward").textContent = `+${q.points} 🐉 · ${score} escamas · ${finished}/${D.quests.length}`;
+    win.querySelector("#kpWinReward").textContent = `+${q.points} 🐉 · ${score} escamas · ${completed.length}/${D.quests.length}`;
     const milestone = win.querySelector("#kpWinMilestone");
-    milestone.textContent = milestones[finished] || "";
-    milestone.style.display = milestones[finished] ? "block" : "none";
+    milestone.textContent = milestones[completed.length] || "";
+    milestone.style.display = milestones[completed.length] ? "block" : "none";
+    try { sessionStorage.removeItem("kpCelebrateMission"); } catch {}
     win.classList.add("show");
     navigator.vibrate?.([35, 45, 35]);
   }
+
+  let last = snapshot();
+  let armed = false;
+  let pendingQuest = null;
+  let activeStory = null;
+
+  function inspectTransitions() {
+    const next = snapshot();
+    if (!armed) {
+      last = next;
+      return;
+    }
+    for (const id of Object.keys(next)) {
+      if (!last[id] && next[id]) {
+        if (!pendingQuest || pendingQuest === id) celebrate(id);
+      }
+    }
+    last = next;
+    pendingQuest = null;
+  }
+
+  function arm() {
+    last = snapshot();
+    armed = true;
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(arm, 1200), { once: true });
+  else setTimeout(arm, 1200);
+
+  window.addEventListener("kp:statechange", () => queueMicrotask(inspectTransitions));
+  window.addEventListener("storage", () => queueMicrotask(inspectTransitions));
 
   function setMissionDialogState(id) {
     const dialog = document.getElementById("kpQuestDialog");
@@ -188,87 +138,149 @@
     const dialog = document.getElementById("storyDialog");
     if (dialog?.dataset.kpPoi) return dialog.dataset.kpPoi;
     const title = document.getElementById("storyDialogTitle")?.textContent || "";
-    const p = (D.pois || []).find(x => title.includes(x.name));
-    return p?.id || null;
+    return (D.pois || []).find(x => title.includes(x.name))?.id || activeStory;
   }
 
   function syncStoryButton(id = storyIdFromDialog()) {
     const button = document.getElementById("storyMark");
     if (!button || !id) return;
-    const done = isDone(read(), id);
+    const state = read();
+    const done = qIds.has(id) ? isDone(state, id) : discovered(state, id);
     button.textContent = done ? "↩ Desmarcar descubierto" : "✨ Marcar descubierto";
   }
 
-  function softReload() {
-    setTimeout(() => {
-      try { location.reload(); } catch {}
-    }, 700);
+  function mergeRecords(a = [], b = []) {
+    const map = new Map();
+    for (const item of [...b, ...a]) {
+      if (!item?.id) continue;
+      const prev = map.get(item.id);
+      if (!prev || time(item.updatedAt || item.ts) >= time(prev.updatedAt || prev.ts)) map.set(item.id, item);
+    }
+    return [...map.values()];
   }
 
-  document.addEventListener("click", e => {
-    const worldNode = e.target.closest?.(".kp-world-node[data-pixel-poi]");
+  function mergeTimedObjects(a = {}, b = {}) {
+    const out = {};
+    for (const src of [a, b]) for (const [id, op] of Object.entries(src || {})) {
+      if (!op || typeof op !== "object") continue;
+      const prev = out[id];
+      if (!prev || time(op.updatedAt) >= time(prev.updatedAt)) out[id] = { ...op };
+    }
+    return out;
+  }
+
+  async function rpc(name, body) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    try {
+      const response = await fetch(`${CLOUD.url}/rest/v1/rpc/${name}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", apikey: CLOUD.key },
+        body: JSON.stringify(body),
+        signal: controller.signal
+      });
+      const text = await response.text();
+      if (!response.ok) throw new Error(text || `HTTP ${response.status}`);
+      return text ? JSON.parse(text) : null;
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  async function undoNonQuest(id) {
+    const local = read();
+    const t = now();
+    local.discoveryStatus = { ...(local.discoveryStatus || {}), [id]: { done: false, updatedAt: t } };
+    local.visited = (local.visited || []).filter(x => x !== id);
+    local.updatedAt = t;
+    localStorage.setItem(STORAGE, JSON.stringify(local));
+    toast("↩ Lugar marcado de nuevo como pendiente");
+
+    try {
+      const remote = await rpc("adventure_get", { p_code: CLOUD.code, p_secret: CLOUD.secret }) || {};
+      const visited = new Set([...(remote.visited || []), ...(local.visited || [])]);
+      visited.delete(id);
+      const merged = {
+        ...remote,
+        ...local,
+        visited: [...visited],
+        expenses: mergeRecords(local.expenses || [], remote.expenses || []),
+        memories: mergeRecords(local.memories || [], remote.memories || []),
+        missionStatus: mergeTimedObjects(remote.missionStatus || {}, local.missionStatus || {}),
+        discoveryStatus: mergeTimedObjects(remote.discoveryStatus || {}, local.discoveryStatus || {}),
+        updatedAt: t
+      };
+      await rpc("adventure_put", { p_code: CLOUD.code, p_secret: CLOUD.secret, p_state: merged });
+      localStorage.setItem(STORAGE, JSON.stringify(merged));
+    } catch (error) {
+      console.warn("Kraków Pocket discovery undo sync", error);
+    }
+  }
+
+  function enforceDiscoveryTombstones() {
+    const s = read();
+    if (!s.discoveryStatus || !Array.isArray(s.visited)) return;
+    const blocked = Object.entries(s.discoveryStatus).filter(([, op]) => op && op.done === false).map(([id]) => id);
+    if (!blocked.some(id => s.visited.includes(id))) return;
+    s.visited = s.visited.filter(id => !blocked.includes(id));
+    localStorage.setItem(STORAGE, JSON.stringify(s));
+  }
+  window.addEventListener("kp:statechange", enforceDiscoveryTombstones);
+  window.addEventListener("storage", enforceDiscoveryTombstones);
+  enforceDiscoveryTombstones();
+
+  document.addEventListener("click", event => {
+    const qButton = event.target.closest?.(".q-done[data-poi]");
+    if (qButton) pendingQuest = qButton.dataset.poi || null;
+
+    const worldNode = event.target.closest?.(".kp-world-node[data-pixel-poi]");
     if (worldNode) {
       const id = worldNode.dataset.pixelPoi;
       setTimeout(() => setMissionDialogState(id), 0);
     }
 
-    const storySource = e.target.closest?.(".q-context[data-poi],.story-open[data-poi],.near-story[data-poi],[data-open-poi]");
+    const storySource = event.target.closest?.(".q-context[data-poi],.story-open[data-poi],.near-story[data-poi],[data-open-poi]");
     if (storySource) {
-      const id = storySource.dataset.poi || storySource.dataset.openPoi;
+      activeStory = storySource.dataset.poi || storySource.dataset.openPoi || null;
       setTimeout(() => {
         const dialog = document.getElementById("storyDialog");
-        if (dialog && id) dialog.dataset.kpPoi = id;
-        syncStoryButton(id);
+        if (dialog && activeStory) dialog.dataset.kpPoi = activeStory;
+        syncStoryButton(activeStory);
       }, 0);
     }
 
-    const missionButton = e.target.closest?.(".q-done[data-poi]");
-    if (missionButton) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      const id = missionButton.dataset.poi;
-      const before = isDone(read(), id);
-      if (!before) {
-        const original = missionButton.onclick;
-        if (typeof original === "function") {
-          try { original.call(missionButton, e); } catch (error) { console.warn(error); }
-        }
-        writeStatus(id, true);
-        toast(`+${(D.quests || []).find(q => q.poi === id)?.points || 0} escamas 🐉`);
-        setTimeout(() => celebrate(id), 90);
-      } else {
-        writeStatus(id, false);
-        nudgeCloudSync();
-        toast("↩ Misión marcada de nuevo como pendiente");
+    const pixelDone = event.target.closest?.("#kpPixelDone");
+    if (pixelDone) {
+      const id = document.getElementById("kpQuestDialog")?.dataset.kpPoi;
+      if (id && isDone(read(), id)) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+        pendingQuest = id;
+        document.querySelector(`.q-done[data-poi="${CSS.escape(id)}"]`)?.click();
         document.getElementById("kpQuestDialog")?.classList.remove("show");
-        softReload();
       }
       return;
     }
 
-    const storyMark = e.target.closest?.("#storyMark");
-    if (storyMark) {
-      const id = storyIdFromDialog();
-      if (!id) return;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      const before = isDone(read(), id);
-      if (!before) {
-        const original = storyMark.onclick;
-        if (typeof original === "function") {
-          try { original.call(storyMark, e); } catch (error) { console.warn(error); }
-        }
-        writeStatus(id, true);
-        if (qIds.has(id)) setTimeout(() => celebrate(id), 90);
-        else toast("✨ Lugar descubierto");
-      } else {
-        writeStatus(id, false);
-        nudgeCloudSync();
-        document.getElementById("storyDialog")?.close();
-        toast(qIds.has(id) ? "↩ Misión vuelve a estar pendiente" : "↩ Lugar marcado como pendiente");
-        softReload();
-      }
+    const storyMark = event.target.closest?.("#storyMark");
+    if (!storyMark) return;
+    const id = storyIdFromDialog();
+    if (!id) return;
+
+    if (qIds.has(id)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      pendingQuest = id;
+      document.querySelector(`.q-done[data-poi="${CSS.escape(id)}"]`)?.click();
+      document.getElementById("storyDialog")?.close();
       return;
+    }
+
+    if (discovered(read(), id)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      document.getElementById("storyDialog")?.close();
+      undoNonQuest(id).catch(() => {});
     }
   }, true);
 
@@ -276,22 +288,18 @@
     const missionDialog = document.getElementById("kpQuestDialog");
     if (missionDialog?.classList.contains("show") && missionDialog.dataset.kpPoi) setMissionDialogState(missionDialog.dataset.kpPoi);
     const storyDialog = document.getElementById("storyDialog");
-    if (storyDialog?.open) syncStoryButton();
+    if (storyDialog?.open) {
+      const id = storyIdFromDialog();
+      if (id) {
+        storyDialog.dataset.kpPoi = id;
+        activeStory = id;
+        syncStoryButton(id);
+      }
+    }
   });
   const startObserver = () => observer.observe(document.body, { subtree: true, childList: true, attributes: true, attributeFilter: ["class", "open"] });
-  if (document.body) startObserver(); else document.addEventListener("DOMContentLoaded", startObserver, { once: true });
+  if (document.body) startObserver();
+  else document.addEventListener("DOMContentLoaded", startObserver, { once: true });
 
-  const style = document.createElement("style");
-  style.dataset.kpMissionFixStyle = "1";
-  style.textContent = `
-    html.kp-game #settingsSheet{max-height:calc(100dvh - 58px)!important;margin-top:max(44px,calc(env(safe-area-inset-top) + 14px))!important;}
-    html.kp-game #settingsSheet .sheet-head{padding-top:16px!important;padding-right:12px!important;min-height:68px!important;}
-    html.kp-game #settingsSheet .close-btn{flex:0 0 48px!important;width:48px!important;height:48px!important;min-width:48px!important;min-height:48px!important;display:grid!important;place-items:center!important;font-size:21px!important;margin-left:10px!important;position:relative!important;z-index:5!important;}
-    @media(max-width:480px){
-      html.kp-game #settingsSheet{width:calc(100vw - 12px)!important;max-height:calc(100dvh - 64px)!important;margin:52px 6px 6px!important;border-radius:18px 18px 0 0!important;}
-      html.kp-game #settingsSheet .sheet-head{padding:14px 12px!important;min-height:72px!important;}
-      html.kp-game #settingsSheet .close-btn{width:50px!important;height:50px!important;min-width:50px!important;min-height:50px!important;}
-    }
-  `;
-  document.head.appendChild(style);
+  window.KP_MISSION_UX = { version: "4.0", stateHooks: false, networkHooks: false };
 })();
