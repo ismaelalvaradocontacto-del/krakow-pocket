@@ -100,7 +100,7 @@
         const auth = JSON.parse(next.body);
         const putUrl = url.replace(/adventure_get(?:\?.*)?$/, "adventure_put");
         const putBody = JSON.stringify({ ...auth, p_state: { ...merged, updatedAt: now() } });
-        nativeFetch(putUrl, {
+        window.fetch(putUrl, {
           method: "POST",
           headers: next.headers || { "Content-Type": "application/json" },
           body: putBody
@@ -118,7 +118,7 @@
   };
 
   window.KP_STATE_BRIDGE = {
-    version: "1.0",
+    version: "1.1",
     reversibleDiscoveries: true,
     normalize: state => mergeLocalStatus(state)
   };
