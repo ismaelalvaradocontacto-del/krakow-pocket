@@ -71,6 +71,15 @@
     scheduled = requestAnimationFrame(repair);
   }
 
+  function repairAfterUiMutation() {
+    queueMicrotask(repair);
+    requestAnimationFrame(repair);
+    setTimeout(repair, 0);
+    setTimeout(repair, 30);
+    setTimeout(repair, 90);
+    setTimeout(repair, 220);
+  }
+
   function boot() {
     repair();
     const observer = new MutationObserver(records => {
@@ -78,15 +87,24 @@
       if (records.some(record => {
         const target = record.target;
         return target?.closest?.("#kpGameHud, #kpPlayerPicker") || [...record.addedNodes].some(node => node?.matches?.("#kpGameHud, #kpPlayerPicker") || node?.querySelector?.("#kpGameHud, #kpPlayerPicker"));
-      })) schedule();
+      })) repairAfterUiMutation();
     });
     observer.observe(document.body, { childList: true, subtree: true });
-    for (const delay of [40, 120, 280, 600, 1100, 1800, 2800, 4200, 6500]) setTimeout(repair, delay);
-    window.addEventListener("storage", schedule);
-    window.addEventListener("pageshow", schedule);
-    window.addEventListener("kp:statechange", schedule);
-    window.addEventListener("orientationchange", () => setTimeout(repair, 120), { passive: true });
-    window.KP_PORTRAIT_STABILITY = { version: "1.0", dualPortraitRepair: true };
+
+    document.addEventListener("click", event => {
+      if (event.target.closest?.('.tab[data-panel],#kpGameHub [data-go],#openSettings,#kpGameSettings,#quickMap,#quickExpense,#quickMemory,#kpPlayerPicker [data-kp-player]')) {
+        repairAfterUiMutation();
+      }
+    }, false);
+
+    for (const delay of [20, 60, 120, 240, 450, 750, 1100, 1600, 2300, 3200, 4500, 6500]) setTimeout(repair, delay);
+    window.addEventListener("storage", repairAfterUiMutation);
+    window.addEventListener("pageshow", repairAfterUiMutation);
+    window.addEventListener("kp:render", repairAfterUiMutation);
+    window.addEventListener("kp:game-render", repairAfterUiMutation);
+    window.addEventListener("kp:statechange", repairAfterUiMutation);
+    window.addEventListener("orientationchange", () => setTimeout(repairAfterUiMutation, 100), { passive: true });
+    window.KP_PORTRAIT_STABILITY = { version: "1.1", dualPortraitRepair: true, synchronousUiRepair: true };
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
