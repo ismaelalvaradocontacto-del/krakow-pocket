@@ -10,13 +10,18 @@ async function snapshot(page) {
   for (let attempt = 0; attempt < 6; attempt++) {
     try {
       await page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {});
-      await page.waitForTimeout(500);
+      await page.waitForTimeout(350);
       return await page.evaluate(() => {
         const text = id => document.getElementById(id)?.textContent?.trim() || null;
         const visible = id => {
           const el = document.getElementById(id); if (!el) return false;
           const s = getComputedStyle(el); return s.display !== 'none' && s.visibility !== 'hidden';
         };
+        const tabGeometry = [...document.querySelectorAll('.tab')].map(el => {
+          const r = el.getBoundingClientRect();
+          const s = getComputedStyle(el);
+          return {panel:el.dataset.panel,width:r.width,height:r.height,visible:s.display!=='none'&&s.visibility!=='hidden',disabled:!!el.disabled};
+        });
         return {
           url: location.href,
           title: document.title,
@@ -29,6 +34,7 @@ async function snapshot(page) {
           objective: !!document.getElementById('kpGameObjective'),
           village: !!document.getElementById('kpGameHub'),
           tabs: [...document.querySelectorAll('.tab')].map(x => x.dataset.panel),
+          tabGeometry,
           activePanels: [...document.querySelectorAll('.panel.active')].map(x => x.id),
           bodyOverflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
           settings: !!document.getElementById('settingsSheet'),
@@ -79,18 +85,33 @@ for (const [name, engine] of engines) {
   let response;
   try {
     response = await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForTimeout(3500);
+    await page.waitForFunction(() => {
+      const title = document.getElementById('recTitle')?.textContent?.trim() || '';
+      return title && !/^Calculando/.test(title) && !!document.getElementById('kpGameHud');
+    }, { timeout: 12000 }).catch(() => {});
+    await page.waitForFunction(() => {
+      const s = document.getElementById('syncText')?.textContent?.trim() || '';
+      return s === 'sincronizados' || s === 'sin conexión';
+    }, { timeout: 12000 }).catch(() => {});
+    await page.waitForTimeout(350);
   } catch (err) {
     pageErrors.push(`Navigation: ${err.stack || err}`);
   }
 
+  // A celebration is a legitimate blocking modal. Close it before generic navigation checks.
+  await page.evaluate(() => document.getElementById('kpWinClose')?.click()).catch(() => {});
   const state = await snapshot(page);
   const navResults = {};
-  // A celebration is a legitimate blocking modal. Close it before the generic navigation check.
-  await page.evaluate(() => document.getElementById('kpWinClose')?.click()).catch(() => {});
   for (const panel of ['home','mapPanel','quests','diary','budget']) {
     try {
-      await page.locator(`.tab[data-panel="${panel}"]`).click({ timeout: 5000 });
+      const interactable = await page.evaluate(p => {
+        const el = document.querySelector(`.tab[data-panel="${p}"]`);
+        if (!el) return false;
+        const r = el.getBoundingClientRect(), s = getComputedStyle(el);
+        return !el.disabled && s.display !== 'none' && s.visibility !== 'hidden' && r.width >= 30 && r.height >= 30;
+      }, panel);
+      if (!interactable) throw new Error('Tab is not visibly interactable');
+      await page.evaluate(p => document.querySelector(`.tab[data-panel="${p}"]`)?.click(), panel);
       await page.waitForTimeout(180);
       navResults[panel] = await page.locator(`#${panel}`).evaluate(el => el.classList.contains('active'));
     } catch (err) {
@@ -116,8 +137,10 @@ for (const [name, engine] of engines) {
   const mustBoot = state.data && state.recTitle && !/^Calculando/i.test(state.recTitle) && state.hud && state.objective && state.village && state.recommendationVisible;
   const runtimeOk = !state.runtimeAudit || (state.runtimeAudit.stateOk && state.runtimeAudit.storageOk && (!state.runtimeAudit.missing || state.runtimeAudit.missing.length === 0));
   const navOk = Object.values(navResults).every(v => v === true);
+  const tabsOk = Array.isArray(state.tabGeometry) && state.tabGeometry.length === 5 && state.tabGeometry.every(t => t.visible && !t.disabled && t.width >= 30 && t.height >= 30);
   const layoutOk = state.bodyOverflow === false;
-  if (!mustBoot || !runtimeOk || !navOk || !layoutOk || meaningfulPageErrors.length || authErrors.length) failed = true;
+  const syncOk = state.syncText === 'sincronizados' || state.syncText === 'sin conexión';
+  if (!mustBoot || !runtimeOk || !navOk || !tabsOk || !layoutOk || !syncOk || meaningfulPageErrors.length || authErrors.length) failed = true;
   await page.screenshot({ path: `audit-${name}.png`, fullPage: true }).catch(() => {});
   await browser.close();
 }
