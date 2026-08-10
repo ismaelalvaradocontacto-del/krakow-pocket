@@ -145,7 +145,7 @@
     try { window.dispatchEvent(new CustomEvent("kp:statechange", { detail: { source:"interaction-fix", id, done:!!done } })); } catch {}
     try { window.dispatchEvent(new Event("storage")); } catch {}
     for (const delay of [30,100,280,700,1500,2600]) setTimeout(() => reassertDiscovery(id, done, stamp), delay);
-    for (const delay of [60,260,900]) setTimeout(nudgeSync, delay);
+    setTimeout(nudgeSync, 0);
     document.getElementById("storyDialog")?.close();
     toast(done ? "✨ Lugar descubierto" : "↩ Lugar marcado de nuevo como pendiente");
   }
@@ -182,8 +182,9 @@
   }, true);
 
   window.KP_INTERACTION_FIX = {
-    version: "1.0",
+    version: "1.1",
     celebrationRecovery: true,
-    reversibleNonQuestDiscoveries: true
+    reversibleNonQuestDiscoveries: true,
+    lateSyncNudges: false
   };
 })();
