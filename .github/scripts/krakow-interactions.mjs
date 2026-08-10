@@ -27,7 +27,11 @@ for (const [name, engine] of engines) {
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', e => errors.push(e.message || String(e)));
-  page.on('console', m => { if (m.type() === 'error' && !/Service Worker registration blocked/i.test(m.text())) errors.push(m.text()); });
+  page.on('console', m => {
+    const text = m.text();
+    const benign = /Service Worker registration blocked|Blocked call to navigator\.vibrate because user hasn't tapped/i.test(text);
+    if (m.type() === 'error' && !benign) errors.push(text);
+  });
   const checks = {};
 
   try {
