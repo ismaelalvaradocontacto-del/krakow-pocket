@@ -1,4 +1,4 @@
-const CACHE="krakow-pocket-v3-20260810q";
+const CACHE="krakow-pocket-v3-20260810r";
 const CORE=["./","./index.html","./styles.css","./data.js","./app.js","./enhancements.js","./enhancements.css","./trip-tools.js","./trip-tools-core.js","./trip-tools.css","./v34.js","./v34.css","./v35.js","./v35.css","./v36.js","./v36.css","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
 const SUPABASE_HOST="ahzmwkztlakejmrvgcdm.supabase.co";
 const SUPABASE_KEY="sb_publishable_sf-RddHTp5jdFCQOfRBBsQ_PZGKOlxJ";
