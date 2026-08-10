@@ -15,6 +15,7 @@ Revisar de forma completa el estado gráfico, la experiencia móvil, la sincroni
 
 ## Auditoría de estilo y móvil
 ### Corregido
+- La clase de juego se aplica desde el propio HTML para evitar el flash inicial de la interfaz antigua.
 - Safe area superior aplicada al HUD del juego.
 - Altura reservada para la barra inferior calculada en ejecución mediante `ResizeObserver`, evitando contenido tapado.
 - Breakpoints específicos para 420, 360 y 330 px.
@@ -35,9 +36,11 @@ El resaltado de la siguiente misión retiraba y recreaba la flecha en cada pasad
 El núcleo histórico combina `visited` mediante unión para no perder progresos entre dos móviles. Las versiones posteriores añadieron `missionStatus` para permitir deshacer una misión. En una desmarcación remota podía existir temporalmente contradicción entre `visited` y `missionStatus`.
 
 ### Corrección v6.2
-`runtime.js` intercepta exclusivamente las escrituras de la partida `krakowPocketCoop` y normaliza `visited` según `missionStatus` antes de persistir. Si detecta una contradicción procedente de una sincronización remota fuerza una única recarga limpia para que el estado en memoria y el persistido vuelvan a coincidir.
+`runtime.js` se ejecuta ahora justo después de `data.js` y antes de `app.js`. De esta forma normaliza el estado persistido antes de que el núcleo lo cargue y establece la versión v6.2 antes de que `app.js` capture ese valor.
 
-Las escrituras del mismo dispositivo generan además eventos de actualización internos para que las capas visuales y auxiliares no dependan de polling rápido.
+Además, `runtime.js` intercepta exclusivamente las escrituras de la partida `krakowPocketCoop` y normaliza `visited` según `missionStatus` antes de persistir. Si detecta una contradicción procedente de una sincronización remota fuerza una única recarga limpia para que el estado en memoria y el persistido vuelvan a coincidir.
+
+Las escrituras del mismo dispositivo generan eventos de actualización internos para que las capas visuales y auxiliares no dependan de polling rápido.
 
 ## Auditoría de rendimiento
 - El antiguo parche general de temporizadores se ha limitado a tres intervalos heredados conocidos.
@@ -50,7 +53,7 @@ Las escrituras del mismo dispositivo generan además eventos de actualización i
 ## Auditoría PWA / offline
 - `visuals.css` y `visuals.js` se cargan estáticamente desde `index.html` para evitar un flash de estilos y una cadena de carga dinámica.
 - Los tres nuevos assets gráficos se precargan.
-- El Service Worker cachea los assets nuevos.
+- El Service Worker cachea los assets nuevos con caché v6.2 final.
 - Se añade caché de ejecución para Leaflet 1.9.4 desde jsDelivr, mejorando el uso posterior sin conexión.
 - Navegación HTML sigue siendo network-first con fallback a `index.html`.
 - JavaScript/CSS siguen siendo network-first para evitar mezclar versiones.
@@ -77,8 +80,8 @@ Revisadas las dependencias y flujos de:
 ## Arquitectura actual
 Carga principal:
 1. `data.js`
-2. `app.js`
-3. `runtime.js`
+2. `runtime.js`
+3. `app.js`
 4. `enhancements.js`
 5. `game.js`
 6. `visuals.js`
@@ -96,7 +99,7 @@ Gráficos:
 
 ## Pendientes no bloqueantes
 - `enhancements.js` conserva dos bloques históricos porque contienen la reconciliación de misiones ya probada entre ambos dispositivos. Se ha reducido su frecuencia desde `runtime.js`, pero conviene consolidarlo en una futura refactorización cuando la sincronización pueda tocarse sin riesgo.
-- Leaflet continúa siendo una dependencia externa; ahora queda cacheada después de una carga satisfactoria.
+- Leaflet continúa siendo una dependencia externa; ahora queda cacheada después de una carga satisfactoria. Las teselas de OpenStreetMap siguen necesitando red si todavía no estaban en la caché del navegador.
 - La validación visual final específica de Safari instalado como PWA debe realizarse sobre dispositivo físico, ya que el repositorio no reproduce exactamente la barra de estado, zoom de texto y comportamiento de WebKit del iPhone.
 
 ## Criterio para siguientes versiones
