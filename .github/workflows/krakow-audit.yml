@@ -26,8 +26,9 @@ jobs:
         run: node .github/scripts/krakow-structural.mjs
       - name: Install browser audit tooling
         run: |
-          npm install --no-save playwright@1.55.0
-          npx playwright install --with-deps chromium webkit
+          npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
+          npx playwright install --with-deps chromium webkit >/tmp/playwright-install.log 2>&1
+          echo "Playwright browsers installed"
       - name: Start local production mirror
         run: |
           APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
@@ -44,9 +45,19 @@ jobs:
       - name: Run local Chromium and WebKit smoke audit
         run: node .github/scripts/krakow-smoke.mjs
       - name: Run mobile viewport matrix audit
-        run: timeout 180s node .github/scripts/krakow-mobile-matrix.mjs
+        run: |
+          set +e
+          timeout 180s node .github/scripts/krakow-mobile-matrix.mjs >/tmp/mobile-matrix.log 2>&1
+          CODE=$?
+          tail -n 180 /tmp/mobile-matrix.log
+          exit $CODE
       - name: Run isolated write-flow interaction audit
-        run: timeout 180s node .github/scripts/krakow-interactions.mjs
+        run: |
+          set +e
+          timeout 180s node .github/scripts/krakow-interactions.mjs >/tmp/interaction.log 2>&1
+          CODE=$?
+          tail -n 220 /tmp/interaction.log
+          exit $CODE
       - name: Prove local app does not reload itself
         run: node .github/scripts/krakow-reload-stability.mjs
       - name: Prove PWA boots offline
@@ -64,7 +75,7 @@ jobs:
             curl -fsS https://krakow-pocket.pages.dev/mission-fix.js | grep -q '__kpMissionUxV4' && MISSION_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/celebration-guard.js | grep -q 'portrait-stability.js' && GUARD_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/celebration-stability.js | grep -q 'delayedDuplicateBlocked' && CELEBRATION_OK=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/portrait-stability.js | grep -q 'dualPortraitRepair' && PORTRAIT_OK=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/portrait-stability.js | grep -q 'synchronousUiRepair' && PORTRAIT_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v13-portrait-stability-20260810j' && CACHE_OK=1 || true
             if [ "$STATE_OK" = "1" ] && [ "$MISSION_OK" = "1" ] && [ "$GUARD_OK" = "1" ] && [ "$CELEBRATION_OK" = "1" ] && [ "$PORTRAIT_OK" = "1" ] && [ "$CACHE_OK" = "1" ]; then
               echo "Cloudflare is serving the full audited build"
