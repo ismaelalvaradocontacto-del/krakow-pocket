@@ -1,6 +1,15 @@
 (() => {
   "use strict";
 
+  // Load the illustrated storybook skin before the UI finishes composing.
+  if (!document.querySelector('link[data-kp-storybook]')) {
+    const skin = document.createElement("link");
+    skin.rel = "stylesheet";
+    skin.href = "./storybook.css";
+    skin.dataset.kpStorybook = "1";
+    document.head.appendChild(skin);
+  }
+
   // Never reload just because mission state was normalized in the background.
   // The UI layers already listen to storage/state events and can repaint in place.
   try { sessionStorage.setItem("kpMissionMutation", "1"); } catch {}
@@ -56,5 +65,5 @@
   }, true);
 
   // Diagnostic marker used by automated tests and for support.
-  window.KP_STABILITY = { version: "1.0", automaticReloadsBlocked: true };
+  window.KP_STABILITY = { version: "1.1", automaticReloadsBlocked: true, storybookSkin: true };
 })();
