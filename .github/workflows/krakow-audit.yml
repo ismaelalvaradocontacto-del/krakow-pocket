@@ -34,7 +34,22 @@ jobs:
           sleep 2
           curl -fsS -I http://127.0.0.1:4173/
           curl -fsS http://127.0.0.1:4173/data.js | head -c 80
-      - name: Run Chromium and WebKit smoke audit
+      - name: Run local Chromium and WebKit smoke audit
+        run: node .github/scripts/krakow-smoke.mjs
+      - name: Wait for Cloudflare Pages production
+        run: |
+          for i in {1..30}; do
+            if curl -fsS https://krakow-pocket.pages.dev/runtime.js | grep -q '6.8.1'; then
+              echo "Cloudflare is serving this runtime"
+              exit 0
+            fi
+            sleep 4
+          done
+          echo "Cloudflare production did not converge to the audited runtime in time"
+          exit 1
+      - name: Run live Cloudflare Chromium and WebKit audit
+        env:
+          KP_AUDIT_URL: https://krakow-pocket.pages.dev/
         run: node .github/scripts/krakow-smoke.mjs
       - name: Upload audit screenshots
         if: always()
