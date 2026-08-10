@@ -1,0 +1,2 @@
+Audited restore baseline: b4aa4ebac310d51468d86b91547084e1852a842e
+Reason: current app.js failed node --check with SyntaxError before browser startup.
