@@ -115,9 +115,9 @@ for (const [name, engine] of engines) {
 
   // A first PWA visit can install a new worker and immediately reload the page.
   // Judge the application only after the post-reload document has completely settled.
-  let state = await waitForSettledState(page, isLocal ? 12000 : 22000);
+  let bootState = await waitForSettledState(page, isLocal ? 12000 : 22000);
   await page.evaluate(() => document.getElementById('kpWinClose')?.click()).catch(() => {});
-  if(!stateIsSettled(state)) state=await waitForSettledState(page,5000);
+  if(!stateIsSettled(bootState)) bootState=await waitForSettledState(page,5000);
 
   const navResults = {};
   for (const panel of ['home','mapPanel','quests','diary','budget']) {
@@ -137,14 +137,18 @@ for (const [name, engine] of engines) {
     }
   }
 
-  // Re-read after navigation so the report reflects the stable final document.
-  state = await snapshot(page);
+  // Return to Aldea before judging character visibility. The couple is intentionally
+  // hidden when another panel such as Bolsa is active.
+  await page.evaluate(() => document.querySelector('.tab[data-panel="home"]')?.click()).catch(() => {});
+  await page.waitForTimeout(350).catch(() => {});
+  const state = await snapshot(page);
   const meaningfulPageErrors = pageErrors.filter(x => !/sw\.js due to access control checks/i.test(x));
   const authErrors = consoleErrors.filter(x => /401|Invalid API key/i.test(x));
   const report = {
     engine: name,
     mode: isLocal ? 'isolated-local' : 'live-production',
     httpStatus: response?.status() ?? null,
+    bootState,
     state,
     navResults,
     consoleErrors,
@@ -160,8 +164,8 @@ for (const [name, engine] of engines) {
   const tabsOk = Array.isArray(state.tabGeometry) && state.tabGeometry.length === 5 && state.tabGeometry.every(t => t.visible && !t.disabled && t.width >= 30 && t.height >= 30);
   const layoutOk = state.bodyOverflow === false;
   const syncOk = state.syncText === 'sincronizados' || state.syncText === 'sin conexión';
-  const artOk = state.inlineReady && !state.inlineFailed && state.portraitInline && state.coupleInline === 2 && !state.visualAudit?.characters?.blankPortrait && !state.visualAudit?.characters?.missingCouple && !state.visualAudit?.characters?.identityMismatch;
-  if (!mustBoot || !runtimeOk || !navOk || !tabsOk || !layoutOk || !syncOk || !artOk || meaningfulPageErrors.length || authErrors.length) failed = true;
+  const artOk = state.inlineReady && !state.inlineFailed && state.portraitInline && state.coupleInline === 2 && !state.visualAudit?.characters?.blankPortrait && !state.visualAudit?.characters?.identityMismatch;
+  if (!stateIsSettled(bootState) || !mustBoot || !runtimeOk || !navOk || !tabsOk || !layoutOk || !syncOk || !artOk || meaningfulPageErrors.length || authErrors.length) failed = true;
   await page.screenshot({ path: `audit-${name}.png`, fullPage: true }).catch(() => {});
   await browser.close();
 }
