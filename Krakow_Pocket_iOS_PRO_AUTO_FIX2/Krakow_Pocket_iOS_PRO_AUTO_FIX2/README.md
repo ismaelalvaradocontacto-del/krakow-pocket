@@ -1,80 +1,59 @@
 # Kraków Pocket
 
-PWA móvil para la escapada de Ismael y Laura a Cracovia del 11–13 de agosto de 2026, diseñada como una aventura cooperativa con estética de RPG acogedor.
+PWA móvil para la escapada de Ismael y Laura a Cracovia del 11–13 de agosto de 2026, planteada como una aventura cooperativa con estética de RPG acogedor.
 
-## Funciones activas
+## Funciones principales
 - Mapa real de Cracovia con OpenStreetMap/Leaflet.
-- GPS opcional y exclusivamente local para ordenar lugares por cercanía.
-- Recomendaciones según tiempo, tipo de plan, presupuesto y momento del viaje.
-- 12 misiones cooperativas y sistema de Escamas de Wawel.
-- Mapa ilustrado de encargos y celebraciones de misión.
+- GPS opcional del dispositivo para ordenar lugares cercanos.
+- Recomendaciones según tiempo disponible, tipo de plan, presupuesto y contexto.
+- Misiones cooperativas y “Escamas de Wawel”.
+- Mapa ilustrado de encargos y celebraciones al completar misiones.
 - Crónica y recuerdos compartidos.
-- Presupuesto conjunto con gastos por categoría.
-- Sincronización automática entre los dos dispositivos.
-- Navegación mediante Google Maps sin crear una pestaña intermedia innecesaria.
-- PWA con recursos esenciales disponibles desde caché.
+- Presupuesto común con gastos por categoría.
+- Sincronización de progreso entre los dos dispositivos mediante Supabase.
+- Apertura de navegación en Google Maps.
+- Funcionamiento como PWA y soporte offline de los recursos esenciales.
 
-## Arquitectura de producción
-La aplicación tiene cuatro capas JavaScript con responsabilidades separadas y tres hojas de estilo activas. No hay loaders de versiones antiguas ni capas de compatibilidad/sincronización superpuestas.
+## Arquitectura actual · v6
+La interfaz se consolidó para eliminar la antigua cadena de parches de versiones `v34`–`v51` y los antiguos `trip-tools`.
 
-### JavaScript
-- `data.js`: datos estáticos del viaje, lugares, planning y misiones.
-- `app.js`: único núcleo funcional. Gestiona estado, gastos, recuerdos, mapa, GPS, recomendaciones, sincronización, PWA, compartir y estado reversible de misiones.
-- `game.js`: estructura de la experiencia RPG: HUD, Aldea, mapa de encargos, diálogos y celebraciones.
-- `visuals.js`: render de arte SVG, adaptación Safari/iPhone, VFX, responsive y auditor automático.
+Runtime cargado:
+- `data.js`: datos del viaje, lugares, misiones y planning.
+- `app.js`: núcleo funcional, mapa, formularios, estado y sincronización base.
+- `runtime.js`: guardas de rendimiento y compatibilidad del runtime actual.
+- `enhancements.js`: funciones cooperativas y gestión reversible/sincronizada de misiones.
+- `game.js`: interfaz RPG consolidada, gráficos vectoriales, Aldea, mapa ilustrado, celebraciones y navegación del juego.
 
-`game.js` usa firmas de estado para no reconstruir HUD, Aldea o tablero de misiones cuando una sincronización no ha cambiado nada. La navegación se genera una sola vez por carga. Las celebraciones de misión ya no dependen de un estado temporal heredado: se lanzan directamente tras confirmar el cambio de misión.
+Estilos cargados:
+- `styles.css`: base funcional.
+- `enhancements.css`: componentes cooperativos que siguen en uso y ajustes de safe-area.
+- `game.css`: sistema visual principal y responsive de la experiencia RPG.
 
-### CSS
-- `styles.css`: componentes funcionales reutilizados por mapa, formularios, diario, presupuesto, tarjetas y diálogos.
-- `game.css`: geometría y estructura de los componentes RPG generados dinámicamente.
-- `visuals.css`: acabado artístico, personajes, responsive, safe areas, iluminación y VFX.
+Ya no se utilizan loaders encadenados, hojas/JS versionados `v34`–`v51` ni el antiguo módulo `trip-tools`.
 
-`game.css` ya no contiene reglas para la antigua cabecera oculta ni para la antigua lista visual de misiones, porque esos elementos dejaron de existir en el HTML de producción.
+## Sincronización
+Los dos dispositivos usan una única partida compartida. Se sincronizan misiones, gastos, recuerdos y configuración común.
 
-### Arte activo
-- `assets/characters.svg`: Ismael, Laura, Dragón de Wawel y Guardián.
-- `assets/game-art.svg`: monumentos e iconos del juego.
-- `assets/village.svg`: escenario de Aldea.
-- `assets/world-map.svg`: escenario del mapa de encargos.
+La gestión de misiones conserva un estado específico para permitir deshacer una misión o reiniciar el tablero sin que una sincronización posterior vuelva a marcarla accidentalmente como completada.
 
-## Estado y sincronización
-La partida utiliza un único estado local/remoto. Las misiones se almacenan con una operación por misión (`done` + fecha de modificación), por lo que completar, deshacer o reiniciar puede reconciliarse entre dispositivos sin que una unión antigua de `visited` vuelva a activar una misión.
-
-Gastos y recuerdos se fusionan por identificador y fecha de modificación. Los borrados se conservan como tombstones para impedir que reaparezcan después de sincronizar. Si la nube aún no contiene una partida, el estado local actúa como punto de partida.
-
-El Service Worker no altera las peticiones de sincronización. La autenticación de la API pertenece únicamente al núcleo funcional de la app.
-
-## Personajes
-Ismael y Laura tienen una identidad gráfica única. El retrato de cabecera y el sprite de Aldea comparten paleta y rasgos, adaptados a escalas distintas. El render visual inserta los símbolos SVG dentro del DOM para que Safari utilice exactamente el mismo arte que el resto de la aplicación.
-
-## Auditoría automática
-`window.KP_AUDIT` / `window.KP_VISUAL_AUDIT` comprueba en ejecución:
-- estructura principal presente;
-- exactamente un panel y una pestaña activos;
-- cinco destinos de navegación;
-- forma del estado local;
-- datos de las 12 misiones;
-- carga de assets;
-- identidad de personajes;
-- colisiones entre protagonistas y etiquetas;
-- colisiones de etiquetas del mapa de encargos;
-- overflow horizontal y de componentes;
-- controles táctiles demasiado pequeños;
-- diálogos que excedan el viewport;
-- altura real de la navegación inferior;
-- soporte PWA, contexto seguro y estado de red.
-
-Las correcciones de geometría se realizan con tamaños, posiciones y clases específicas; no se oculta contenido como solución genérica a un overflow.
-
-## Limpieza realizada
-Se eliminaron del runtime todos los módulos antiguos `v34`–`v51`, `trip-tools`, `runtime`, `enhancements`, `compat` y auditorías históricas que ya no aportaban ejecución. El HTML no carga ninguno de ellos. Se mantienen únicamente los archivos activos, los cuatro assets SVG, los iconos, el manifest, el Service Worker, esta documentación y `SUPABASE_SETUP.sql` como infraestructura de recuperación/configuración.
-
-## PWA
-`sw.js` cachea únicamente los archivos activos. HTML, JavaScript, CSS y manifest intentan obtener la versión reciente y utilizan caché como respaldo; los assets estáticos se sirven desde caché cuando están disponibles. Cada revisión de producción cambia el nombre de la caché para retirar la anterior.
+## Rendimiento
+La versión v6 elimina los redibujados y loaders acumulados de las capas antiguas. Los refrescos auxiliares heredados se limitan mediante `runtime.js`; los cambios relevantes siguen reaccionando inmediatamente a eventos de almacenamiento, visibilidad, conectividad y acciones del usuario.
 
 ## Privacidad
-La posición GPS no forma parte del estado compartido. Se usa únicamente en el dispositivo para distancias y recomendaciones.
+La posición GPS se utiliza únicamente en el dispositivo para distancias y recomendaciones. No forma parte del estado compartido de la partida.
 
-## Producción
-https://krakow-pocket.pages.dev/
+La sincronización utiliza una publishable key de Supabase; nunca debe usarse una `service_role` en el cliente.
+
+## PWA y actualizaciones
+`sw.js` mantiene en caché únicamente los recursos actuales de la aplicación. HTML, JS y CSS intentan obtener primero la versión más reciente y usan la caché como respaldo.
+
+La aplicación muestra un aviso cuando existe una nueva versión y recarga cuando el nuevo Service Worker toma el control.
+
+## iPhone
+La interfaz utiliza `viewport-fit=cover`, safe areas, inputs de tamaño suficiente para evitar zoom involuntario, navegación inferior accesible con una mano, controles táctiles amplios, breakpoints para pantallas estrechas y soporte de `prefers-reduced-motion`.
+
+## Publicación
+El frontend se publica en Cloudflare Pages y la sincronización de datos depende de Supabase.
+
+Producción:
+`https://krakow-pocket.pages.dev/`
