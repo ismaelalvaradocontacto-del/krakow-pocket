@@ -80,3 +80,4 @@
   else boot();
 })();
 if(!window.__kpCelebrationStabilityLoader){window.__kpCelebrationStabilityLoader=true;const s=document.createElement("script");s.src="./celebration-stability.js?v=20260810h";s.async=false;(document.head||document.documentElement).appendChild(s)}
+if(!window.__kpPortraitStabilityLoader){window.__kpPortraitStabilityLoader=true;const s=document.createElement("script");s.src="./portrait-stability.js?v=20260810i";s.async=false;(document.head||document.documentElement).appendChild(s)}
