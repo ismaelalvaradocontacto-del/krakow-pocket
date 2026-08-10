@@ -1,17 +1,29 @@
-/* Kraków Pocket · mobile/Safari compatibility layer v6.5 */
+/* Kraków Pocket · mobile/Safari + character style audit v6.6 */
 html.kp-game{scroll-padding-top:8px;scroll-padding-bottom:calc(var(--kp-nav-h,92px) + 18px)}
 html.kp-game body{min-height:100svh}
 html.kp-game .panel{min-width:0}
 html.kp-game .kp-character-asset,html.kp-game .kp-landmark-svg,html.kp-game .kp-asset-svg,html.kp-game .kp-npc-asset{display:block!important;visibility:visible!important;opacity:1!important}
-html.kp-game .kp-game-portrait svg{width:64px!important;height:70px!important;transform:translate(-4px,-6px)}
-html.kp-game .kp-couple-art{position:relative;z-index:9;width:48px!important;height:64px!important}
-html.kp-game .kp-hub-couple{left:43%!important;top:52%!important;z-index:9!important}
+
+/* Photo-based protagonists: clean portrait crop + readable in-world chibi silhouettes. */
+html.kp-game .kp-game-portrait{width:58px!important;height:58px!important;border-radius:50%!important;overflow:hidden!important;background:radial-gradient(circle at 50% 28%,#fff1c7 0,#ddbd79 70%,#b88b4e 100%)!important;box-shadow:inset 0 0 0 2px #fff1bb,0 3px 0 #3d271b,0 0 0 2px rgba(255,235,172,.32)!important}
+html.kp-game .kp-game-portrait svg{width:72px!important;height:72px!important;transform:translate(-7px,-7px)!important}
+html.kp-game .kp-hub-couple{left:42%!important;top:50%!important;z-index:9!important;gap:0!important;align-items:end!important;filter:drop-shadow(0 5px 2px rgba(43,31,22,.22))}
+html.kp-game .kp-couple-art{position:relative;z-index:9;width:54px!important;height:72px!important;overflow:visible!important}
+html.kp-game .kp-couple-art:first-child{transform:translateX(5px)}
+html.kp-game .kp-couple-art:last-child{transform:translateX(-5px)}
+html.kp-game .kp-couple-art svg{width:100%!important;height:100%!important;overflow:visible!important}
+html.kp-game .kp-hub-avatar{overflow:hidden!important}
+html.kp-game .kp-hub-avatar .kp-npc-asset{width:58px!important;height:58px!important;transform:translate(-3px,-3px)}
+
+/* Layer ordering audit: art must never disappear behind map scenery or labels. */
 html.kp-game .kp-hub-place{z-index:7!important}
 html.kp-game .kp-world-node .kp-node-icon{z-index:1}
 html.kp-game .kp-world-node .kp-landmark-art{position:relative;z-index:1;overflow:visible!important}
 html.kp-game .kp-world-node .kp-node-badge{z-index:3}
 html.kp-game .kp-nav-art,html.kp-game .tab b{overflow:visible!important}
 html.kp-game .kp-nav-art svg{width:30px!important;height:30px!important}
+
+/* Navigation and safe-area audit. */
 html.kp-game .bottom{bottom:0!important;padding-bottom:max(6px,env(safe-area-inset-bottom))!important}
 html.kp-game .toast,html.kp-game .kp-action-toast{bottom:calc(var(--kp-nav-h,92px) + 10px)!important}
 html.kp-game .sheet-body{padding-bottom:calc(20px + env(safe-area-inset-bottom))!important}
@@ -22,11 +34,24 @@ html.kp-game .close-btn{outline-offset:2px}
 html.kp-game .kp-pixel-dialog{bottom:calc(var(--kp-nav-h,92px) + 10px)!important}
 html.kp-game .kp-world-map{scroll-margin-top:8px}
 
+/* Text/spacing audit. */
+html.kp-game .kp-game-logo strong{letter-spacing:-.035em!important;line-height:1!important}
+html.kp-game .kp-game-resource b{line-height:1.08!important}
+html.kp-game .kp-hub-message,html.kp-game .kp-objective-copy span{overflow-wrap:anywhere}
+html.kp-game .kp-world-node small{hyphens:auto;-webkit-hyphens:auto}
+html.kp-game .sheet-head>*{min-width:0}
+html.kp-game .row>*,html.kp-game .grid2>*,html.kp-game .grid3>*{min-width:0}
+
 @media(max-width:480px){
   html.kp-game .content{padding-left:8px!important;padding-right:8px!important}
   html.kp-game #kpGameHud{margin-left:6px!important;margin-right:6px!important}
   html.kp-game #kpGameObjective{margin-left:8px!important;margin-right:8px!important}
+  html.kp-game .kp-game-brand{grid-template-columns:58px minmax(0,1fr) 40px!important;gap:7px!important}
+  html.kp-game .kp-game-portrait{width:56px!important;height:56px!important}
+  html.kp-game .kp-game-portrait svg{width:69px!important;height:69px!important;transform:translate(-7px,-7px)!important}
   html.kp-game .kp-hub-world{height:320px!important}
+  html.kp-game .kp-hub-couple{left:41%!important;top:48%!important}
+  html.kp-game .kp-couple-art{width:50px!important;height:67px!important}
   html.kp-game .kp-hub-dialog{min-height:76px!important;padding:9px 10px!important}
   html.kp-game .kp-hub-message{font-size:12.5px!important}
   html.kp-game .kp-world-map{height:700px!important}
@@ -41,7 +66,12 @@ html.kp-game .kp-world-map{scroll-margin-top:8px}
   html.kp-game .grid2{gap:8px!important}
 }
 @media(max-width:380px){
+  html.kp-game .kp-game-brand{grid-template-columns:52px minmax(0,1fr) 38px!important}
+  html.kp-game .kp-game-portrait{width:50px!important;height:50px!important}
+  html.kp-game .kp-game-portrait svg{width:63px!important;height:63px!important;transform:translate(-7px,-7px)!important}
   html.kp-game .kp-hub-world{height:300px!important}
+  html.kp-game .kp-hub-couple{left:40%!important;top:47%!important}
+  html.kp-game .kp-couple-art{width:46px!important;height:62px!important}
   html.kp-game .kp-hub-place .building .kp-asset-svg{width:54px!important;height:52px!important}
   html.kp-game .kp-hub-place small{font-size:8px!important}
   html.kp-game .kp-world-map{height:680px!important}
