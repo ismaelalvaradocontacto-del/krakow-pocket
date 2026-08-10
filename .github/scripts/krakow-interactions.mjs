@@ -4,6 +4,7 @@ const base = 'http://127.0.0.1:4173/';
 const engines = [['chromium', chromium], ['webkit', webkit]];
 let failed = false;
 
+const annotation = value => String(value ?? '').replace(/%/g,'%25').replace(/\r/g,'%0D').replace(/\n/g,'%0A');
 async function readState(page){
   try{return await page.evaluate(()=>JSON.parse(localStorage.getItem('krakowPocketCoop')||'{}'))}catch{return {}}
 }
@@ -56,12 +57,13 @@ for (const [name, engine] of engines) {
   });
   const checks = {};
   const debug = {};
+  let phase = 'boot';
 
   try {
     await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await page.waitForTimeout(1900);
 
-    /* Settings accessibility, safe area and visual player profiles. */
+    phase = 'settings';
     await page.evaluate(() => document.getElementById('openSettings')?.click());
     await page.waitForTimeout(150);
     checks.settingsOpen = await page.locator('#settingsSheet').evaluate(el => el.open === true);
@@ -72,7 +74,6 @@ for (const [name, engine] of engines) {
     await page.locator('#kpPlayerPicker [data-kp-player="Laura"]').click();
     checks.playerLauraPersists = await waitFor(async () => await page.evaluate(() => localStorage.getItem('krakowPlayer') === 'Laura'), 2000);
     checks.playerLauraActive = await waitFor(async () => await page.locator('.kp-profile-face[data-kp-profile="Laura"].active').count() === 1, 2500);
-
     await page.locator('#dailyTarget').fill('23');
     await page.locator('#dailyTarget').dispatchEvent('change');
     checks.targetPersists = await waitFor(async () => +(await readState(page)).config?.dailyTarget === 23, 2500);
@@ -81,7 +82,7 @@ for (const [name, engine] of engines) {
     await page.evaluate(() => document.getElementById('closeSettings')?.click());
     checks.settingsClosed = await page.locator('#settingsSheet').evaluate(el => el.open === false);
 
-    /* Map initializes and filters remain interactive. */
+    phase = 'map';
     await page.locator('.tab[data-panel="mapPanel"]').click();
     checks.mapRenders = await waitFor(async () => await page.locator('#map .leaflet-map-pane').count() === 1, 3500);
     checks.mapFiltersPresent = await page.locator('#mapFilters .chip[data-filter]').count() >= 5;
@@ -89,7 +90,7 @@ for (const [name, engine] of engines) {
     await freeChip.click();
     checks.mapFilterActivates = await freeChip.evaluate(el => el.classList.contains('active'));
 
-    /* Expense write and delete. */
+    phase = 'expense';
     await page.locator('.tab[data-panel="budget"]').click();
     await page.locator('#expenseAmount').fill('1,23');
     await page.locator('#expenseCategory').selectOption('coffee');
@@ -101,7 +102,7 @@ for (const [name, engine] of engines) {
     await page.waitForTimeout(300);
     checks.expenseDeleted = !(await page.locator('#expenseList').textContent()).includes('AUDIT-EXPENSE');
 
-    /* Memory write and delete. */
+    phase = 'memory';
     await page.locator('.tab[data-panel="diary"]').click();
     await page.locator('.segment button[data-diary="memories"]').click();
     await page.locator('#memoryTitle').fill('AUDIT-MEMORY');
@@ -114,7 +115,7 @@ for (const [name, engine] of engines) {
     await page.waitForTimeout(300);
     checks.memoryDeleted = !(await page.locator('#memoryList').textContent()).includes('AUDIT-MEMORY');
 
-    /* Mission: complete, celebrate, cloud sync, reload, undo and persist undo. */
+    phase = 'mission-complete';
     await page.locator('.tab[data-panel="quests"]').click();
     const missionPoi = await page.locator('.q-done[data-poi]').first().getAttribute('data-poi');
     debug.missionPoi = missionPoi;
@@ -124,6 +125,7 @@ for (const [name, engine] of engines) {
     if (await page.locator('#kpQuestWin.show').count()) await page.locator('#kpWinClose').click();
     checks.missionSyncsComplete = await waitFor(async () => remote.missionStatus?.[missionPoi]?.done === true || (remote.visited||[]).includes(missionPoi), 7000);
 
+    phase = 'mission-reload-undo';
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1200);
     checks.missionPersistsReload = await waitFor(() => missionInLocal(page, missionPoi), 5000);
@@ -132,12 +134,11 @@ for (const [name, engine] of engines) {
     checks.missionUndoLocal = await waitFor(async () => !(await missionInLocal(page, missionPoi)), 4000);
     checks.missionOverlayClosesOnUndo = await waitFor(async () => await page.locator('#kpQuestWin.show').count() === 0, 2000);
     checks.missionSyncsUndo = await waitFor(async () => remote.missionStatus?.[missionPoi]?.done === false && !(remote.visited||[]).includes(missionPoi), 7000);
-
     await page.reload({ waitUntil: 'domcontentloaded' });
     await page.waitForTimeout(1000);
     checks.missionUndoPersistsReload = await waitFor(async () => !(await missionInLocal(page, missionPoi)), 6000);
 
-    /* Marking a quest from its story uses the same mission state and is reversible. */
+    phase = 'quest-story';
     await openStories(page);
     const questStory = page.locator(`.story-open[data-poi="${missionPoi}"]`);
     await questStory.click();
@@ -154,7 +155,7 @@ for (const [name, engine] of engines) {
     checks.storyUndoQuest = await waitFor(async () => !(await missionInLocal(page, missionPoi)), 4000);
     checks.storyUndoLeavesNoOverlay = await waitFor(async () => await page.locator('#kpQuestWin.show').count() === 0, 2000);
 
-    /* A normal discovery can be marked, shared, undone and remain undone after reload. */
+    phase = 'nonquest-discovery';
     await openStories(page);
     const nonQuestId = 'podmuseum';
     const nonQuestStory = page.locator(`.story-open[data-poi="${nonQuestId}"]`);
@@ -181,7 +182,7 @@ for (const [name, engine] of engines) {
       checks.nonQuestUndoPersistsReload = true;
     }
 
-    /* Final health checks. */
+    phase = 'final-health';
     if (await page.locator('#storyDialog').evaluate(el => el.open === true).catch(() => false)) await page.evaluate(() => document.getElementById('storyClose')?.click());
     checks.storyCloses = await page.locator('#storyDialog').evaluate(el => el.open === false);
     checks.noHorizontalOverflow = await page.evaluate(() => document.documentElement.scrollWidth <= document.documentElement.clientWidth);
@@ -190,12 +191,17 @@ for (const [name, engine] of engines) {
     checks.stateBridgeLoaded = await page.evaluate(() => window.KP_STATE_BRIDGE?.version === '1.1' && window.KP_STATE_BRIDGE?.reversibleDiscoveries === true);
     checks.runtimeHealthy = await page.evaluate(() => !!window.KP_RUNTIME_AUDIT && window.KP_RUNTIME_AUDIT.missing.length === 0 && window.KP_RUNTIME_AUDIT.stateOk === true && window.KP_RUNTIME_AUDIT.storageOk === true);
   } catch (err) {
-    errors.push(err.stack || String(err));
+    errors.push(`phase=${phase}: ${err.stack || String(err)}`);
   }
 
+  const failedChecks = Object.entries(checks).filter(([,ok]) => !ok).map(([key]) => key);
+  const summary = `phase=${phase}; failedChecks=${failedChecks.join(',') || 'none'}; errors=${errors.join(' | ') || 'none'}; debug=${JSON.stringify(debug)}`;
   console.log(`\n=== ${name.toUpperCase()} INTERACTION AUDIT ===`);
-  console.log(JSON.stringify({checks,debug,errors}, null, 2));
-  if (!Object.values(checks).every(Boolean) || errors.length) failed = true;
+  console.log(JSON.stringify({phase,checks,debug,failedChecks,errors}, null, 2));
+  if (failedChecks.length || errors.length) {
+    console.error(`::error title=Krakow interaction audit ${name}::${annotation(summary)}`);
+    failed = true;
+  }
   await browser.close();
 }
 
