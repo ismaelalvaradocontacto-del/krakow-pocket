@@ -1,0 +1,94 @@
+/* Kraków Pocket · iPhone layout hotfix v8.1
+   Prevents page-level zoom/panning artifacts and keeps quest labels readable. */
+
+html.kp-game,html.kp-game body{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden!important;
+  overscroll-behavior-x:none;
+}
+html.kp-game .app,
+html.kp-game .content,
+html.kp-game .panel{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow-x:clip!important;
+}
+@supports not (overflow:clip){
+  html.kp-game .app,
+  html.kp-game .content,
+  html.kp-game .panel{overflow-x:hidden!important}
+}
+
+/* Flex/grid children must be allowed to shrink instead of pushing the viewport. */
+html.kp-game .row,
+html.kp-game .row>*,
+html.kp-game .grid2>*,
+html.kp-game .grid3>*,
+html.kp-game .quick-grid>*{
+  min-width:0!important;
+  max-width:100%;
+}
+
+/* Route header: keep the daily-budget pill inside the card at every iPhone width. */
+html.kp-game #kpRouteCard .row.start{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:8px!important;
+  align-items:start!important;
+}
+html.kp-game #kpRouteCard .row.start>div{min-width:0!important}
+html.kp-game #kpRouteCard h2{
+  max-width:100%!important;
+  overflow-wrap:normal!important;
+  word-break:normal!important;
+}
+html.kp-game #kpRouteCard .pill{
+  justify-self:end!important;
+  max-width:100%!important;
+  padding:6px 8px!important;
+  font-size:10px!important;
+  line-height:1.15!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
+
+/* Quest-board labels: never hyphenate a place name in the middle of a word. */
+html.kp-game .kp-world-node{width:108px!important}
+html.kp-game .kp-world-node small{
+  width:106px!important;
+  max-width:106px!important;
+  min-height:31px!important;
+  height:auto!important;
+  display:-webkit-box!important;
+  -webkit-box-orient:vertical!important;
+  -webkit-line-clamp:3!important;
+  overflow:hidden!important;
+  white-space:normal!important;
+  word-break:normal!important;
+  overflow-wrap:normal!important;
+  hyphens:none!important;
+  -webkit-hyphens:none!important;
+  text-wrap:balance;
+  line-height:1.1!important;
+}
+
+/* Let Leaflet own its gestures; locking page zoom must not affect map zoom/pan. */
+html.kp-game #map,
+html.kp-game #map.leaflet-container{
+  touch-action:pan-x pan-y pinch-zoom!important;
+}
+
+@media(max-width:380px){
+  html.kp-game .kp-world-node{width:102px!important}
+  html.kp-game .kp-world-node small{width:100px!important;max-width:100px!important;font-size:9.2px!important}
+  html.kp-game #kpRouteCard .pill{font-size:9.5px!important;padding-inline:7px!important}
+}
+@media(max-width:340px){
+  html.kp-game .kp-world-node{width:96px!important}
+  html.kp-game .kp-world-node small{width:94px!important;max-width:94px!important;font-size:8.9px!important}
+  html.kp-game #kpRouteCard .row.start{grid-template-columns:minmax(0,1fr)!important}
+  html.kp-game #kpRouteCard .pill{justify-self:start!important;max-width:100%!important}
+}
