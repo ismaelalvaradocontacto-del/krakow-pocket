@@ -39,6 +39,17 @@
     document.head.appendChild(landmarks);
   }
 
+  // Keep the enhanced album isolated from the mission engine. It reads the same
+  // shared state but renders/export its own self-contained interactive document.
+  if (!window.__kpAlbumExperienceLoader && !document.querySelector('script[data-kp-album-experience]')) {
+    window.__kpAlbumExperienceLoader = true;
+    const album = document.createElement("script");
+    album.src = "./album-experience.js?v=20260811a";
+    album.async = false;
+    album.dataset.kpAlbumExperience = "1";
+    document.head.appendChild(album);
+  }
+
   try { sessionStorage.setItem("kpMissionMutation", "1"); } catch {}
 
   const nativeTimeout = window.setTimeout.bind(window);
@@ -86,13 +97,14 @@
   }, true);
 
   window.KP_STABILITY = {
-    version: "1.5",
+    version: "1.6",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
     pageScaleLocked: true,
     mobileLayoutHotfix: true,
     landmarkArtLayer: true,
-    inlineLandmarks: true
+    inlineLandmarks: true,
+    interactiveAlbum: true
   };
 })();
