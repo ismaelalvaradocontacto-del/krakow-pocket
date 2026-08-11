@@ -1,0 +1,58 @@
+name: Krakow Pocket iPhone offline album audit
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  offline-album:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Static offline compatibility checks
+        run: |
+          set -euxo pipefail
+          APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
+          node --check "$APP_DIR/album-ios-compat.js"
+          node --check .github/scripts/krakow-album-ios-offline.mjs
+          grep -q 'const VERSION = "1.0"' "$APP_DIR/album-ios-compat.js"
+          grep -q 'noJsNavigation: true' "$APP_DIR/album-ios-compat.js"
+          grep -q 'quickLookCompatible: true' "$APP_DIR/album-ios-compat.js"
+          grep -q 'albumOfflineCompat: true' "$APP_DIR/stability.js"
+          grep -q 'album-ios-compat.js' "$APP_DIR/sw.js"
+          grep -q 'krakow-pocket-v39-album-ios-compat-20260811a' "$APP_DIR/sw.js"
+      - name: Install browser tooling
+        run: |
+          npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
+          npx playwright install --with-deps chromium webkit >/tmp/playwright-install.log 2>&1
+      - name: Start local app
+        run: |
+          APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory "$APP_DIR" >/tmp/kp-offline-album-http.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:4173/album-ios-compat.js | grep -q 'quickLookCompatible: true'
+      - name: Verify no-JS album controls locally
+        run: node .github/scripts/krakow-album-ios-offline.mjs
+      - name: Wait for Cloudflare build
+        run: |
+          for i in {1..45}; do
+            COMPAT=0
+            CACHE=0
+            curl -fsS https://krakow-pocket.pages.dev/album-ios-compat.js | grep -q 'quickLookCompatible: true' && COMPAT=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v39-album-ios-compat-20260811a' && CACHE=1 || true
+            if [ "$COMPAT" = "1" ] && [ "$CACHE" = "1" ]; then
+              echo "Cloudflare is serving the iPhone-compatible offline album"
+              exit 0
+            fi
+            sleep 4
+          done
+          exit 1
+      - name: Verify no-JS album controls on Cloudflare
+        env:
+          KP_AUDIT_URL: https://krakow-pocket.pages.dev/
+        run: node .github/scripts/krakow-album-ios-offline.mjs
