@@ -44,6 +44,7 @@
     state.missionStatus = mergeTimed(state.missionStatus || {}, local.missionStatus || {});
     state.discoveryStatus = mergeTimed(state.discoveryStatus || {}, local.discoveryStatus || {});
     state.profilePhotos = mergeTimed(state.profilePhotos || {}, local.profilePhotos || {});
+    state.missionEvidence = mergeTimed(state.missionEvidence || {}, local.missionEvidence || {});
     return applyStatus(state);
   }
 
@@ -54,6 +55,16 @@
     const nextLocal = { ...local, profilePhotos: nextPhotos, updatedAt: merged?.updatedAt || local.updatedAt || now() };
     nativeSetItem.call(localStorage, STORAGE, JSON.stringify(nextLocal));
     try { window.dispatchEvent(new CustomEvent("kp:profile-photo-sync", { detail: { profilePhotos: JSON.parse(JSON.stringify(nextPhotos)) } })); } catch {}
+    return true;
+  }
+
+  function adoptMergedMissionEvidence(merged) {
+    const local = read();
+    const nextEvidence = merged?.missionEvidence || {};
+    if (JSON.stringify(local.missionEvidence || {}) === JSON.stringify(nextEvidence)) return false;
+    const nextLocal = { ...local, missionEvidence: nextEvidence, updatedAt: merged?.updatedAt || local.updatedAt || now() };
+    nativeSetItem.call(localStorage, STORAGE, JSON.stringify(nextLocal));
+    try { window.dispatchEvent(new CustomEvent("kp:mission-evidence-sync", { detail: { missionEvidence: JSON.parse(JSON.stringify(nextEvidence)) } })); } catch {}
     return true;
   }
 
@@ -92,10 +103,11 @@
     catch { return response; }
     if (!remote || typeof remote !== "object") return response;
 
-    const before = JSON.stringify({ v: remote.visited || [], m: remote.missionStatus || {}, d: remote.discoveryStatus || {}, p: remote.profilePhotos || {} });
+    const before = JSON.stringify({ v: remote.visited || [], m: remote.missionStatus || {}, d: remote.discoveryStatus || {}, p: remote.profilePhotos || {}, e: remote.missionEvidence || {} });
     const merged = mergeLocalStatus(remote);
     adoptMergedProfilePhotos(merged);
-    const after = JSON.stringify({ v: merged.visited || [], m: merged.missionStatus || {}, d: merged.discoveryStatus || {}, p: merged.profilePhotos || {} });
+    adoptMergedMissionEvidence(merged);
+    const after = JSON.stringify({ v: merged.visited || [], m: merged.missionStatus || {}, d: merged.discoveryStatus || {}, p: merged.profilePhotos || {}, e: merged.missionEvidence || {} });
 
     if (before !== after && next.body) {
       try {
@@ -116,6 +128,8 @@
     reversibleDiscoveries: true,
     sharedProfilePhotos: true,
     immediateRemoteProfileAdoption: true,
+    sharedMissionEvidence: true,
+    immediateRemoteMissionEvidenceAdoption: true,
     simplifiedProfileRuntime: true,
     normalize: state => mergeLocalStatus(state)
   };
