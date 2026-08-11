@@ -10,7 +10,7 @@ let lastGps=null;
 let applyTimer=0;
 
 const norm=n=>((Number(n)%360)+360)%360;
-const finite=n=>Number.isFinite(Number(n));
+const finite=n=>n!==null&&n!==undefined&&n!==""&&Number.isFinite(Number(n));
 const rad=d=>d*Math.PI/180;
 const deg=r=>r*180/Math.PI;
 
@@ -82,6 +82,7 @@ function applyMarker(){
     return true;
   }
   dot.classList.remove("kp-has-heading");
+  dot.style.removeProperty("--kp-heading");
   dot.removeAttribute("data-heading-source");
   return false;
 }
