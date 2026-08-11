@@ -50,7 +50,7 @@ pass(Object.keys(D?.expenseCategories || {}).length >= 5, 'Expense categories mi
 
 const requiredFiles = [
   'index.html','manifest.webmanifest','sw.js','data.js','app.js','enhancements.js','runtime.js','stability.js',
-  'compat.js','state-bridge.js','network-status.js','player-stability.js','world-art-stability.js','interaction-fix.js','mission-fix.js','celebration-guard.js','celebration-stability.js','portrait-stability.js','game.js','visuals.js','styles.css','game.css','storybook.css',
+  'compat.js','state-bridge.js','network-status.js','player-stability.js','world-art-stability.js','interaction-fix.js','mission-fix.js','mission-proof.js','mission-proof-guard.js','auschwitz-extra.js','celebration-guard.js','celebration-stability.js','portrait-stability.js','game.js','visuals.js','styles.css','game.css','storybook.css',
   'compat.css','profiles.css','assets/game-art.svg','assets/characters.svg','assets/village.svg','assets/world-map.svg',
   'icon-192.svg','icon-512.svg'
 ];
@@ -66,21 +66,30 @@ const compat = fs.readFileSync(path.join(root, 'compat.js'), 'utf8');
 for (const script of ['state-bridge.js','mission-fix.js','celebration-guard.js']) {
   pass(compat.includes(script), `compat.js does not load ${script}`);
 }
+pass(compat.includes('nativeDefaultAvatar:true'), 'compat.js native default avatar marker missing');
+pass(compat.includes('noGlobalMutationObserver:true'), 'compat.js still depends on global profile mutation observers');
 const bridge = fs.readFileSync(path.join(root, 'state-bridge.js'), 'utf8');
 pass(bridge.includes('network-status.js'), 'state-bridge.js does not load network-status.js before UI sync handlers');
-pass(bridge.includes('player-stability.js'), 'state-bridge.js does not load player-stability.js before UI handlers');
 pass(bridge.includes('world-art-stability.js'), 'state-bridge.js does not load world-art-stability.js before navigation');
 pass(bridge.includes('interaction-fix.js'), 'state-bridge.js does not load interaction-fix.js before UI handlers');
+pass(bridge.includes('mission-proof.js'), 'state-bridge.js does not load mission-proof.js');
+pass(bridge.includes('mission-proof-guard.js'), 'state-bridge.js does not load mission-proof-guard.js');
+pass(bridge.includes('auschwitz-extra.js'), 'state-bridge.js does not load auschwitz-extra.js');
+pass(!bridge.includes('player-stability.js?v='), 'Retired player-stability loader returned to state-bridge.js');
 const network = fs.readFileSync(path.join(root, 'network-status.js'), 'utf8');
 pass(network.includes('offlineUiGuard: true'), 'network-status.js offline UI guard marker missing');
-const player = fs.readFileSync(path.join(root, 'player-stability.js'), 'utf8');
-pass(player.includes('deterministicSelection: true'), 'player-stability.js deterministic selection marker missing');
 const worldArt = fs.readFileSync(path.join(root, 'world-art-stability.js'), 'utf8');
 pass(worldArt.includes('navigationRepaint:true'), 'world-art-stability.js navigation repaint marker missing');
 const interaction = fs.readFileSync(path.join(root, 'interaction-fix.js'), 'utf8');
 pass(interaction.includes('celebrationRecovery: true'), 'interaction-fix.js celebration recovery marker missing');
 pass(interaction.includes('reversibleNonQuestDiscoveries: true'), 'interaction-fix.js reversible discovery marker missing');
 pass(interaction.includes('lateSyncNudges: false'), 'interaction-fix.js still allows delayed sync nudges');
+const missionProof = fs.readFileSync(path.join(root, 'mission-proof.js'), 'utf8');
+pass(missionProof.includes('requiresPhoto:true'), 'mission-proof.js photo requirement marker missing');
+pass(missionProof.includes('requiresProximity:true'), 'mission-proof.js proximity requirement marker missing');
+const extra = fs.readFileSync(path.join(root, 'auschwitz-extra.js'), 'utf8');
+pass(extra.includes('countsTowardCore:false'), 'Auschwitz extra must not alter 12 core missions');
+pass(extra.includes('respectMode:true'), 'Auschwitz extra respect mode marker missing');
 const celebrationGuard = fs.readFileSync(path.join(root, 'celebration-guard.js'), 'utf8');
 pass(celebrationGuard.includes('celebration-stability.js'), 'celebration-guard.js does not load celebration-stability.js');
 pass(celebrationGuard.includes('portrait-stability.js'), 'celebration-guard.js does not load portrait-stability.js');
@@ -93,9 +102,10 @@ pass(Array.isArray(manifest.icons) && manifest.icons.length >= 2, 'Manifest icon
 pass(manifest.display === 'standalone' || manifest.display === 'fullscreen', 'Manifest is not installable standalone/fullscreen');
 
 const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
-for (const file of ['index.html','compat.js','state-bridge.js','network-status.js','player-stability.js','world-art-stability.js','interaction-fix.js','mission-fix.js','celebration-guard.js','celebration-stability.js','portrait-stability.js','app.js','enhancements.js','manifest.webmanifest']) {
+for (const file of ['index.html','compat.js','state-bridge.js','network-status.js','world-art-stability.js','interaction-fix.js','mission-fix.js','mission-proof.js','mission-proof-guard.js','auschwitz-extra.js','celebration-guard.js','celebration-stability.js','app.js','enhancements.js','manifest.webmanifest']) {
   pass(sw.includes(file), `Service worker core does not include ${file}`);
 }
+pass(sw.includes('krakow-pocket-v37-auschwitz-extra-20260811a'), 'Service worker cache marker is not current');
 
 console.log(JSON.stringify({
   checks: failures.length ? 'FAILED' : 'PASS',
