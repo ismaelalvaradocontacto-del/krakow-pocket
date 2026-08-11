@@ -22,13 +22,16 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(remote) });
   });
 
-  const page = await context.newPage();
+  let page = await context.newPage();
   const errors = [];
-  page.on('pageerror', e => errors.push(`page:${e.message || ''}`));
-  page.on('console', m => { if (m.type() === 'error') errors.push(`console:${m.text()}`); });
+  const bindErrors = p => {
+    p.on('pageerror', e => errors.push(`page:${e.message || ''}`));
+    p.on('console', m => { if (m.type() === 'error') errors.push(`console:${m.text()}`); });
+  };
+  bindErrors(page);
 
   await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForFunction(() => window.KP_COMPAT_PROFILE?.version === '2.0' && window.KP_PROFILE_PHOTOS?.version === '2.0', { timeout: 7000 });
+  await page.waitForFunction(() => window.KP_COMPAT_PROFILE?.version === '2.1' && window.KP_PROFILE_PHOTOS?.version === '2.0', { timeout: 7000 });
   await openSettings(page);
   await page.waitForSelector('#kpProfilePhotoManager', { timeout: 5000 });
 
@@ -41,6 +44,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     eventDriven: window.KP_PROFILE_PHOTOS?.eventDriven,
     noPolling: window.KP_PROFILE_PHOTOS?.noPollingLoop,
     nativeDefault: window.KP_COMPAT_PROFILE?.nativeDefaultAvatar,
+    protectedFallback: window.KP_COMPAT_PROFILE?.protectedFromLegacyVisuals,
     manager: !!document.querySelector('#kpProfilePhotoManager'),
     choose: !!document.querySelector('#kpProfilePhotoChoose'),
     reset: !!document.querySelector('#kpProfilePhotoReset')
@@ -59,7 +63,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
       optimized: (state.profilePhotos?.Ismael?.dataUrl || '').length < 30000,
       header: !!header && header.getBoundingClientRect().width > 20,
       picker: !!picker && picker.getBoundingClientRect().width > 20,
-      fallbackUnderPhoto: !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > svg.kp-profile-default'),
+      fallbackUnderPhoto: !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > svg.kp-profile-default[data-kp-inline]'),
       remoteShared: false
     };
   });
@@ -67,8 +71,13 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   await page.waitForTimeout(6200);
   afterUpload.remoteShared = !!remote.profilePhotos?.Ismael?.dataUrl;
 
-  await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => window.KP_PROFILE_PHOTOS?.version === '2.0', { timeout: 7000 });
+  // Use a fresh page in the same browser context instead of page.reload().
+  // This preserves localStorage while avoiding a known WebKit headless reload crash.
+  await page.close();
+  page = await context.newPage();
+  bindErrors(page);
+  await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
+  await page.waitForFunction(() => window.KP_PROFILE_PHOTOS?.version === '2.0' && window.KP_COMPAT_PROFILE?.version === '2.1', { timeout: 7000 });
   await page.waitForFunction(() => !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'), { timeout: 5000 });
   const afterReload = await page.evaluate(() => ({
     stored: !!JSON.parse(localStorage.getItem('krakowPocketCoop') || '{}').profilePhotos?.Ismael?.dataUrl,
@@ -92,7 +101,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   await page.waitForFunction(() => !document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'), { timeout: 3000 });
   const removed = await page.evaluate(() => {
     const entry = JSON.parse(localStorage.getItem('krakowPocketCoop') || '{}').profilePhotos?.Ismael;
-    const fallback = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > svg.kp-profile-default');
+    const fallback = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > svg.kp-profile-default[data-kp-inline]');
     const box = fallback?.getBoundingClientRect();
     return {
       tombstone: !!entry && entry.dataUrl === '' && !!entry.updatedAt,
@@ -101,7 +110,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     };
   });
 
-  const ok = initial.module === '2.0' && initial.bridge === '1.4' && initial.compat === '2.0' && initial.shared && initial.immediate && initial.eventDriven && initial.noPolling && initial.nativeDefault && initial.manager && initial.choose && initial.reset &&
+  const ok = initial.module === '2.0' && initial.bridge === '1.4' && initial.compat === '2.1' && initial.shared && initial.immediate && initial.eventDriven && initial.noPolling && initial.nativeDefault && initial.protectedFallback && initial.manager && initial.choose && initial.reset &&
     afterUpload.stored && afterUpload.optimized && afterUpload.header && afterUpload.picker && afterUpload.fallbackUnderPhoto && afterUpload.remoteShared &&
     afterReload.stored && afterReload.header && remoteMerge.lauraStored && remoteMerge.lauraHeader && removed.tombstone && removed.headerGone && removed.fallbackVisible && errors.length === 0;
 
