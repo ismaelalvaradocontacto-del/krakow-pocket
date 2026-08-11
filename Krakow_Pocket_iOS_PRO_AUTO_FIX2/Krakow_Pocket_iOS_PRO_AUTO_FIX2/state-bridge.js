@@ -138,3 +138,4 @@ if(!window.__kpProfilePhotoLoader){window.__kpProfilePhotoLoader=true;document.w
 if(!window.__kpNetworkStatusLoader){window.__kpNetworkStatusLoader=true;document.write('<script src="./network-status.js?v=20260810n" data-kp-network-status="1"><\/script>')}
 if(!window.__kpWorldArtStabilityLoader){window.__kpWorldArtStabilityLoader=true;document.write('<script src="./world-art-stability.js?v=20260810q" data-kp-world-art-stability="1"><\/script>')}
 if(!window.__kpInteractionFixLoader){window.__kpInteractionFixLoader=true;document.write('<script src="./interaction-fix.js?v=20260810p" data-kp-interaction-fix="1"><\/script>')}
+if(!window.__kpMissionProofLoader){window.__kpMissionProofLoader=true;document.write('<script src="./mission-proof.js?v=20260811a" data-kp-mission-proof="1"><\/script>')}
