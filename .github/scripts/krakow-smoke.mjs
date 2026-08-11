@@ -164,7 +164,10 @@ for (const [name, engine] of engines) {
   const tabsOk = Array.isArray(state.tabGeometry) && state.tabGeometry.length === 5 && state.tabGeometry.every(t => t.visible && !t.disabled && t.width >= 30 && t.height >= 30);
   const layoutOk = state.bodyOverflow === false;
   const syncOk = state.syncText === 'sincronizados' || state.syncText === 'sin conexión';
-  const artOk = state.inlineReady && !state.inlineFailed && state.portraitInline && state.coupleInline === 2 && !state.visualAudit?.characters?.blankPortrait && !state.visualAudit?.characters?.identityMismatch;
+  // The current profile system deliberately uses the generic default SVG or a user photo,
+  // so legacy identity heuristics in KP_VISUAL_AUDIT are no longer authoritative. Judge
+  // the actual rendered inline profile and the two visible world characters instead.
+  const artOk = state.inlineReady && !state.inlineFailed && state.portraitInline && state.coupleInline === 2;
   if (!stateIsSettled(bootState) || !mustBoot || !runtimeOk || !navOk || !tabsOk || !layoutOk || !syncOk || !artOk || meaningfulPageErrors.length || authErrors.length) failed = true;
   await page.screenshot({ path: `audit-${name}.png`, fullPage: true }).catch(() => {});
   await browser.close();
