@@ -16,7 +16,13 @@ function ensureProfileStyles(){
   if(!document.querySelector('link[data-kp-profiles="1"]')){const l=document.createElement("link");l.rel="stylesheet";l.href="./profiles.css?v=20260811e";l.dataset.kpProfiles="1";document.head.appendChild(l)}
   if(document.querySelector('style[data-kp-native-profile="1"]'))return;
   const s=document.createElement("style");s.dataset.kpNativeProfile="1";s.textContent=`
-    .kp-profile-face,.kp-picker-face{position:relative!important;overflow:hidden!important}
+    .kp-profile-face,.kp-picker-face{
+      position:relative!important;overflow:hidden!important;
+      background:
+        radial-gradient(circle at 50% 34%,#f4f4f4 0 17%,transparent 18%),
+        radial-gradient(ellipse at 50% 108%,#f4f4f4 0 39%,transparent 40%),
+        #aaa!important;
+    }
     .kp-profile-default{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;display:block!important;border-radius:inherit!important;pointer-events:none!important;z-index:2!important}
     .kp-profile-photo{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;object-position:center!important;border-radius:inherit!important;display:block!important;pointer-events:none!important;z-index:6!important}
   `;document.head.appendChild(s)
@@ -48,7 +54,7 @@ function patchProfileHud(who){
 }
 
 function notifyProfileHosts(){try{window.dispatchEvent(new CustomEvent("kp:profile-hosts-ready",{detail:{player:player()}}))}catch{}}
-function patchProfiles(){ensureProfileStyles();const who=player(),changed=patchProfileHud(who)|patchPlayerPicker(who);if(changed)notifyProfileHosts();window.KP_COMPAT_PROFILE={version:"2.2",nativeDefaultAvatar:true,noGlobalMutationObserver:true,protectedFromLegacyVisuals:true,persistentSettingsButton:true,selected:who};return !!changed}
+function patchProfiles(){ensureProfileStyles();const who=player(),changed=patchProfileHud(who)|patchPlayerPicker(who);if(changed)notifyProfileHosts();window.KP_COMPAT_PROFILE={version:"2.2",nativeDefaultAvatar:true,cssFallback:true,noGlobalMutationObserver:true,protectedFromLegacyVisuals:true,persistentSettingsButton:true,selected:who};return !!changed}
 
 function patchWorldCharacters(){
   if(!ready)return;
