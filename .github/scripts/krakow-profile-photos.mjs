@@ -44,6 +44,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     eventDriven: window.KP_PROFILE_PHOTOS?.eventDriven,
     noPolling: window.KP_PROFILE_PHOTOS?.noPollingLoop,
     nativeDefault: window.KP_COMPAT_PROFILE?.nativeDefaultAvatar,
+    cssFallback: window.KP_COMPAT_PROFILE?.cssFallback,
     protectedFallback: window.KP_COMPAT_PROFILE?.protectedFromLegacyVisuals,
     persistentSettings: window.KP_COMPAT_PROFILE?.persistentSettingsButton,
     manager: !!document.querySelector('#kpProfilePhotoManager'),
@@ -99,22 +100,27 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   await page.locator('#kpProfilePhotoReset').click();
   await page.waitForFunction(() => {
     const host = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"]');
-    const fallback = host?.querySelector(':scope > svg.kp-profile-default[data-kp-inline]');
-    const box = fallback?.getBoundingClientRect();
-    return !host?.querySelector(':scope > .kp-profile-photo') && !!fallback && box.width > 20 && box.height > 20;
+    if (!host || host.querySelector(':scope > .kp-profile-photo')) return false;
+    const box = host.getBoundingClientRect();
+    const css = getComputedStyle(host);
+    return box.width > 20 && box.height > 20 && css.backgroundImage !== 'none';
   }, { timeout: 3500 });
   const removed = await page.evaluate(() => {
     const entry = JSON.parse(localStorage.getItem('krakowPocketCoop') || '{}').profilePhotos?.Ismael;
-    const fallback = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > svg.kp-profile-default[data-kp-inline]');
-    const box = fallback?.getBoundingClientRect();
+    const host = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"]');
+    const fallback = host?.querySelector(':scope > svg.kp-profile-default[data-kp-inline]');
+    const hostBox = host?.getBoundingClientRect();
+    const css = host ? getComputedStyle(host) : null;
     return {
       tombstone: !!entry && entry.dataUrl === '' && !!entry.updatedAt,
-      headerGone: !document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'),
-      fallbackVisible: !!fallback && box.width > 20 && box.height > 20
+      headerGone: !host?.querySelector(':scope > .kp-profile-photo'),
+      svgFallbackVisible: !!fallback && fallback.getBoundingClientRect().width > 20,
+      cssFallbackVisible: !!host && hostBox.width > 20 && hostBox.height > 20 && css.backgroundImage !== 'none',
+      fallbackVisible: !!host && hostBox.width > 20 && hostBox.height > 20 && css.backgroundImage !== 'none'
     };
   });
 
-  const ok = initial.module === '2.0' && initial.bridge === '1.4' && initial.compat === '2.2' && initial.shared && initial.immediate && initial.eventDriven && initial.noPolling && initial.nativeDefault && initial.protectedFallback && initial.persistentSettings && initial.manager && initial.choose && initial.reset &&
+  const ok = initial.module === '2.0' && initial.bridge === '1.4' && initial.compat === '2.2' && initial.shared && initial.immediate && initial.eventDriven && initial.noPolling && initial.nativeDefault && initial.cssFallback && initial.protectedFallback && initial.persistentSettings && initial.manager && initial.choose && initial.reset &&
     afterUpload.stored && afterUpload.optimized && afterUpload.header && afterUpload.picker && afterUpload.fallbackUnderPhoto && afterUpload.remoteShared &&
     afterReload.stored && afterReload.header && remoteMerge.lauraStored && remoteMerge.lauraHeader && removed.tombstone && removed.headerGone && removed.fallbackVisible && errors.length === 0;
 
