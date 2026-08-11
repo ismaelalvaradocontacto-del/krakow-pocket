@@ -50,6 +50,17 @@
     document.head.appendChild(album);
   }
 
+  // iOS Files/Quick Look can render downloaded HTML while suppressing page JavaScript.
+  // This layer makes the exported controls usable without JS and keeps PDF guidance visible.
+  if (!window.__kpAlbumIosCompatLoader && !document.querySelector('script[data-kp-album-ios-compat]')) {
+    window.__kpAlbumIosCompatLoader = true;
+    const albumCompat = document.createElement("script");
+    albumCompat.src = "./album-ios-compat.js?v=20260811a";
+    albumCompat.async = false;
+    albumCompat.dataset.kpAlbumIosCompat = "1";
+    document.head.appendChild(albumCompat);
+  }
+
   try { sessionStorage.setItem("kpMissionMutation", "1"); } catch {}
 
   const nativeTimeout = window.setTimeout.bind(window);
@@ -97,7 +108,7 @@
   }, true);
 
   window.KP_STABILITY = {
-    version: "1.6",
+    version: "1.7",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
@@ -105,6 +116,7 @@
     mobileLayoutHotfix: true,
     landmarkArtLayer: true,
     inlineLandmarks: true,
-    interactiveAlbum: true
+    interactiveAlbum: true,
+    albumOfflineCompat: true
   };
 })();
