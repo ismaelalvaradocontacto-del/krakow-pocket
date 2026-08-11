@@ -20,6 +20,7 @@ jobs:
           node --check "$APP_DIR/profile-photo.js"
           node --check "$APP_DIR/default-profile.js"
           node --check "$APP_DIR/state-bridge.js"
+          node --check "$APP_DIR/compat.js"
           node --check .github/scripts/krakow-profile-photos.mjs
           node --check .github/scripts/krakow-default-profile.mjs
           grep -q 'sharedViaAdventureState: true' "$APP_DIR/profile-photo.js"
@@ -30,10 +31,12 @@ jobs:
           grep -q 'inlineSvg: true' "$APP_DIR/default-profile.js"
           grep -q 'noExternalImageDependency: true' "$APP_DIR/default-profile.js"
           grep -q 'lightweightSettingsRepaint: true' "$APP_DIR/default-profile.js"
+          grep -q 'small.textContent!==text' "$APP_DIR/compat.js"
+          grep -q 'target?.closest?.("#kpProfilePhotoManager,#kpProfilePhotoPreview")' "$APP_DIR/compat.js"
           grep -q 'sharedProfilePhotos: true' "$APP_DIR/state-bridge.js"
           grep -q 'profile-photo.js?v=20260811c' "$APP_DIR/state-bridge.js"
           grep -q 'default-profile.js?v=20260811d' "$APP_DIR/state-bridge.js"
-          grep -q 'krakow-pocket-v29-profile-settings-20260811a' "$APP_DIR/sw.js"
+          grep -q 'krakow-pocket-v30-safari-settings-final-20260811a' "$APP_DIR/sw.js"
           if grep -q 'new MutationObserver' "$APP_DIR/default-profile.js"; then
             echo "default-profile.js must not instantiate MutationObserver"
             exit 1
@@ -60,13 +63,14 @@ jobs:
       - name: Wait for Cloudflare profile build
         run: |
           for i in {1..45}; do
-            PHOTO=0; DEFAULT=0; BRIDGE=0; CACHE=0
+            PHOTO=0; DEFAULT=0; BRIDGE=0; CACHE=0; COMPAT=0
             curl -fsS https://krakow-pocket.pages.dev/profile-photo.js | grep -q 'lightweightSettings: true' && PHOTO=1 || true
             curl -fsS https://krakow-pocket.pages.dev/default-profile.js | grep -q 'lightweightSettingsRepaint: true' && DEFAULT=1 || true
             curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'profile-photo.js?v=20260811c' && BRIDGE=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v29-profile-settings-20260811a' && CACHE=1 || true
-            if [ "$PHOTO" = "1" ] && [ "$DEFAULT" = "1" ] && [ "$BRIDGE" = "1" ] && [ "$CACHE" = "1" ]; then
-              echo "Cloudflare lightweight profile settings build is live"
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v30-safari-settings-final-20260811a' && CACHE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/compat.js | grep -q 'small.textContent!==text' && COMPAT=1 || true
+            if [ "$PHOTO" = "1" ] && [ "$DEFAULT" = "1" ] && [ "$BRIDGE" = "1" ] && [ "$CACHE" = "1" ] && [ "$COMPAT" = "1" ]; then
+              echo "Cloudflare final Safari settings build is live"
               exit 0
             fi
             sleep 4
