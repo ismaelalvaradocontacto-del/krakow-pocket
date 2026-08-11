@@ -24,17 +24,24 @@ jobs:
           node --check "$APP_DIR/player-stability.js"
           node --check "$APP_DIR/portrait-stability.js"
           node --check "$APP_DIR/state-bridge.js"
+          node --check "$APP_DIR/auto-location.js"
           node --check .github/scripts/krakow-profile-photos.mjs
           node --check .github/scripts/krakow-default-profile.mjs
+          node --check .github/scripts/krakow-auto-location.mjs
           grep -q 'nativeDefaultAvatar:true' "$APP_DIR/compat.js"
           grep -q 'cssFallback:true' "$APP_DIR/compat.js"
           grep -q 'persistentSettingsButton:true' "$APP_DIR/compat.js"
           grep -q 'noGlobalMutationObserver:true' "$APP_DIR/compat.js"
+          grep -q 'auto-location.js?v=20260811a' "$APP_DIR/compat.js"
+          grep -q 'autoStart:true' "$APP_DIR/auto-location.js"
+          grep -q 'resumeRefresh:true' "$APP_DIR/auto-location.js"
+          grep -q 'deviceOnly:true' "$APP_DIR/auto-location.js"
           grep -q 'eventDriven:true' "$APP_DIR/profile-photo.js"
           grep -q 'noPollingLoop:true' "$APP_DIR/profile-photo.js"
           grep -q 'version: "1.4"' "$APP_DIR/state-bridge.js"
           grep -q 'profile-photo.js?v=20260811f' "$APP_DIR/state-bridge.js"
-          grep -q 'krakow-pocket-v31-native-profile-safari-20260811a' "$APP_DIR/sw.js"
+          grep -q 'krakow-pocket-v32-auto-location-20260811a' "$APP_DIR/sw.js"
+          grep -q './auto-location.js' "$APP_DIR/sw.js"
           if grep -q 'new MutationObserver' "$APP_DIR/compat.js" "$APP_DIR/profile-photo.js" "$APP_DIR/default-profile.js" "$APP_DIR/player-stability.js" "$APP_DIR/portrait-stability.js"; then
             echo "Profile runtime must not instantiate MutationObserver"
             exit 1
@@ -56,6 +63,7 @@ jobs:
           sleep 2
           curl -fsS http://127.0.0.1:4173/compat.js | grep -q 'nativeDefaultAvatar:true'
           curl -fsS http://127.0.0.1:4173/profile-photo.js | grep -q 'eventDriven:true'
+          curl -fsS http://127.0.0.1:4173/auto-location.js | grep -q 'autoStart:true'
 
       - name: Test profile photos locally
         run: node .github/scripts/krakow-profile-photos.mjs
@@ -63,16 +71,20 @@ jobs:
       - name: Test native default and settings locally
         run: node .github/scripts/krakow-default-profile.mjs
 
+      - name: Test automatic location locally
+        run: node .github/scripts/krakow-auto-location.mjs
+
       - name: Wait for Cloudflare deployment
         run: |
           for i in {1..60}; do
-            COMPAT=0; PHOTO=0; BRIDGE=0; CACHE=0
-            curl -fsS https://krakow-pocket.pages.dev/compat.js | grep -q 'persistentSettingsButton:true' && COMPAT=1 || true
+            COMPAT=0; PHOTO=0; BRIDGE=0; CACHE=0; GEO=0
+            curl -fsS https://krakow-pocket.pages.dev/compat.js | grep -q 'auto-location.js?v=20260811a' && COMPAT=1 || true
             curl -fsS https://krakow-pocket.pages.dev/profile-photo.js | grep -q 'eventDriven:true' && PHOTO=1 || true
             curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'profile-photo.js?v=20260811f' && BRIDGE=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v31-native-profile-safari-20260811a' && CACHE=1 || true
-            if [ "$COMPAT" = "1" ] && [ "$PHOTO" = "1" ] && [ "$BRIDGE" = "1" ] && [ "$CACHE" = "1" ]; then
-              echo "Cloudflare repaired profile build is live"
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v32-auto-location-20260811a' && CACHE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/auto-location.js | grep -q 'resumeRefresh:true' && GEO=1 || true
+            if [ "$COMPAT" = "1" ] && [ "$PHOTO" = "1" ] && [ "$BRIDGE" = "1" ] && [ "$CACHE" = "1" ] && [ "$GEO" = "1" ]; then
+              echo "Cloudflare automatic location build is live"
               exit 0
             fi
             sleep 5
@@ -89,3 +101,8 @@ jobs:
         env:
           KP_AUDIT_URL: https://krakow-pocket.pages.dev/
         run: node .github/scripts/krakow-default-profile.mjs
+
+      - name: Test automatic location on Cloudflare
+        env:
+          KP_AUDIT_URL: https://krakow-pocket.pages.dev/
+        run: node .github/scripts/krakow-auto-location.mjs
