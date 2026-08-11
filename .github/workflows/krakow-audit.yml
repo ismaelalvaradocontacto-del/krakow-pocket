@@ -41,6 +41,8 @@ jobs:
           grep -q 'data-kp-landmark-inline' "$APP_DIR/landmark-art-fix.js"
           grep -q 'landmark-dragon' "$APP_DIR/assets/landmarks-v2.svg"
           grep -q 'landmark-ghetto' "$APP_DIR/assets/landmarks-v2.svg"
+          grep -q 'countsTowardCore:false' "$APP_DIR/auschwitz-extra.js"
+          grep -q 'respectMode:true' "$APP_DIR/auschwitz-extra.js"
           test -s "$APP_DIR/STYLE_AUDIT_20260811.md"
       - name: Install browser audit tooling
         run: |
@@ -70,6 +72,7 @@ jobs:
           curl -fsS http://127.0.0.1:4173/celebration-guard.js | grep -q '__kpCelebrationGuard'
           curl -fsS http://127.0.0.1:4173/celebration-stability.js | grep -q '__kpCelebrationStability'
           curl -fsS http://127.0.0.1:4173/portrait-stability.js | grep -q 'profilesVerified: profileHealth()'
+          curl -fsS http://127.0.0.1:4173/auschwitz-extra.js | grep -q 'respectMode:true'
       - name: Run local Chromium and WebKit smoke audit
         run: node .github/scripts/krakow-smoke.mjs
       - name: Verify all 12 quest drawings locally
@@ -108,6 +111,7 @@ jobs:
             HOTFIX_OK=0
             LANDMARK_OK=0
             SPRITE_OK=0
+            EXTRA_OK=0
             CACHE_OK=0
             curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'world-art-stability.js' && STATE_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/network-status.js | grep -q 'offlineUiGuard: true' && NETWORK_OK=1 || true
@@ -122,8 +126,9 @@ jobs:
             curl -fsS https://krakow-pocket.pages.dev/mobile-hotfix.css | grep -q 'iPhone layout hotfix v8.1' && HOTFIX_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/landmark-art-fix.js | grep -q "version: '2.2'" && LANDMARK_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/assets/landmarks-v2.svg | grep -q 'landmark-dragon' && SPRITE_OK=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v23-inline-landmarks-20260811c' && CACHE_OK=1 || true
-            if [ "$STATE_OK" = "1" ] && [ "$NETWORK_OK" = "1" ] && [ "$PLAYER_OK" = "1" ] && [ "$WORLD_OK" = "1" ] && [ "$INTERACTION_OK" = "1" ] && [ "$MISSION_OK" = "1" ] && [ "$GUARD_OK" = "1" ] && [ "$CELEBRATION_OK" = "1" ] && [ "$PORTRAIT_OK" = "1" ] && [ "$STYLE_OK" = "1" ] && [ "$HOTFIX_OK" = "1" ] && [ "$LANDMARK_OK" = "1" ] && [ "$SPRITE_OK" = "1" ] && [ "$CACHE_OK" = "1" ]; then
+            curl -fsS https://krakow-pocket.pages.dev/auschwitz-extra.js | grep -q 'countsTowardCore:false' && EXTRA_OK=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v37-auschwitz-extra-20260811a' && CACHE_OK=1 || true
+            if [ "$STATE_OK" = "1" ] && [ "$NETWORK_OK" = "1" ] && [ "$PLAYER_OK" = "1" ] && [ "$WORLD_OK" = "1" ] && [ "$INTERACTION_OK" = "1" ] && [ "$MISSION_OK" = "1" ] && [ "$GUARD_OK" = "1" ] && [ "$CELEBRATION_OK" = "1" ] && [ "$PORTRAIT_OK" = "1" ] && [ "$STYLE_OK" = "1" ] && [ "$HOTFIX_OK" = "1" ] && [ "$LANDMARK_OK" = "1" ] && [ "$SPRITE_OK" = "1" ] && [ "$EXTRA_OK" = "1" ] && [ "$CACHE_OK" = "1" ]; then
               echo "Cloudflare is serving the full audited build"
               exit 0
             fi
