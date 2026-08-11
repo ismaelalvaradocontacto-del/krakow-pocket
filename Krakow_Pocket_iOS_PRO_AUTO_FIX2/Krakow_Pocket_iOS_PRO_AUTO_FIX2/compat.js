@@ -11,7 +11,7 @@ function inline(pack,id,cls){const s=pack?.symbols.get(id);if(!s)return"";return
 function player(){return localStorage.getItem("krakowPlayer")==="Laura"?"Laura":"Ismael"}
 function speakerCharacter(){return/Guardián/i.test($("#kpGameHub .kp-hub-speaker")?.textContent||"")?CHAR.guardian:CHAR.dragon}
 
-function defaultAvatarMarkup(who){return `<svg class="kp-profile-default" data-kp-default-profile="1" viewBox="0 0 100 100" role="img" aria-label="Imagen de perfil por defecto de ${who}" focusable="false"><circle cx="50" cy="50" r="50" fill="#aaa"/><circle cx="50" cy="34" r="17.5" fill="#f4f4f4"/><path d="M18 100C20.5 74 32.5 62 50 62S79.5 74 82 100Z" fill="#f4f4f4"/></svg>`}
+function defaultAvatarMarkup(who){return `<svg class="kp-profile-default" data-kp-default-profile="1" data-kp-inline="profile-default-${who.toLowerCase()}" viewBox="0 0 100 100" role="img" aria-label="Imagen de perfil por defecto de ${who}" focusable="false"><circle cx="50" cy="50" r="50" fill="#aaa"/><circle cx="50" cy="34" r="17.5" fill="#f4f4f4"/><path d="M18 100C20.5 74 32.5 62 50 62S79.5 74 82 100Z" fill="#f4f4f4"/></svg>`}
 function ensureProfileStyles(){
   if(!document.querySelector('link[data-kp-profiles="1"]')){const l=document.createElement("link");l.rel="stylesheet";l.href="./profiles.css?v=20260811e";l.dataset.kpProfiles="1";document.head.appendChild(l)}
   if(document.querySelector('style[data-kp-native-profile="1"]'))return;
@@ -48,7 +48,7 @@ function patchProfileHud(who){
 }
 
 function notifyProfileHosts(){try{window.dispatchEvent(new CustomEvent("kp:profile-hosts-ready",{detail:{player:player()}}))}catch{}}
-function patchProfiles(){ensureProfileStyles();const who=player(),changed=patchProfileHud(who)|patchPlayerPicker(who);if(changed)notifyProfileHosts();window.KP_COMPAT_PROFILE={version:"2.0",nativeDefaultAvatar:true,noGlobalMutationObserver:true,selected:who};return !!changed}
+function patchProfiles(){ensureProfileStyles();const who=player(),changed=patchProfileHud(who)|patchPlayerPicker(who);if(changed)notifyProfileHosts();window.KP_COMPAT_PROFILE={version:"2.1",nativeDefaultAvatar:true,noGlobalMutationObserver:true,protectedFromLegacyVisuals:true,selected:who};return !!changed}
 
 function patchWorldCharacters(){
   if(!ready)return;
@@ -58,7 +58,7 @@ function patchWorldCharacters(){
 function patchLandmarks(){if(!ready)return;$$('#kpQuestWorld .kp-world-node[data-pixel-poi]').forEach(n=>{const id=n.dataset.pixelPoi,target=n.querySelector('.kp-landmark-art');if(!target||target.querySelector(`svg[data-kp-inline="landmark-${CSS.escape(id)}"]`))return;const html=inline(game,`landmark-${id}`,"kp-landmark-svg");if(html)target.innerHTML=html})}
 const NAV={home:"nav-home",mapPanel:"nav-map",quests:"nav-quests",diary:"nav-diary",budget:"nav-budget"};
 function patchNavigation(){if(!ready)return;$$('.tab[data-panel]').forEach(t=>{const id=NAV[t.dataset.panel],b=t.querySelector('b');if(!b||!id||b.querySelector(`svg[data-kp-inline="${id}"]`))return;const html=inline(game,id,"kp-asset-svg");if(html)b.innerHTML=`<span class="kp-nav-art">${html}</span>`});$$('#kpGameHub .kp-hub-place[data-go]').forEach(b=>{const id=NAV[b.dataset.go],target=b.querySelector('.building');if(!target||!id||target.querySelector(`svg[data-kp-inline="${id}"]`))return;const html=inline(game,id,"kp-asset-svg");if(html)target.innerHTML=html})}
-function patch(){frame=0;patchProfiles();if(ready){patchWorldCharacters();patchLandmarks();patchNavigation();document.documentElement.classList.add("kp-inline-art-ready")}}
+function patch(){frame=0;patchProfiles();if(ready){patchWorldCharacters();patchLandmarks();patchNavigation()}}
 function schedule(){if(!frame)frame=requestAnimationFrame(patch)}
 function applyNow(){patch()}
 function enforceBurst(){clearInterval(enforceTimer);let ticks=0;enforceTimer=setInterval(()=>{if(document.visibilityState!=="hidden")applyNow();if(++ticks>=5){clearInterval(enforceTimer);enforceTimer=0}},300)}
@@ -67,7 +67,12 @@ function choosePlayer(who){if(who!=="Ismael"&&who!=="Laura")return;localStorage.
 function openPlayerSettings(){const trigger=$("#openSettings");if(trigger)trigger.click()}
 
 function bind(){
-  ensureProfileStyles();patchProfiles();
+  ensureProfileStyles();
+  // visuals.js treats this class as the signal that inline art is authoritative.
+  // Set it before its DOMContentLoaded handler so it cannot replace our native
+  // profile stack with the old illustrated portrait while assets are loading.
+  document.documentElement.classList.add("kp-inline-art-ready");
+  patchProfiles();
   document.addEventListener("click",e=>{
     const pick=e.target.closest?.("#kpPlayerPicker [data-kp-player]");if(pick){e.preventDefault();choosePlayer(pick.dataset.kpPlayer);return}
     if(e.target.closest?.("#kpGameHud .kp-game-portrait")){e.preventDefault();openPlayerSettings();return}
@@ -82,6 +87,6 @@ function bind(){
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",bind,{once:true});else bind();
 })();
-if(!window.__kpStateBridgeLoader){window.__kpStateBridgeLoader=true;document.write('<script src="./state-bridge.js?v=20260811f" data-kp-state-bridge="1"><\/script>')}
+if(!window.__kpStateBridgeLoader){window.__kpStateBridgeLoader=true;document.write('<script src="./state-bridge.js?v=20260811g" data-kp-state-bridge="1"><\/script>')}
 if(!window.__kpMissionFixLoader){window.__kpMissionFixLoader=true;document.write('<script src="./mission-fix.js?v=20260810h" data-kp-mission-fix="1"><\/script>')}
 if(!window.__kpCelebrationGuardLoader){window.__kpCelebrationGuardLoader=true;document.write('<script src="./celebration-guard.js?v=20260810k" data-kp-celebration-guard="1"><\/script>')}
