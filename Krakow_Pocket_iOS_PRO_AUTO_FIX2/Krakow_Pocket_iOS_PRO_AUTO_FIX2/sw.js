@@ -1,4 +1,4 @@
-const CACHE="krakow-pocket-v24-profile-photos-20260811d";
+const CACHE="krakow-pocket-v25-profile-photos-20260811e";
 const CORE=["./","./index.html","./styles.css","./game.css","./storybook.css","./compat.css","./profiles.css","./mobile-hotfix.css","./data.js","./compat.js","./state-bridge.js","./profile-photo.js","./network-status.js","./player-stability.js","./world-art-stability.js","./interaction-fix.js","./mission-fix.js","./celebration-guard.js","./celebration-stability.js","./portrait-stability.js","./runtime.js","./stability.js","./landmark-art-fix.js","./app.js","./enhancements.js","./game.js","./visuals.js","./assets/game-art.svg","./assets/landmarks-v2.svg","./assets/characters.svg","./assets/village.svg","./assets/world-map.svg","./manifest.webmanifest","./icon-192.svg","./icon-512.svg"];
 self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)))});
 self.addEventListener("activate",e=>{e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))]))});
