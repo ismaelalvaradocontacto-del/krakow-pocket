@@ -1,0 +1,53 @@
+name: Krakow Pocket landmark live audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/landmark-art-fix.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/assets/landmarks-v2.svg'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/stability.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/sw.js'
+      - '.github/scripts/krakow-landmark-art.mjs'
+      - '.github/workflows/krakow-landmarks-live.yml'
+  workflow_dispatch:
+
+jobs:
+  landmarks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
+          npx playwright install --with-deps chromium webkit >/tmp/playwright-install.log 2>&1
+      - name: Wait for Cloudflare landmark build
+        run: |
+          for i in {1..60}; do
+            ART=0
+            CACHE=0
+            curl -fsS https://krakow-pocket.pages.dev/landmark-art-fix.js | grep -q "version: '2.2'" && ART=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v23-inline-landmarks-20260811c' && CACHE=1 || true
+            if [ "$ART" = "1" ] && [ "$CACHE" = "1" ]; then
+              echo "Cloudflare landmark build is live"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "Cloudflare landmark build did not become live"
+          exit 1
+      - name: Verify real drawings in Chromium and WebKit
+        env:
+          KP_AUDIT_URL: https://krakow-pocket.pages.dev/
+        run: node .github/scripts/krakow-landmark-art.mjs
+      - name: Upload landmark screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: krakow-landmark-live-screenshots
+          path: audit-landmarks-*.png
+          if-no-files-found: ignore
