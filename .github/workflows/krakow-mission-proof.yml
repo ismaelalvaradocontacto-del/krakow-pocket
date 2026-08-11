@@ -19,16 +19,20 @@ jobs:
         run: |
           APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
           node --check "$APP_DIR/mission-proof.js"
+          node --check "$APP_DIR/mission-proof-guard.js"
           node --check "$APP_DIR/state-bridge.js"
           node --check .github/scripts/krakow-mission-proof.mjs
           grep -q 'version:VERSION,requiresPhoto:true,requiresProximity:true' "$APP_DIR/mission-proof.js"
           grep -q 'storesExactCoordinates:false' "$APP_DIR/mission-proof.js"
           grep -q 'albumDownload:true' "$APP_DIR/mission-proof.js"
           grep -q 'animatedComments:true' "$APP_DIR/mission-proof.js"
+          grep -q 'hardGate:true' "$APP_DIR/mission-proof-guard.js"
           grep -q 'sharedMissionEvidence: true' "$APP_DIR/state-bridge.js"
-          grep -q 'mission-proof.js?v=20260811a' "$APP_DIR/state-bridge.js"
-          grep -q 'krakow-pocket-v35-mission-proof-album-20260811a' "$APP_DIR/sw.js"
+          grep -q 'mission-proof.js?v=20260811b' "$APP_DIR/state-bridge.js"
+          grep -q 'mission-proof-guard.js?v=20260811a' "$APP_DIR/state-bridge.js"
+          grep -q 'krakow-pocket-v36-mission-proof-guard-20260811a' "$APP_DIR/sw.js"
           grep -q './mission-proof.js' "$APP_DIR/sw.js"
+          grep -q './mission-proof-guard.js' "$APP_DIR/sw.js"
 
       - name: Install browser tooling
         run: |
@@ -41,6 +45,7 @@ jobs:
           python3 -m http.server 4173 --bind 127.0.0.1 --directory "$APP_DIR" >/tmp/krakow-http.log 2>&1 &
           sleep 2
           curl -fsS http://127.0.0.1:4173/mission-proof.js | grep -q 'requiresPhoto:true'
+          curl -fsS http://127.0.0.1:4173/mission-proof-guard.js | grep -q 'hardGate:true'
 
       - name: Verify GPS photo missions and album locally
         run: node .github/scripts/krakow-mission-proof.mjs
@@ -48,11 +53,12 @@ jobs:
       - name: Wait for Cloudflare build
         run: |
           for i in {1..60}; do
-            PROOF=0; BRIDGE=0; CACHE=0
+            PROOF=0; GUARD=0; BRIDGE=0; CACHE=0
             curl -fsS https://krakow-pocket.pages.dev/mission-proof.js | grep -q 'const VERSION="1.1"' && PROOF=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/mission-proof-guard.js | grep -q 'hardGate:true' && GUARD=1 || true
             curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'sharedMissionEvidence: true' && BRIDGE=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v35-mission-proof-album-20260811a' && CACHE=1 || true
-            if [ "$PROOF" = "1" ] && [ "$BRIDGE" = "1" ] && [ "$CACHE" = "1" ]; then
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v36-mission-proof-guard-20260811a' && CACHE=1 || true
+            if [ "$PROOF" = "1" ] && [ "$GUARD" = "1" ] && [ "$BRIDGE" = "1" ] && [ "$CACHE" = "1" ]; then
               echo "Cloudflare verified mission build is live"
               exit 0
             fi
