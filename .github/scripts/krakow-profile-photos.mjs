@@ -47,6 +47,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     bridge: window.KP_STATE_BRIDGE?.version,
     shared: window.KP_STATE_BRIDGE?.sharedProfilePhotos,
     immediate: window.KP_STATE_BRIDGE?.immediateRemoteProfileAdoption,
+    lightweight: window.KP_PROFILE_PHOTOS?.lightweightSettings,
     manager: !!document.querySelector('#kpProfilePhotoManager'),
     choose: !!document.querySelector('#kpProfilePhotoChoose'),
     reset: !!document.querySelector('#kpProfilePhotoReset')
@@ -101,7 +102,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     };
   });
 
-  const ok = initial.module === '1.1' && initial.bridge === '1.3' && initial.shared && initial.immediate && initial.manager && initial.choose && initial.reset &&
+  const ok = initial.module === '1.2' && initial.bridge === '1.3' && initial.shared && initial.immediate && initial.lightweight && initial.manager && initial.choose && initial.reset &&
     afterUpload.stored && afterUpload.optimized && afterUpload.header && afterUpload.picker && afterUpload.remoteShared &&
     afterReload.stored && afterReload.header && remoteMerge.lauraStored && remoteMerge.lauraHeader && removed.tombstone && removed.headerGone && removed.fallbackVisible && errors.length === 0;
 
