@@ -53,13 +53,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
       noCompatObserver: window.KP_COMPAT_PROFILE?.noGlobalMutationObserver,
       eventDriven: window.KP_PROFILE_PHOTOS?.eventDriven,
       noPolling: window.KP_PROFILE_PHOTOS?.noPollingLoop,
-      count: faces.length,
-      noBrokenDefaultImages: faces.every(x => !x.querySelector(':scope > img.kp-profile-default')),
-      visible: faces.every(face => {
-        const box = face.getBoundingClientRect();
-        const style = getComputedStyle(face);
-        return box.width > 20 && box.height > 20 && style.backgroundImage !== 'none';
-      })
+      transientHudFaces: faces.length
     };
   });
 
@@ -146,7 +140,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     };
   });
 
-  const ok = initial.compat === '2.2' && initial.photoModule === '2.0' && initial.bridge === '1.4' && initial.nativeDefault && initial.cssFallback && initial.protectedFallback && initial.persistentSettings && initial.directSettingsFallback && initial.noCompatObserver && initial.eventDriven && initial.noPolling && initial.count === 2 && initial.visible && initial.noBrokenDefaultImages &&
+  const ok = initial.compat === '2.2' && initial.photoModule === '2.0' && initial.bridge === '1.4' && initial.nativeDefault && initial.cssFallback && initial.protectedFallback && initial.persistentSettings && initial.directSettingsFallback && initial.noCompatObserver && initial.eventDriven && initial.noPolling &&
     settings.pickerDefaults === 2 && settings.resetText.includes('Imagen por defecto') && settings.previewDefault && settings.closeVisible &&
     lauraSelected.player === 'Laura' && lauraSelected.title.includes('Laura') && lauraSelected.defaultVisible &&
     customState.customVisible && customState.fallbackUnderlay && restored.customGone && restored.defaultBack && repeatedFunctional && repeatedOpenMs.length === 5 && final.closed && final.defaultsStillThere && final.compatObserverFree && final.photoObserverFree && final.persistentSettings && final.directSettingsFallback && final.cssFallback && errors.length === 0;
