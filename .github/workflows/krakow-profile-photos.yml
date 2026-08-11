@@ -43,11 +43,13 @@ jobs:
           grep -q 'requestsOrientationPermission:false' "$APP_DIR/auto-heading.js"
           grep -q 'sensorPreferred:true' "$APP_DIR/auto-heading.js"
           grep -q 'gpsFallback:true' "$APP_DIR/auto-heading.js"
+          grep -q 'staleProtection:true' "$APP_DIR/auto-heading.js"
+          grep -q 'highAccuracyGpsCourse:true' "$APP_DIR/auto-heading.js"
           grep -q 'eventDriven:true' "$APP_DIR/profile-photo.js"
           grep -q 'noPollingLoop:true' "$APP_DIR/profile-photo.js"
           grep -q 'version: "1.4"' "$APP_DIR/state-bridge.js"
           grep -q 'profile-photo.js?v=20260811f' "$APP_DIR/state-bridge.js"
-          grep -q 'krakow-pocket-v33-auto-heading-20260811a' "$APP_DIR/sw.js"
+          grep -q 'krakow-pocket-v34-heading-freshness-20260811a' "$APP_DIR/sw.js"
           grep -q './auto-location.js' "$APP_DIR/sw.js"
           grep -q './auto-heading.js' "$APP_DIR/sw.js"
           if grep -q 'new MutationObserver' "$APP_DIR/compat.js" "$APP_DIR/profile-photo.js" "$APP_DIR/default-profile.js" "$APP_DIR/player-stability.js" "$APP_DIR/portrait-stability.js"; then
@@ -72,7 +74,7 @@ jobs:
           curl -fsS http://127.0.0.1:4173/compat.js | grep -q 'nativeDefaultAvatar:true'
           curl -fsS http://127.0.0.1:4173/profile-photo.js | grep -q 'eventDriven:true'
           curl -fsS http://127.0.0.1:4173/auto-location.js | grep -q 'autoStart:true'
-          curl -fsS http://127.0.0.1:4173/auto-heading.js | grep -q 'noPermissionPrompt:true'
+          curl -fsS http://127.0.0.1:4173/auto-heading.js | grep -q 'staleProtection:true'
 
       - name: Test profile photos locally
         run: node .github/scripts/krakow-profile-photos.mjs
@@ -93,11 +95,11 @@ jobs:
             curl -fsS https://krakow-pocket.pages.dev/compat.js | grep -q 'auto-location.js?v=20260811a' && COMPAT=1 || true
             curl -fsS https://krakow-pocket.pages.dev/profile-photo.js | grep -q 'eventDriven:true' && PHOTO=1 || true
             curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'profile-photo.js?v=20260811f' && BRIDGE=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v33-auto-heading-20260811a' && CACHE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v34-heading-freshness-20260811a' && CACHE=1 || true
             curl -fsS https://krakow-pocket.pages.dev/auto-location.js | grep -q 'auto-heading.js?v=20260811a' && GEO=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/auto-heading.js | grep -q 'requestsOrientationPermission:false' && HEADING=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/auto-heading.js | grep -q 'staleProtection:true' && HEADING=1 || true
             if [ "$COMPAT" = "1" ] && [ "$PHOTO" = "1" ] && [ "$BRIDGE" = "1" ] && [ "$CACHE" = "1" ] && [ "$GEO" = "1" ] && [ "$HEADING" = "1" ]; then
-              echo "Cloudflare silent heading build is live"
+              echo "Cloudflare fresh heading build is live"
               exit 0
             fi
             sleep 5
