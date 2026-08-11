@@ -3,7 +3,7 @@
 if (window.__kpAlbumIosCompat) return;
 window.__kpAlbumIosCompat = true;
 
-const VERSION = "1.0";
+const VERSION = "1.1";
 let sourceHtml = null;
 let apiPatched = false;
 
@@ -18,6 +18,7 @@ function fixHtml(input) {
   html = html.replace(oldToolbar, newToolbar);
 
   const offlineCss = `<style data-kp-offline-compat="1">
+    html{scroll-behavior:auto!important}
     .toolbar a{border:1px solid #8b674e;background:#fff5d8;color:#4a3325;border-radius:999px;padding:10px 14px;font:inherit;font-weight:800;text-decoration:none;white-space:nowrap;display:inline-flex;align-items:center;justify-content:center;min-height:42px}
     .toolbar a:active{transform:translateY(1px);background:#f5e3b8}
     .reveal{opacity:1!important;transform:none!important;animation:kpOfflineReveal .52s ease both;animation-delay:var(--delay,0s)}
@@ -128,6 +129,7 @@ window.KP_ALBUM_IOS_COMPAT = {
   noJsNavigation: true,
   noJsPdfFallback: true,
   revealWithoutJs: true,
-  quickLookCompatible: true
+  quickLookCompatible: true,
+  stableAnchorNavigation: true
 };
 })();
