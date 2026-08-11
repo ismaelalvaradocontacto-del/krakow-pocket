@@ -63,6 +63,12 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     };
   });
 
+  const celebrationShown = await page.locator('#kpQuestWin.show').isVisible().catch(() => false);
+  if (celebrationShown) {
+    await page.locator('#kpWinClose').click();
+    await page.waitForFunction(() => !document.querySelector('#kpQuestWin')?.classList.contains('show'), { timeout: 3000 });
+  }
+
   await page.locator('.tab[data-panel="diary"]').click();
   await page.waitForSelector('#kpAlbumCard', { timeout: 5000 });
   await page.locator('#kpAlbumOpen').click();
@@ -87,7 +93,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   const ok = far.inputDisabled && !far.visited && evidence.verified && evidence.hasPhoto && Number.isFinite(evidence.distance) && evidence.distance <= 100 && evidence.noExactLat && evidence.comment && album.count === 1 && album.image && album.comment && album.animated && downloaded && shared && errors.length === 0;
 
   console.log(`\n=== ${name.toUpperCase()} VERIFIED MISSION + ALBUM AUDIT ===`);
-  console.log(JSON.stringify({ ok, far, evidence, album, downloaded, shared, errors }, null, 2));
+  console.log(JSON.stringify({ ok, far, evidence, celebrationShown, album, downloaded, shared, errors }, null, 2));
   if (!ok) failed = true;
   await browser.close();
 }
