@@ -15,14 +15,16 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   page.on('pageerror', e => errors.push(e.message));
 
   await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForFunction(() => window.KP_DEFAULT_PROFILE?.version === '1.1' && window.KP_DEFAULT_PROFILE?.inlineSvg === true, { timeout: 7000 });
+  await page.waitForFunction(() => window.KP_DEFAULT_PROFILE?.version === '1.2' && window.KP_DEFAULT_PROFILE?.inlineSvg === true && window.KP_PROFILE_PHOTOS?.version === '1.2', { timeout: 7000 });
   await page.waitForFunction(() => document.querySelectorAll('#kpGameHud .kp-profile-face > svg.kp-profile-default').length === 2, { timeout: 5000 });
 
   const initial = await page.evaluate(() => {
     const faces = [...document.querySelectorAll('#kpGameHud .kp-profile-face[data-kp-profile]')];
     return {
       module: window.KP_DEFAULT_PROFILE?.version,
+      photoModule: window.KP_PROFILE_PHOTOS?.version,
       inlineSvg: window.KP_DEFAULT_PROFILE?.inlineSvg,
+      lightweight: window.KP_PROFILE_PHOTOS?.lightweightSettings,
       count: faces.filter(x => x.querySelector(':scope > svg.kp-profile-default')).length,
       noBrokenImages: faces.every(x => !x.querySelector(':scope > img.kp-profile-default')),
       visible: faces.every(x => {
@@ -39,6 +41,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   const settingsOpenMs = Date.now() - started;
   await page.waitForSelector('#kpProfilePhotoManager', { timeout: 4000 });
   await page.waitForFunction(() => document.querySelectorAll('#kpPlayerPicker .kp-picker-face > svg.kp-profile-default').length === 2, { timeout: 4000 });
+  await page.waitForFunction(() => !!document.querySelector('#kpProfilePhotoPreview > svg.kp-profile-default'), { timeout: 4000 });
 
   const settings = await page.evaluate(() => ({
     pickerDefaults: document.querySelectorAll('#kpPlayerPicker .kp-picker-face > svg.kp-profile-default').length,
@@ -88,7 +91,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   const reopened = await page.evaluate(() => document.querySelector('#settingsSheet')?.open === true);
   await page.locator('#closeSettings').click();
 
-  const ok = initial.module === '1.1' && initial.inlineSvg && initial.count === 2 && initial.visible && initial.noBrokenImages &&
+  const ok = initial.module === '1.2' && initial.photoModule === '1.2' && initial.inlineSvg && initial.lightweight && initial.count === 2 && initial.visible && initial.noBrokenImages &&
     settingsOpenMs < 2500 && settings.pickerDefaults === 2 && settings.resetText.includes('Imagen por defecto') && settings.previewDefault && settings.closeVisible &&
     lauraSelected.player === 'Laura' && lauraSelected.title.includes('Laura') && lauraSelected.defaultVisible &&
     customState.customVisible && customState.defaultGone && restored.customGone && restored.defaultBack && closed && reopened && errors.length === 0;
