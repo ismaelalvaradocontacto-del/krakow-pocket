@@ -18,32 +18,38 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   }
   const page = await context.newPage();
   await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForTimeout(isLocal ? 1800 : 3000);
+  await page.waitForTimeout(isLocal ? 1700 : 2800);
   await page.evaluate(() => document.querySelector('.tab[data-panel="quests"]')?.click());
-  await page.waitForTimeout(900);
-  const report = await page.evaluate(expectedIds => {
+  await page.waitForFunction(() => window.KP_LANDMARK_ART?.complete === true && window.KP_LANDMARK_ART?.painted === 12, { timeout: 8000 }).catch(() => {});
+  await page.waitForTimeout(500);
+  const report = await page.evaluate(async expectedIds => {
+    let spriteOk = false;
+    try { spriteOk = (await fetch('./assets/landmarks-v2.svg', {cache:'no-store'})).ok; } catch {}
     const rows = expectedIds.map(id => {
       const node = document.querySelector(`.kp-world-node[data-pixel-poi="${id}"]`);
-      const art = node?.querySelector('.kp-landmark-art .kp-landmark-v2');
+      const art = node?.querySelector(`.kp-landmark-v2-host[data-kp-landmark-v2="${id}"] .kp-landmark-v2`);
+      const use = art?.querySelector('use');
       const r = art?.getBoundingClientRect();
       return {
         id,
         node: !!node,
         art: !!art,
+        href: use?.getAttribute('href') || '',
         width: r?.width || 0,
         height: r?.height || 0,
         visible: !!art && getComputedStyle(art).visibility !== 'hidden' && getComputedStyle(art).display !== 'none' && (r?.width || 0) >= 35 && (r?.height || 0) >= 35
       };
     });
     return {
+      spriteOk,
       diagnostic: window.KP_LANDMARK_ART || null,
       rows,
-      complete: rows.length === expectedIds.length && rows.every(x => x.node && x.art && x.visible)
+      complete: spriteOk && rows.length === expectedIds.length && rows.every(x => x.node && x.art && x.visible && x.href.endsWith(`#landmark-${x.id}`))
     };
   }, expected);
   console.log(`\n=== ${name.toUpperCase()} LANDMARK ART AUDIT ===`);
   console.log(JSON.stringify(report, null, 2));
-  if (!report.complete || report.diagnostic?.complete !== true || report.diagnostic?.painted < 12) failed = true;
+  if (!report.complete || report.diagnostic?.version !== '2.1' || report.diagnostic?.complete !== true || report.diagnostic?.painted !== 12) failed = true;
   await page.screenshot({ path: `audit-landmarks-${name}.png`, fullPage: true }).catch(() => {});
   await browser.close();
 }
