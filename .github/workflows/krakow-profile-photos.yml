@@ -27,6 +27,8 @@ jobs:
           node --check .github/scripts/krakow-profile-photos.mjs
           node --check .github/scripts/krakow-default-profile.mjs
           grep -q 'nativeDefaultAvatar:true' "$APP_DIR/compat.js"
+          grep -q 'cssFallback:true' "$APP_DIR/compat.js"
+          grep -q 'persistentSettingsButton:true' "$APP_DIR/compat.js"
           grep -q 'noGlobalMutationObserver:true' "$APP_DIR/compat.js"
           grep -q 'eventDriven:true' "$APP_DIR/profile-photo.js"
           grep -q 'noPollingLoop:true' "$APP_DIR/profile-photo.js"
@@ -61,29 +63,29 @@ jobs:
       - name: Test native default and settings locally
         run: node .github/scripts/krakow-default-profile.mjs
 
-      - name: Wait for Netlify deployment
+      - name: Wait for Cloudflare deployment
         run: |
           for i in {1..60}; do
             COMPAT=0; PHOTO=0; BRIDGE=0; CACHE=0
-            curl -fsS https://lambent-cupcake-945384.netlify.app/compat.js | grep -q 'nativeDefaultAvatar:true' && COMPAT=1 || true
-            curl -fsS https://lambent-cupcake-945384.netlify.app/profile-photo.js | grep -q 'eventDriven:true' && PHOTO=1 || true
-            curl -fsS https://lambent-cupcake-945384.netlify.app/state-bridge.js | grep -q 'profile-photo.js?v=20260811f' && BRIDGE=1 || true
-            curl -fsS https://lambent-cupcake-945384.netlify.app/sw.js | grep -q 'krakow-pocket-v31-native-profile-safari-20260811a' && CACHE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/compat.js | grep -q 'persistentSettingsButton:true' && COMPAT=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/profile-photo.js | grep -q 'eventDriven:true' && PHOTO=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'profile-photo.js?v=20260811f' && BRIDGE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v31-native-profile-safari-20260811a' && CACHE=1 || true
             if [ "$COMPAT" = "1" ] && [ "$PHOTO" = "1" ] && [ "$BRIDGE" = "1" ] && [ "$CACHE" = "1" ]; then
-              echo "Netlify native profile build is live"
+              echo "Cloudflare repaired profile build is live"
               exit 0
             fi
             sleep 5
           done
-          echo "Netlify deployment did not update in time"
+          echo "Cloudflare deployment did not update in time"
           exit 1
 
-      - name: Test profile photos on Netlify
+      - name: Test profile photos on Cloudflare
         env:
-          KP_AUDIT_URL: https://lambent-cupcake-945384.netlify.app/
+          KP_AUDIT_URL: https://krakow-pocket.pages.dev/
         run: node .github/scripts/krakow-profile-photos.mjs
 
-      - name: Test native default and settings on Netlify
+      - name: Test native default and settings on Cloudflare
         env:
-          KP_AUDIT_URL: https://lambent-cupcake-945384.netlify.app/
+          KP_AUDIT_URL: https://krakow-pocket.pages.dev/
         run: node .github/scripts/krakow-default-profile.mjs
