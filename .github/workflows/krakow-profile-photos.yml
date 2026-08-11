@@ -18,14 +18,19 @@ jobs:
         run: |
           APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
           node --check "$APP_DIR/profile-photo.js"
+          node --check "$APP_DIR/default-profile.js"
           node --check "$APP_DIR/state-bridge.js"
           node --check .github/scripts/krakow-profile-photos.mjs
+          node --check .github/scripts/krakow-default-profile.mjs
           grep -q 'sharedViaAdventureState: true' "$APP_DIR/profile-photo.js"
           grep -q 'immediateRemoteRepaint: true' "$APP_DIR/profile-photo.js"
+          grep -q 'genericDefault: true' "$APP_DIR/default-profile.js"
+          grep -q 'replacesIllustratedProfileFallback: true' "$APP_DIR/default-profile.js"
           grep -q 'sharedProfilePhotos: true' "$APP_DIR/state-bridge.js"
           grep -q 'immediateRemoteProfileAdoption: true' "$APP_DIR/state-bridge.js"
-          grep -q 'profile-photo.js' "$APP_DIR/sw.js"
-          grep -q 'krakow-pocket-v25-profile-photos-20260811e' "$APP_DIR/sw.js"
+          grep -q 'default-profile.js' "$APP_DIR/state-bridge.js"
+          grep -q 'default-profile.js' "$APP_DIR/sw.js"
+          grep -q 'krakow-pocket-v26-default-profile-20260811a' "$APP_DIR/sw.js"
       - name: Install Playwright
         run: |
           npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
@@ -36,17 +41,21 @@ jobs:
           python3 -m http.server 4173 --bind 127.0.0.1 --directory "$APP_DIR" >/tmp/krakow-http.log 2>&1 &
           sleep 2
           curl -fsS http://127.0.0.1:4173/profile-photo.js | grep -q 'optimizedAvatar: true'
+          curl -fsS http://127.0.0.1:4173/default-profile.js | grep -q 'genericDefault: true'
       - name: Test upload persistence and shared merge locally
         run: node .github/scripts/krakow-profile-photos.mjs
+      - name: Test generic default profile locally
+        run: node .github/scripts/krakow-default-profile.mjs
       - name: Wait for Cloudflare profile build
         run: |
           for i in {1..45}; do
-            PHOTO=0; BRIDGE=0; CACHE=0
+            PHOTO=0; DEFAULT=0; BRIDGE=0; CACHE=0
             curl -fsS https://krakow-pocket.pages.dev/profile-photo.js | grep -q 'immediateRemoteRepaint: true' && PHOTO=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'immediateRemoteProfileAdoption: true' && BRIDGE=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v25-profile-photos-20260811e' && CACHE=1 || true
-            if [ "$PHOTO" = "1" ] && [ "$BRIDGE" = "1" ] && [ "$CACHE" = "1" ]; then
-              echo "Cloudflare profile photo build is live"
+            curl -fsS https://krakow-pocket.pages.dev/default-profile.js | grep -q 'genericDefault: true' && DEFAULT=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'default-profile.js' && BRIDGE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v26-default-profile-20260811a' && CACHE=1 || true
+            if [ "$PHOTO" = "1" ] && [ "$DEFAULT" = "1" ] && [ "$BRIDGE" = "1" ] && [ "$CACHE" = "1" ]; then
+              echo "Cloudflare default profile build is live"
               exit 0
             fi
             sleep 4
@@ -56,3 +65,7 @@ jobs:
         env:
           KP_AUDIT_URL: https://krakow-pocket.pages.dev/
         run: node .github/scripts/krakow-profile-photos.mjs
+      - name: Test generic default profile on Cloudflare
+        env:
+          KP_AUDIT_URL: https://krakow-pocket.pages.dev/
+        run: node .github/scripts/krakow-default-profile.mjs
