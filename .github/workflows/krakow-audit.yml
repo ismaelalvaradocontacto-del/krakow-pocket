@@ -68,6 +68,8 @@ jobs:
           curl -fsS http://127.0.0.1:4173/portrait-stability.js | grep -q 'profilesVerified: profileHealth()'
       - name: Run local Chromium and WebKit smoke audit
         run: node .github/scripts/krakow-smoke.mjs
+      - name: Verify all 12 quest drawings locally
+        run: node .github/scripts/krakow-landmark-art.mjs
       - name: Run mobile viewport matrix audit
         run: |
           set +e
@@ -127,6 +129,10 @@ jobs:
         env:
           KP_AUDIT_URL: https://krakow-pocket.pages.dev/
         run: node .github/scripts/krakow-smoke.mjs
+      - name: Verify all 12 quest drawings on Cloudflare
+        env:
+          KP_AUDIT_URL: https://krakow-pocket.pages.dev/
+        run: node .github/scripts/krakow-landmark-art.mjs
       - name: Prove live Cloudflare app does not reload itself
         env:
           KP_AUDIT_URL: https://krakow-pocket.pages.dev/
