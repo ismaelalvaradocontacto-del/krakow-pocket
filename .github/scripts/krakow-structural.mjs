@@ -94,7 +94,7 @@ const celebrationGuard = fs.readFileSync(path.join(root, 'celebration-guard.js')
 pass(celebrationGuard.includes('celebration-stability.js'), 'celebration-guard.js does not load celebration-stability.js');
 pass(celebrationGuard.includes('portrait-stability.js'), 'celebration-guard.js does not load portrait-stability.js');
 const portrait = fs.readFileSync(path.join(root, 'portrait-stability.js'), 'utf8');
-pass(portrait.includes('profilesVerified: profileHealth()'), 'portrait-stability.js does not expose real profile health');
+pass(portrait.includes('version: "2.0"') && portrait.includes('noMutationObserver: true') && portrait.includes('noRepairBurst: true'), 'portrait-stability.js compatibility shim markers missing');
 
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.webmanifest'), 'utf8'));
 pass(typeof manifest.name === 'string' && manifest.name.trim(), 'Manifest name missing');
