@@ -36,6 +36,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     module: window.KP_PROFILE_PHOTOS?.version,
     bridge: window.KP_STATE_BRIDGE?.version,
     shared: window.KP_STATE_BRIDGE?.sharedProfilePhotos,
+    immediate: window.KP_STATE_BRIDGE?.immediateRemoteProfileAdoption,
     manager: !!document.querySelector('#kpProfilePhotoManager'),
     choose: !!document.querySelector('#kpProfilePhotoChoose'),
     reset: !!document.querySelector('#kpProfilePhotoReset')
@@ -71,7 +72,8 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   const remoteLaura = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAACAAIDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABAf/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPxB//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPxB//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxB//9k=';
   remote.profilePhotos = { ...(remote.profilePhotos || {}), Laura: { dataUrl: remoteLaura, updatedAt: new Date(Date.now() + 5000).toISOString() } };
   remote.updatedAt = new Date(Date.now() + 5000).toISOString();
-  await page.waitForTimeout(6200);
+  await page.waitForFunction(() => !!JSON.parse(localStorage.getItem('krakowPocketCoop') || '{}').profilePhotos?.Laura?.dataUrl, { timeout: 8500 }).catch(() => {});
+  await page.waitForTimeout(500);
   const remoteMerge = await page.evaluate(() => ({
     lauraStored: !!JSON.parse(localStorage.getItem('krakowPocketCoop') || '{}').profilePhotos?.Laura?.dataUrl,
     lauraHeader: !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Laura"] > .kp-profile-photo')
@@ -89,7 +91,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     };
   });
 
-  const ok = initial.module === '1.0' && initial.bridge === '1.2' && initial.shared && initial.manager && initial.choose && initial.reset &&
+  const ok = initial.module === '1.1' && initial.bridge === '1.3' && initial.shared && initial.immediate && initial.manager && initial.choose && initial.reset &&
     afterUpload.stored && afterUpload.optimized && afterUpload.header && afterUpload.picker && afterUpload.remoteShared &&
     afterReload.stored && afterReload.header && remoteMerge.lauraStored && remoteMerge.lauraHeader && removed.tombstone && removed.headerGone && removed.fallbackVisible && errors.length === 0;
 
