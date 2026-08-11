@@ -27,8 +27,8 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   page.on('pageerror', e => errors.push(e.message));
 
   await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForFunction(() => window.KP_COMPAT_PROFILE?.version === '2.0' && window.KP_PROFILE_PHOTOS?.version === '2.0' && window.KP_STATE_BRIDGE?.version === '1.4', { timeout: 7000 });
-  await page.waitForFunction(() => document.querySelectorAll('#kpGameHud .kp-profile-face > svg.kp-profile-default').length === 2, { timeout: 4000 });
+  await page.waitForFunction(() => window.KP_COMPAT_PROFILE?.version === '2.1' && window.KP_PROFILE_PHOTOS?.version === '2.0' && window.KP_STATE_BRIDGE?.version === '1.4', { timeout: 7000 });
+  await page.waitForFunction(() => document.querySelectorAll('#kpGameHud .kp-profile-face > svg.kp-profile-default[data-kp-inline]').length === 2, { timeout: 4000 });
 
   const initial = await page.evaluate(() => {
     const faces = [...document.querySelectorAll('#kpGameHud .kp-profile-face[data-kp-profile]')];
@@ -37,13 +37,14 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
       photoModule: window.KP_PROFILE_PHOTOS?.version,
       bridge: window.KP_STATE_BRIDGE?.version,
       nativeDefault: window.KP_COMPAT_PROFILE?.nativeDefaultAvatar,
+      protectedFallback: window.KP_COMPAT_PROFILE?.protectedFromLegacyVisuals,
       noCompatObserver: window.KP_COMPAT_PROFILE?.noGlobalMutationObserver,
       eventDriven: window.KP_PROFILE_PHOTOS?.eventDriven,
       noPolling: window.KP_PROFILE_PHOTOS?.noPollingLoop,
-      count: faces.filter(x => x.querySelector(':scope > svg.kp-profile-default')).length,
+      count: faces.filter(x => x.querySelector(':scope > svg.kp-profile-default[data-kp-inline]')).length,
       noBrokenDefaultImages: faces.every(x => !x.querySelector(':scope > img.kp-profile-default')),
       visible: faces.every(x => {
-        const svg = x.querySelector(':scope > svg.kp-profile-default');
+        const svg = x.querySelector(':scope > svg.kp-profile-default[data-kp-inline]');
         const box = svg?.getBoundingClientRect();
         return !!svg && !!svg.querySelector('circle') && !!svg.querySelector('path') && box.width > 20 && box.height > 20;
       })
@@ -52,11 +53,11 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
 
   const firstOpenMs = await openSettings(page);
   await page.waitForSelector('#kpProfilePhotoManager', { timeout: 2500 });
-  await page.waitForFunction(() => document.querySelectorAll('#kpPlayerPicker .kp-picker-face > svg.kp-profile-default').length === 2, { timeout: 2500 });
+  await page.waitForFunction(() => document.querySelectorAll('#kpPlayerPicker .kp-picker-face > svg.kp-profile-default[data-kp-inline]').length === 2, { timeout: 2500 });
   await page.waitForFunction(() => !!document.querySelector('#kpProfilePhotoPreview > svg.kp-profile-default'), { timeout: 2500 });
 
   const settings = await page.evaluate(() => ({
-    pickerDefaults: document.querySelectorAll('#kpPlayerPicker .kp-picker-face > svg.kp-profile-default').length,
+    pickerDefaults: document.querySelectorAll('#kpPlayerPicker .kp-picker-face > svg.kp-profile-default[data-kp-inline]').length,
     resetText: document.querySelector('#kpProfilePhotoReset')?.textContent?.trim() || '',
     previewDefault: !!document.querySelector('#kpProfilePhotoPreview > svg.kp-profile-default'),
     closeVisible: !!document.querySelector('#closeSettings')?.getBoundingClientRect().width
@@ -68,7 +69,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   const lauraSelected = await page.evaluate(() => ({
     player: localStorage.getItem('krakowPlayer'),
     title: document.querySelector('#kpProfilePhotoTitle')?.textContent || '',
-    defaultVisible: !!document.querySelector('#kpPlayerPicker [data-kp-player="Laura"] .kp-picker-face > svg.kp-profile-default')
+    defaultVisible: !!document.querySelector('#kpPlayerPicker [data-kp-player="Laura"] .kp-picker-face > svg.kp-profile-default[data-kp-inline]')
   }));
 
   await page.locator('#kpPlayerPicker [data-kp-player="Ismael"]').click();
@@ -78,16 +79,16 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   await page.waitForFunction(() => !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'), { timeout: 2500 });
   const customState = await page.evaluate(() => ({
     customVisible: !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'),
-    fallbackUnderlay: !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > svg.kp-profile-default')
+    fallbackUnderlay: !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > svg.kp-profile-default[data-kp-inline]')
   }));
 
   await page.evaluate(() => window.KP_PROFILE_PHOTOS.remove('Ismael'));
   await page.waitForFunction(() => {
     const host = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"]');
-    return !host?.querySelector(':scope > .kp-profile-photo') && !!host?.querySelector(':scope > svg.kp-profile-default');
+    return !host?.querySelector(':scope > .kp-profile-photo') && !!host?.querySelector(':scope > svg.kp-profile-default[data-kp-inline]');
   }, { timeout: 2500 });
   const restored = await page.evaluate(() => {
-    const fallback = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > svg.kp-profile-default');
+    const fallback = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > svg.kp-profile-default[data-kp-inline]');
     const box = fallback?.getBoundingClientRect();
     return {
       customGone: !document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'),
@@ -105,12 +106,12 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
 
   const final = await page.evaluate(() => ({
     closed: !document.querySelector('#settingsSheet')?.open,
-    defaultsStillThere: document.querySelectorAll('#kpGameHud .kp-profile-face > svg.kp-profile-default').length === 2,
+    defaultsStillThere: document.querySelectorAll('#kpGameHud .kp-profile-face > svg.kp-profile-default[data-kp-inline]').length === 2,
     compatObserverFree: window.KP_COMPAT_PROFILE?.noGlobalMutationObserver === true,
     photoObserverFree: window.KP_PROFILE_PHOTOS?.noGlobalMutationObserver === true
   }));
 
-  const ok = initial.compat === '2.0' && initial.photoModule === '2.0' && initial.bridge === '1.4' && initial.nativeDefault && initial.noCompatObserver && initial.eventDriven && initial.noPolling && initial.count === 2 && initial.visible && initial.noBrokenDefaultImages &&
+  const ok = initial.compat === '2.1' && initial.photoModule === '2.0' && initial.bridge === '1.4' && initial.nativeDefault && initial.protectedFallback && initial.noCompatObserver && initial.eventDriven && initial.noPolling && initial.count === 2 && initial.visible && initial.noBrokenDefaultImages &&
     maxOpenMs < 1500 && settings.pickerDefaults === 2 && settings.resetText.includes('Imagen por defecto') && settings.previewDefault && settings.closeVisible &&
     lauraSelected.player === 'Laura' && lauraSelected.title.includes('Laura') && lauraSelected.defaultVisible &&
     customState.customVisible && customState.fallbackUnderlay && restored.customGone && restored.defaultBack && final.closed && final.defaultsStillThere && final.compatObserverFree && final.photoObserverFree && errors.length === 0;
