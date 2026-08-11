@@ -47,6 +47,24 @@
     return applyStatus(state);
   }
 
+  function adoptMergedProfilePhotos(merged) {
+    const local = read();
+    const nextPhotos = merged?.profilePhotos || {};
+    if (JSON.stringify(local.profilePhotos || {}) === JSON.stringify(nextPhotos)) return false;
+    const nextLocal = {
+      ...local,
+      profilePhotos: nextPhotos,
+      updatedAt: merged?.updatedAt || local.updatedAt || now()
+    };
+    nativeSetItem.call(localStorage, STORAGE, JSON.stringify(nextLocal));
+    try {
+      window.dispatchEvent(new CustomEvent("kp:profile-photo-sync", {
+        detail: { profilePhotos: JSON.parse(JSON.stringify(nextPhotos)) }
+      }));
+    } catch {}
+    return true;
+  }
+
   Storage.prototype.setItem = function(key, value) {
     if (this === localStorage && key === STORAGE) {
       const incoming = parse(value);
@@ -91,6 +109,7 @@
       p: remote.profilePhotos || {}
     });
     const merged = mergeLocalStatus(remote);
+    adoptMergedProfilePhotos(merged);
     const after = JSON.stringify({
       v: merged.visited || [],
       m: merged.missionStatus || {},
@@ -121,13 +140,14 @@
   };
 
   window.KP_STATE_BRIDGE = {
-    version: "1.2",
+    version: "1.3",
     reversibleDiscoveries: true,
     sharedProfilePhotos: true,
+    immediateRemoteProfileAdoption: true,
     normalize: state => mergeLocalStatus(state)
   };
 })();
-if(!window.__kpProfilePhotoLoader){window.__kpProfilePhotoLoader=true;document.write('<script src="./profile-photo.js?v=20260811a" data-kp-profile-photo="1"><\/script>')}
+if(!window.__kpProfilePhotoLoader){window.__kpProfilePhotoLoader=true;document.write('<script src="./profile-photo.js?v=20260811b" data-kp-profile-photo="1"><\/script>')}
 if(!window.__kpNetworkStatusLoader){window.__kpNetworkStatusLoader=true;document.write('<script src="./network-status.js?v=20260810n" data-kp-network-status="1"><\/script>')}
 if(!window.__kpPlayerStabilityLoader){window.__kpPlayerStabilityLoader=true;document.write('<script src="./player-stability.js?v=20260810o" data-kp-player-stability="1"><\/script>')}
 if(!window.__kpWorldArtStabilityLoader){window.__kpWorldArtStabilityLoader=true;document.write('<script src="./world-art-stability.js?v=20260810q" data-kp-world-art-stability="1"><\/script>')}
