@@ -1,6 +1,12 @@
 (() => {
   "use strict";
 
+  // Kraków Pocket is used as an app-like PWA. Keep the page itself at 1:1 scale so
+  // Safari cannot leave the interface double-tap/pinch zoomed and horizontally panned.
+  // Leaflet keeps its own internal map pinch/pan gestures independently.
+  const viewport = document.querySelector('meta[name="viewport"]');
+  if (viewport) viewport.setAttribute("content", "width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover");
+
   // Load the illustrated storybook skin before the UI finishes composing.
   if (!document.querySelector('link[data-kp-storybook]')) {
     const skin = document.createElement("link");
@@ -8,6 +14,16 @@
     skin.href = "./storybook.css";
     skin.dataset.kpStorybook = "1";
     document.head.appendChild(skin);
+  }
+
+  // Final iPhone layout guard. This sheet is deliberately appended after the visual
+  // layers so old compatibility rules cannot re-enable hyphenation or overflow.
+  if (!document.querySelector('link[data-kp-mobile-hotfix]')) {
+    const hotfix = document.createElement("link");
+    hotfix.rel = "stylesheet";
+    hotfix.href = "./mobile-hotfix.css?v=20260811a";
+    hotfix.dataset.kpMobileHotfix = "1";
+    document.head.appendChild(hotfix);
   }
 
   // Feedback toasts are purely informational. Safari/WebKit can keep them over the
@@ -74,5 +90,12 @@
   }, true);
 
   // Diagnostic marker used by automated tests and for support.
-  window.KP_STABILITY = { version: "1.2", automaticReloadsBlocked: true, storybookSkin: true, passiveToasts: true };
+  window.KP_STABILITY = {
+    version: "1.3",
+    automaticReloadsBlocked: true,
+    storybookSkin: true,
+    passiveToasts: true,
+    pageScaleLocked: true,
+    mobileLayoutHotfix: true
+  };
 })();
