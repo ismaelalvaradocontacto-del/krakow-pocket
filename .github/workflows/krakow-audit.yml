@@ -71,7 +71,7 @@ jobs:
           curl -fsS http://127.0.0.1:4173/mission-fix.js | grep -q '__kpMissionUxV4'
           curl -fsS http://127.0.0.1:4173/celebration-guard.js | grep -q '__kpCelebrationGuard'
           curl -fsS http://127.0.0.1:4173/celebration-stability.js | grep -q '__kpCelebrationStability'
-          curl -fsS http://127.0.0.1:4173/portrait-stability.js | grep -q 'profilesVerified: profileHealth()'
+          curl -fsS http://127.0.0.1:4173/portrait-stability.js | grep -q 'noMutationObserver: true'
           curl -fsS http://127.0.0.1:4173/auschwitz-extra.js | grep -q 'respectMode:true'
       - name: Run local Chromium and WebKit smoke audit
         run: node .github/scripts/krakow-smoke.mjs
@@ -121,7 +121,7 @@ jobs:
             curl -fsS https://krakow-pocket.pages.dev/mission-fix.js | grep -q '__kpMissionUxV4' && MISSION_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/celebration-guard.js | grep -q '__kpCelebrationGuard' && GUARD_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/celebration-stability.js | grep -q 'delayedDuplicateBlocked' && CELEBRATION_OK=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/portrait-stability.js | grep -q 'profilesVerified: profileHealth()' && PORTRAIT_OK=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/portrait-stability.js | grep -q 'noMutationObserver: true' && PORTRAIT_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/profiles.css | grep -q 'visual system v8.0' && STYLE_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/mobile-hotfix.css | grep -q 'iPhone layout hotfix v8.1' && HOTFIX_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/landmark-art-fix.js | grep -q "version: '2.2'" && LANDMARK_OK=1 || true
