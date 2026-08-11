@@ -31,7 +31,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   bindErrors(page);
 
   await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForFunction(() => window.KP_COMPAT_PROFILE?.version === '2.1' && window.KP_PROFILE_PHOTOS?.version === '2.0', { timeout: 7000 });
+  await page.waitForFunction(() => window.KP_COMPAT_PROFILE?.version === '2.2' && window.KP_PROFILE_PHOTOS?.version === '2.0', { timeout: 7000 });
   await openSettings(page);
   await page.waitForSelector('#kpProfilePhotoManager', { timeout: 5000 });
 
@@ -45,6 +45,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     noPolling: window.KP_PROFILE_PHOTOS?.noPollingLoop,
     nativeDefault: window.KP_COMPAT_PROFILE?.nativeDefaultAvatar,
     protectedFallback: window.KP_COMPAT_PROFILE?.protectedFromLegacyVisuals,
+    persistentSettings: window.KP_COMPAT_PROFILE?.persistentSettingsButton,
     manager: !!document.querySelector('#kpProfilePhotoManager'),
     choose: !!document.querySelector('#kpProfilePhotoChoose'),
     reset: !!document.querySelector('#kpProfilePhotoReset')
@@ -71,13 +72,11 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   await page.waitForTimeout(6200);
   afterUpload.remoteShared = !!remote.profilePhotos?.Ismael?.dataUrl;
 
-  // Use a fresh page in the same browser context instead of page.reload().
-  // This preserves localStorage while avoiding a known WebKit headless reload crash.
   await page.close();
   page = await context.newPage();
   bindErrors(page);
   await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForFunction(() => window.KP_PROFILE_PHOTOS?.version === '2.0' && window.KP_COMPAT_PROFILE?.version === '2.1', { timeout: 7000 });
+  await page.waitForFunction(() => window.KP_PROFILE_PHOTOS?.version === '2.0' && window.KP_COMPAT_PROFILE?.version === '2.2', { timeout: 7000 });
   await page.waitForFunction(() => !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'), { timeout: 5000 });
   const afterReload = await page.evaluate(() => ({
     stored: !!JSON.parse(localStorage.getItem('krakowPocketCoop') || '{}').profilePhotos?.Ismael?.dataUrl,
@@ -110,7 +109,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     };
   });
 
-  const ok = initial.module === '2.0' && initial.bridge === '1.4' && initial.compat === '2.1' && initial.shared && initial.immediate && initial.eventDriven && initial.noPolling && initial.nativeDefault && initial.protectedFallback && initial.manager && initial.choose && initial.reset &&
+  const ok = initial.module === '2.0' && initial.bridge === '1.4' && initial.compat === '2.2' && initial.shared && initial.immediate && initial.eventDriven && initial.noPolling && initial.nativeDefault && initial.protectedFallback && initial.persistentSettings && initial.manager && initial.choose && initial.reset &&
     afterUpload.stored && afterUpload.optimized && afterUpload.header && afterUpload.picker && afterUpload.fallbackUnderPhoto && afterUpload.remoteShared &&
     afterReload.stored && afterReload.header && remoteMerge.lauraStored && remoteMerge.lauraHeader && removed.tombstone && removed.headerGone && removed.fallbackVisible && errors.length === 0;
 
