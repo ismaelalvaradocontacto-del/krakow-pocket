@@ -51,17 +51,9 @@
     const local = read();
     const nextPhotos = merged?.profilePhotos || {};
     if (JSON.stringify(local.profilePhotos || {}) === JSON.stringify(nextPhotos)) return false;
-    const nextLocal = {
-      ...local,
-      profilePhotos: nextPhotos,
-      updatedAt: merged?.updatedAt || local.updatedAt || now()
-    };
+    const nextLocal = { ...local, profilePhotos: nextPhotos, updatedAt: merged?.updatedAt || local.updatedAt || now() };
     nativeSetItem.call(localStorage, STORAGE, JSON.stringify(nextLocal));
-    try {
-      window.dispatchEvent(new CustomEvent("kp:profile-photo-sync", {
-        detail: { profilePhotos: JSON.parse(JSON.stringify(nextPhotos)) }
-      }));
-    } catch {}
+    try { window.dispatchEvent(new CustomEvent("kp:profile-photo-sync", { detail: { profilePhotos: JSON.parse(JSON.stringify(nextPhotos)) } })); } catch {}
     return true;
   }
 
@@ -73,9 +65,7 @@
     return nativeSetItem.call(this, key, value);
   };
 
-  function isRpc(url, name) {
-    return typeof url === "string" && url.includes(`/rest/v1/rpc/${name}`);
-  }
+  function isRpc(url, name) { return typeof url === "string" && url.includes(`/rest/v1/rpc/${name}`); }
 
   window.fetch = async function(input, init) {
     const url = typeof input === "string" ? input : input?.url || "";
@@ -102,54 +92,35 @@
     catch { return response; }
     if (!remote || typeof remote !== "object") return response;
 
-    const before = JSON.stringify({
-      v: remote.visited || [],
-      m: remote.missionStatus || {},
-      d: remote.discoveryStatus || {},
-      p: remote.profilePhotos || {}
-    });
+    const before = JSON.stringify({ v: remote.visited || [], m: remote.missionStatus || {}, d: remote.discoveryStatus || {}, p: remote.profilePhotos || {} });
     const merged = mergeLocalStatus(remote);
     adoptMergedProfilePhotos(merged);
-    const after = JSON.stringify({
-      v: merged.visited || [],
-      m: merged.missionStatus || {},
-      d: merged.discoveryStatus || {},
-      p: merged.profilePhotos || {}
-    });
+    const after = JSON.stringify({ v: merged.visited || [], m: merged.missionStatus || {}, d: merged.discoveryStatus || {}, p: merged.profilePhotos || {} });
 
     if (before !== after && next.body) {
       try {
         const auth = JSON.parse(next.body);
         const putUrl = url.replace(/adventure_get(?:\?.*)?$/, "adventure_put");
         const putBody = JSON.stringify({ ...auth, p_state: { ...merged, updatedAt: now() } });
-        window.fetch(putUrl, {
-          method: "POST",
-          headers: next.headers || { "Content-Type": "application/json" },
-          body: putBody
-        }).catch(() => {});
+        window.fetch(putUrl, { method: "POST", headers: next.headers || { "Content-Type": "application/json" }, body: putBody }).catch(() => {});
       } catch {}
     }
 
     const headers = new Headers(response.headers);
     headers.set("Content-Type", "application/json");
-    return new Response(JSON.stringify(merged), {
-      status: response.status,
-      statusText: response.statusText,
-      headers
-    });
+    return new Response(JSON.stringify(merged), { status: response.status, statusText: response.statusText, headers });
   };
 
   window.KP_STATE_BRIDGE = {
-    version: "1.3",
+    version: "1.4",
     reversibleDiscoveries: true,
     sharedProfilePhotos: true,
     immediateRemoteProfileAdoption: true,
+    simplifiedProfileRuntime: true,
     normalize: state => mergeLocalStatus(state)
   };
 })();
-if(!window.__kpProfilePhotoLoader){window.__kpProfilePhotoLoader=true;document.write('<script src="./profile-photo.js?v=20260811c" data-kp-profile-photo="1"><\/script>')}
-if(!window.__kpDefaultProfileLoader){window.__kpDefaultProfileLoader=true;document.write('<script src="./default-profile.js?v=20260811d" data-kp-default-profile="1"><\/script>')}
+if(!window.__kpProfilePhotoLoader){window.__kpProfilePhotoLoader=true;document.write('<script src="./profile-photo.js?v=20260811f" data-kp-profile-photo="1"><\/script>')}
 if(!window.__kpNetworkStatusLoader){window.__kpNetworkStatusLoader=true;document.write('<script src="./network-status.js?v=20260810n" data-kp-network-status="1"><\/script>')}
-if(!window.__kpPlayerStabilityLoader){window.__kpPlayerStabilityLoader=true;document.write('<script src="./player-stability.js?v=20260810o" data-kp-player-stability="1"><\/script>')}
 if(!window.__kpWorldArtStabilityLoader){window.__kpWorldArtStabilityLoader=true;document.write('<script src="./world-art-stability.js?v=20260810q" data-kp-world-art-stability="1"><\/script>')}
 if(!window.__kpInteractionFixLoader){window.__kpInteractionFixLoader=true;document.write('<script src="./interaction-fix.js?v=20260810p" data-kp-interaction-fix="1"><\/script>')}
