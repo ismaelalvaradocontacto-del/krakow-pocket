@@ -140,3 +140,4 @@ if(!window.__kpWorldArtStabilityLoader){window.__kpWorldArtStabilityLoader=true;
 if(!window.__kpInteractionFixLoader){window.__kpInteractionFixLoader=true;document.write('<script src="./interaction-fix.js?v=20260810p" data-kp-interaction-fix="1"><\/script>')}
 if(!window.__kpMissionProofLoader){window.__kpMissionProofLoader=true;document.write('<script src="./mission-proof.js?v=20260811b" data-kp-mission-proof="1"><\/script>')}
 if(!window.__kpMissionProofGuardLoader){window.__kpMissionProofGuardLoader=true;document.write('<script src="./mission-proof-guard.js?v=20260811a" data-kp-mission-proof-guard="1"><\/script>')}
+if(!window.__kpAuschwitzExtraLoader){window.__kpAuschwitzExtraLoader=true;document.write('<script src="./auschwitz-extra.js?v=20260811a" data-kp-auschwitz-extra="1"><\/script>')}
