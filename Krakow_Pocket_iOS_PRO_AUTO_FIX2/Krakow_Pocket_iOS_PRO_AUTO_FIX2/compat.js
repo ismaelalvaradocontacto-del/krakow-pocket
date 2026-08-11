@@ -48,7 +48,7 @@ function patchProfileHud(who){
 }
 
 function notifyProfileHosts(){try{window.dispatchEvent(new CustomEvent("kp:profile-hosts-ready",{detail:{player:player()}}))}catch{}}
-function patchProfiles(){ensureProfileStyles();const who=player(),changed=patchProfileHud(who)|patchPlayerPicker(who);if(changed)notifyProfileHosts();window.KP_COMPAT_PROFILE={version:"2.1",nativeDefaultAvatar:true,noGlobalMutationObserver:true,protectedFromLegacyVisuals:true,selected:who};return !!changed}
+function patchProfiles(){ensureProfileStyles();const who=player(),changed=patchProfileHud(who)|patchPlayerPicker(who);if(changed)notifyProfileHosts();window.KP_COMPAT_PROFILE={version:"2.2",nativeDefaultAvatar:true,noGlobalMutationObserver:true,protectedFromLegacyVisuals:true,persistentSettingsButton:true,selected:who};return !!changed}
 
 function patchWorldCharacters(){
   if(!ready)return;
@@ -68,12 +68,15 @@ function openPlayerSettings(){const trigger=$("#openSettings");if(trigger)trigge
 
 function bind(){
   ensureProfileStyles();
-  // visuals.js treats this class as the signal that inline art is authoritative.
-  // Set it before its DOMContentLoaded handler so it cannot replace our native
-  // profile stack with the old illustrated portrait while assets are loading.
   document.documentElement.classList.add("kp-inline-art-ready");
   patchProfiles();
   document.addEventListener("click",e=>{
+    if(e.target.closest?.("#kpGameSettings")){
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      openPlayerSettings();
+      return;
+    }
     const pick=e.target.closest?.("#kpPlayerPicker [data-kp-player]");if(pick){e.preventDefault();choosePlayer(pick.dataset.kpPlayer);return}
     if(e.target.closest?.("#kpGameHud .kp-game-portrait")){e.preventDefault();openPlayerSettings();return}
     if(e.target.closest?.('.tab[data-panel],#kpGameHub [data-go],#quickMap,#quickExpense,#quickMemory')){setTimeout(scrollPanelTop,20);[60,160,360].forEach(ms=>setTimeout(applyNow,ms))}
