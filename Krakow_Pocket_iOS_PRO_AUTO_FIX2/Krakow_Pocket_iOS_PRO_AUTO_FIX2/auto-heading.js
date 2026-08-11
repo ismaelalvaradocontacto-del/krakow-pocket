@@ -2,9 +2,12 @@
 "use strict";
 
 const VERSION="1.0";
+const SENSOR_STALE_MS=3500;
+const GPS_STALE_MS=9000;
 let heading=null;
 let source="none";
 let lastSensorAt=0;
+let lastHeadingAt=0;
 let gpsWatchId=null;
 let lastGps=null;
 let applyTimer=0;
@@ -42,15 +45,22 @@ function bearing(a,b){
   return norm(deg(Math.atan2(y,x)));
 }
 
+function headingFresh(now=Date.now()){
+  if(!finite(heading)||!lastHeadingAt)return false;
+  const ttl=source.startsWith("sensor")?SENSOR_STALE_MS:GPS_STALE_MS;
+  return now-lastHeadingAt<=ttl;
+}
+
 function injectStyles(){
   if(document.querySelector('style[data-kp-heading="1"]'))return;
   const style=document.createElement("style");
   style.dataset.kpHeading="1";
   style.textContent=`
     .loc-dot{position:relative!important;overflow:visible!important;isolation:isolate}
-    .loc-dot .kp-heading-bearing{position:absolute;left:50%;top:50%;width:1px;height:1px;transform:rotate(var(--kp-heading,0deg));transform-origin:0 0;pointer-events:none;z-index:-1;transition:transform .14s linear}
-    .loc-dot .kp-heading-cone{position:absolute;left:-24px;top:-48px;width:48px;height:48px;clip-path:polygon(50% 100%,8% 0,92% 0);background:linear-gradient(to top,rgba(34,121,207,.06),rgba(34,121,207,.27));filter:drop-shadow(0 2px 4px rgba(19,82,142,.12));opacity:.9}
+    .loc-dot .kp-heading-bearing{position:absolute;left:50%;top:50%;width:1px;height:1px;transform:rotate(var(--kp-heading,0deg));transform-origin:0 0;pointer-events:none;z-index:-1;transition:transform .12s linear}
+    .loc-dot .kp-heading-cone{position:absolute;left:-24px;top:-48px;width:48px;height:48px;clip-path:polygon(50% 100%,8% 0,92% 0);background:linear-gradient(to top,rgba(34,121,207,.05),rgba(34,121,207,.26));filter:drop-shadow(0 2px 4px rgba(19,82,142,.12));opacity:.9}
     .loc-dot .kp-heading-arrow{position:absolute;left:-5px;top:-29px;width:10px;height:27px;clip-path:polygon(50% 0,100% 34%,70% 34%,70% 100%,30% 100%,30% 34%,0 34%);background:#156fbd;filter:drop-shadow(0 1px 1px rgba(0,0,0,.22))}
+    .loc-dot[data-heading-source="gps-course"] .kp-heading-cone{opacity:.42}
     .loc-dot:not(.kp-has-heading) .kp-heading-bearing{display:none}
   `;
   document.head.appendChild(style);
@@ -74,16 +84,17 @@ function applyMarker(){
   injectStyles();
   const dot=ensureMarker();
   if(!dot)return false;
-  if(finite(heading)){
+  if(headingFresh()){
     dot.classList.add("kp-has-heading");
     dot.style.setProperty("--kp-heading",`${norm(heading).toFixed(1)}deg`);
     dot.dataset.headingSource=source;
-    dot.setAttribute("aria-label",`Ubicación actual · dirección ${Math.round(norm(heading))} grados`);
+    dot.setAttribute("aria-label",source==="gps-course"?`Ubicación actual · rumbo de marcha ${Math.round(norm(heading))} grados`:`Ubicación actual · dirección ${Math.round(norm(heading))} grados`);
     return true;
   }
   dot.classList.remove("kp-has-heading");
   dot.style.removeProperty("--kp-heading");
   dot.removeAttribute("data-heading-source");
+  dot.setAttribute("aria-label","Ubicación actual");
   return false;
 }
 
@@ -95,9 +106,11 @@ function expose(extra={}){
     requestsOrientationPermission:false,
     sensorPreferred:true,
     gpsFallback:true,
-    heading:finite(heading)?norm(heading):null,
-    source,
-    active:finite(heading),
+    staleProtection:true,
+    highAccuracyGpsCourse:true,
+    heading:headingFresh()?norm(heading):null,
+    source:headingFresh()?source:"none",
+    active:headingFresh(),
     apply:applyMarker,
     ...extra
   };
@@ -107,7 +120,8 @@ function setHeading(value,nextSource,weight){
   if(!finite(value))return;
   heading=smoothAngle(heading,norm(value),weight);
   source=nextSource;
-  if(nextSource.startsWith("sensor"))lastSensorAt=Date.now();
+  lastHeadingAt=Date.now();
+  if(nextSource.startsWith("sensor"))lastSensorAt=lastHeadingAt;
   applyMarker();
   expose();
 }
@@ -123,7 +137,7 @@ function onOrientation(event){
     nextSource="sensor-absolute";
   }
   if(value==null)return;
-  setHeading(value,nextSource,.2);
+  setHeading(value,nextSource,.35);
 }
 
 function onGps(pos){
@@ -135,52 +149,54 @@ function onGps(pos){
 
   if(finite(coords.heading)&&Number(coords.heading)>=0){
     const speed=finite(coords.speed)?Number(coords.speed):null;
-    if(speed==null||speed>.35)gpsHeading=norm(Number(coords.heading));
+    if(speed==null||speed>.25)gpsHeading=norm(Number(coords.heading));
   }
 
   if(gpsHeading==null&&lastGps){
     const moved=distanceMeters(lastGps,point);
     const dt=now-lastGps.ts;
-    if(moved>=3&&dt>0&&dt<=20000)gpsHeading=bearing(lastGps,point);
+    if(moved>=2.5&&dt>0&&dt<=15000)gpsHeading=bearing(lastGps,point);
   }
-  if(!lastGps||distanceMeters(lastGps,point)>=2||now-lastGps.ts>12000)lastGps=point;
+  if(!lastGps||distanceMeters(lastGps,point)>=1.8||now-lastGps.ts>9000)lastGps=point;
 
-  if(gpsHeading!=null&&now-lastSensorAt>3000)setHeading(gpsHeading,"gps-course",.36);
-  else applyMarker();
+  if(gpsHeading!=null&&now-lastSensorAt>3000)setHeading(gpsHeading,"gps-course",.5);
+  else{applyMarker();expose()}
 }
 
 function startGpsFallback(){
   if(!navigator.geolocation||gpsWatchId!=null)return;
   try{
     gpsWatchId=navigator.geolocation.watchPosition(onGps,()=>{}, {
-      enableHighAccuracy:false,
-      maximumAge:5000,
-      timeout:15000
+      enableHighAccuracy:true,
+      maximumAge:1000,
+      timeout:10000
     });
   }catch{}
 }
+
+function refresh(){applyMarker();expose()}
 
 function boot(){
   injectStyles();
   expose({status:"listening"});
 
-  // Deliberately do NOT call DeviceOrientationEvent.requestPermission().
-  // If iOS has already granted access or exposes the sensor silently, these events work.
+  // No se llama a DeviceOrientationEvent.requestPermission().
+  // Si iOS ya permite el sensor silenciosamente, se usa; si no, solo usamos rumbo de movimiento GPS.
   window.addEventListener("deviceorientationabsolute",onOrientation,{passive:true});
   window.addEventListener("deviceorientation",onOrientation,{passive:true});
 
   startGpsFallback();
   applyMarker();
   clearInterval(applyTimer);
-  applyTimer=setInterval(()=>{if(!document.hidden&&finite(heading))applyMarker()},900);
+  applyTimer=setInterval(()=>{if(!document.hidden)refresh()},700);
 
   document.addEventListener("visibilitychange",()=>{
     if(document.hidden)return;
     startGpsFallback();
-    setTimeout(applyMarker,250);
+    setTimeout(refresh,250);
   },{passive:true});
-  window.addEventListener("pageshow",()=>setTimeout(applyMarker,220),{passive:true});
-  window.addEventListener("orientationchange",()=>setTimeout(applyMarker,120),{passive:true});
+  window.addEventListener("pageshow",()=>setTimeout(refresh,220),{passive:true});
+  window.addEventListener("orientationchange",()=>setTimeout(refresh,120),{passive:true});
 }
 
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
