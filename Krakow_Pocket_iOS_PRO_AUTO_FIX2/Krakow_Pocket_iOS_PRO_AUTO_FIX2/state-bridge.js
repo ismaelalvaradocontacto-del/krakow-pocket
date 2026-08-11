@@ -43,6 +43,7 @@
     state = state && typeof state === "object" ? { ...state } : {};
     state.missionStatus = mergeTimed(state.missionStatus || {}, local.missionStatus || {});
     state.discoveryStatus = mergeTimed(state.discoveryStatus || {}, local.discoveryStatus || {});
+    state.profilePhotos = mergeTimed(state.profilePhotos || {}, local.profilePhotos || {});
     return applyStatus(state);
   }
 
@@ -86,13 +87,15 @@
     const before = JSON.stringify({
       v: remote.visited || [],
       m: remote.missionStatus || {},
-      d: remote.discoveryStatus || {}
+      d: remote.discoveryStatus || {},
+      p: remote.profilePhotos || {}
     });
     const merged = mergeLocalStatus(remote);
     const after = JSON.stringify({
       v: merged.visited || [],
       m: merged.missionStatus || {},
-      d: merged.discoveryStatus || {}
+      d: merged.discoveryStatus || {},
+      p: merged.profilePhotos || {}
     });
 
     if (before !== after && next.body) {
@@ -118,11 +121,13 @@
   };
 
   window.KP_STATE_BRIDGE = {
-    version: "1.1",
+    version: "1.2",
     reversibleDiscoveries: true,
+    sharedProfilePhotos: true,
     normalize: state => mergeLocalStatus(state)
   };
 })();
+if(!window.__kpProfilePhotoLoader){window.__kpProfilePhotoLoader=true;document.write('<script src="./profile-photo.js?v=20260811a" data-kp-profile-photo="1"><\/script>')}
 if(!window.__kpNetworkStatusLoader){window.__kpNetworkStatusLoader=true;document.write('<script src="./network-status.js?v=20260810n" data-kp-network-status="1"><\/script>')}
 if(!window.__kpPlayerStabilityLoader){window.__kpPlayerStabilityLoader=true;document.write('<script src="./player-stability.js?v=20260810o" data-kp-player-stability="1"><\/script>')}
 if(!window.__kpWorldArtStabilityLoader){window.__kpWorldArtStabilityLoader=true;document.write('<script src="./world-art-stability.js?v=20260810q" data-kp-world-art-stability="1"><\/script>')}
