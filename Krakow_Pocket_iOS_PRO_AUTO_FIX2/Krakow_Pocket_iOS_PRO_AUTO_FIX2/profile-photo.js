@@ -219,9 +219,10 @@
     const photos = readState().profilePhotos || {};
     lastSignature = JSON.stringify(photos);
     window.KP_PROFILE_PHOTOS = {
-      version: "1.0",
+      version: "1.1",
       sharedViaAdventureState: true,
       optimizedAvatar: true,
+      immediateRemoteRepaint: true,
       players: Object.fromEntries(PLAYERS.map(name => [name, !!dataFor(name)])),
       get: name => dataFor(name),
       setDataUrl: (name, dataUrl) => writeEntry(name, dataUrl),
@@ -258,6 +259,7 @@
     window.addEventListener("kp:statechange", schedulePaint);
     window.addEventListener("pageshow", schedulePaint);
     window.addEventListener("kp:profile-photo-change", schedulePaint);
+    window.addEventListener("kp:profile-photo-sync", schedulePaint);
     setInterval(pollSharedState, 1200);
     [50, 150, 400, 900, 1800, 3200].forEach(ms => setTimeout(schedulePaint, ms));
   }
