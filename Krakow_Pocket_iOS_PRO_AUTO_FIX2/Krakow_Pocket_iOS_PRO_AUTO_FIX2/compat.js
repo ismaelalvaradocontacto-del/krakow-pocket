@@ -54,7 +54,7 @@ function patchProfileHud(who){
 }
 
 function notifyProfileHosts(){try{window.dispatchEvent(new CustomEvent("kp:profile-hosts-ready",{detail:{player:player()}}))}catch{}}
-function patchProfiles(){ensureProfileStyles();const who=player(),changed=patchProfileHud(who)|patchPlayerPicker(who);if(changed)notifyProfileHosts();window.KP_COMPAT_PROFILE={version:"2.2",nativeDefaultAvatar:true,cssFallback:true,noGlobalMutationObserver:true,protectedFromLegacyVisuals:true,persistentSettingsButton:true,selected:who};return !!changed}
+function patchProfiles(){ensureProfileStyles();const who=player(),changed=patchProfileHud(who)|patchPlayerPicker(who);if(changed)notifyProfileHosts();window.KP_COMPAT_PROFILE={version:"2.2",nativeDefaultAvatar:true,cssFallback:true,noGlobalMutationObserver:true,protectedFromLegacyVisuals:true,persistentSettingsButton:true,directSettingsFallback:true,selected:who};return !!changed}
 
 function patchWorldCharacters(){
   if(!ready)return;
@@ -70,7 +70,14 @@ function applyNow(){patch()}
 function enforceBurst(){clearInterval(enforceTimer);let ticks=0;enforceTimer=setInterval(()=>{if(document.visibilityState!=="hidden")applyNow();if(++ticks>=5){clearInterval(enforceTimer);enforceTimer=0}},300)}
 function scrollPanelTop(){requestAnimationFrame(()=>{window.scrollTo({top:0,left:0,behavior:"auto"});document.scrollingElement?.scrollTo?.({top:0,left:0,behavior:"auto"})})}
 function choosePlayer(who){if(who!=="Ismael"&&who!=="Laura")return;localStorage.setItem("krakowPlayer",who);setSelection(who);const select=$("#playerSelect");if(select){select.value=who;select.dispatchEvent(new Event("change",{bubbles:true}))}notifyProfileHosts();[0,70,180,420].forEach(ms=>setTimeout(applyNow,ms))}
-function openPlayerSettings(){const trigger=$("#openSettings");if(trigger)trigger.click()}
+function openPlayerSettings(){
+  const sheet=$("#settingsSheet");if(sheet?.open)return;
+  const trigger=$("#openSettings");trigger?.click();
+  if(sheet&&!sheet.open){
+    try{sheet.showModal()}catch{try{sheet.setAttribute("open","")}catch{}}
+    setTimeout(()=>{notifyProfileHosts();try{window.dispatchEvent(new CustomEvent("kp:profile-settings-open",{detail:{player:player()}}))}catch{}},0)
+  }
+}
 
 function bind(){
   ensureProfileStyles();
