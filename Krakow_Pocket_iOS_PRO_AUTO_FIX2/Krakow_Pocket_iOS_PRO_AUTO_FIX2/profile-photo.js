@@ -9,7 +9,6 @@
   const NS = "http://www.w3.org/2000/svg";
   let paintRaf = 0;
   let managerBound = false;
-  let lastSignature = "";
 
   const now = () => new Date().toISOString();
   const currentPlayer = () => localStorage.getItem(PLAYER_KEY) === "Laura" ? "Laura" : "Ismael";
@@ -17,7 +16,7 @@
   function readState() {
     try {
       const state = JSON.parse(localStorage.getItem(STORAGE) || "{}");
-      if (!state || typeof state !== "object") return {};
+      if (!state || typeof state !== "object") return { profilePhotos: {} };
       if (!state.profilePhotos || typeof state.profilePhotos !== "object") state.profilePhotos = {};
       return state;
     } catch {
@@ -27,7 +26,7 @@
 
   function entryFor(name) {
     const entry = readState().profilePhotos?.[name];
-    return entry && typeof entry === "object" && typeof entry.updatedAt === "string" ? entry : null;
+    return entry && typeof entry === "object" ? entry : null;
   }
 
   function dataFor(name) {
@@ -42,8 +41,8 @@
     state.profilePhotos = { ...(state.profilePhotos || {}), [name]: { dataUrl: dataUrl || "", updatedAt } };
     state.updatedAt = updatedAt;
     localStorage.setItem(STORAGE, JSON.stringify(state));
-    window.dispatchEvent(new CustomEvent("kp:profile-photo-change", { detail: { player: name, hasPhoto: !!dataUrl } }));
-    settingsBurst();
+    try { window.dispatchEvent(new CustomEvent("kp:profile-photo-change", { detail: { player: name, hasPhoto: !!dataUrl } })); } catch {}
+    schedulePaint();
   }
 
   function toast(message, ms = 2300) {
@@ -104,13 +103,11 @@
     const style = document.createElement("style");
     style.dataset.kpProfilePhoto = "1";
     style.textContent = `
-      .kp-profile-face,.kp-picker-face{position:relative!important;overflow:hidden!important}
       .kp-profile-photo{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:cover!important;object-position:center!important;border-radius:inherit!important;z-index:6!important;display:block!important;pointer-events:none!important}
       #kpProfilePhotoManager{margin:10px 0 2px;padding:12px;border:2px solid #b18b56;border-radius:12px;background:linear-gradient(180deg,#fff7dc,#ead39b);box-shadow:0 2px 0 rgba(82,53,31,.16)}
       #kpProfilePhotoManager .kp-photo-head{display:flex;gap:10px;align-items:center}
       #kpProfilePhotoManager .kp-photo-preview{position:relative;flex:0 0 58px;width:58px;height:58px;border:3px solid #70452c;border-radius:50%;overflow:hidden;background:#e1c78d;display:grid;place-items:center}
-      #kpProfilePhotoManager .kp-photo-preview svg{position:absolute;inset:0;width:100%;height:100%;display:block}
-      #kpProfilePhotoManager .kp-photo-preview img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+      #kpProfilePhotoManager .kp-photo-preview svg,#kpProfilePhotoManager .kp-photo-preview img{position:absolute;inset:0;width:100%;height:100%;display:block;object-fit:cover}
       #kpProfilePhotoManager .kp-photo-copy{min-width:0;flex:1}
       #kpProfilePhotoManager .kp-photo-copy strong{display:block;font-size:14px;color:#442d20}
       #kpProfilePhotoManager .kp-photo-copy small{display:block;margin-top:3px;font-size:10.5px;line-height:1.3;color:#725b46}
@@ -129,13 +126,12 @@
     return [...(host?.children || [])].find(node => node.classList?.contains("kp-profile-photo")) || null;
   }
 
-  function addOverlay(host, name) {
+  function paintHost(host, name) {
     if (!host) return;
-    host.style.position = "relative";
     const dataUrl = dataFor(name);
     let img = directPhoto(host);
     if (!dataUrl) {
-      img?.remove();
+      if (img) img.remove();
       return;
     }
     if (!img) {
@@ -146,7 +142,7 @@
       img.draggable = false;
       host.appendChild(img);
     }
-    if (img.src !== dataUrl) img.src = dataUrl;
+    if (img.getAttribute("src") !== dataUrl) img.setAttribute("src", dataUrl);
   }
 
   function ensureManager() {
@@ -202,101 +198,47 @@
 
   function setStatus(text) {
     const status = document.getElementById("kpProfilePhotoStatus");
-    if (status && text) status.textContent = text;
+    if (status && text && status.textContent !== text) status.textContent = text;
   }
 
   function paintManager() {
     const manager = ensureManager();
     if (!manager) return;
-    const name = currentPlayer();
-    const preview = manager.querySelector("#kpProfilePhotoPreview");
+    const name = currentPlayer(),dataUrl=dataFor(name);
     const title = manager.querySelector("#kpProfilePhotoTitle");
     const reset = manager.querySelector("#kpProfilePhotoReset");
-    if (title) title.textContent = `Foto de ${name}`;
-    if (reset) {
-      reset.disabled = !dataFor(name);
-      reset.textContent = "↩ Imagen por defecto";
+    const preview = manager.querySelector("#kpProfilePhotoPreview");
+    const titleText=`Foto de ${name}`;if(title&&title.textContent!==titleText)title.textContent=titleText;
+    if(reset){reset.disabled=!dataUrl;if(reset.textContent!=="↩ Imagen por defecto")reset.textContent="↩ Imagen por defecto"}
+    if(!preview)return;
+    if(dataUrl){
+      const current=preview.querySelector(":scope > img.kp-photo-current");
+      if(current&&current.getAttribute("src")===dataUrl&&preview.children.length===1)return;
+      const img=document.createElement("img");img.className="kp-photo-current";img.src=dataUrl;img.alt="";preview.replaceChildren(img);return;
     }
-    if (!preview) return;
-
-    const dataUrl = dataFor(name);
-    if (dataUrl) {
-      const current = preview.querySelector(":scope > img.kp-photo-current");
-      if (current && current.src === dataUrl && preview.children.length === 1) return;
-      const img = document.createElement("img");
-      img.className = "kp-photo-current";
-      img.src = dataUrl;
-      img.alt = "";
-      preview.replaceChildren(img);
-      return;
-    }
-
-    const currentDefault = preview.querySelector(":scope > svg.kp-profile-default");
-    if (currentDefault && preview.children.length === 1) return;
-    preview.replaceChildren(createDefaultAvatar());
+    const fallback=preview.querySelector(":scope > svg.kp-profile-default");if(fallback&&preview.children.length===1)return;preview.replaceChildren(createDefaultAvatar());
   }
 
   function paintProfiles() {
-    ensureStyles();
-    for (const name of PLAYERS) {
-      document.querySelectorAll(`#kpGameHud .kp-profile-face[data-kp-profile="${name}"], #kpPlayerPicker [data-kp-player="${name}"] .kp-picker-face`).forEach(host => addOverlay(host, name));
-    }
+    paintRaf=0;ensureStyles();
+    for(const name of PLAYERS){document.querySelectorAll(`#kpGameHud .kp-profile-face[data-kp-profile="${name}"],#kpPlayerPicker [data-kp-player="${name}"] .kp-picker-face`).forEach(host=>paintHost(host,name))}
     paintManager();
-    const photos = readState().profilePhotos || {};
-    lastSignature = JSON.stringify(photos);
-    window.KP_PROFILE_PHOTOS = {
-      version: "1.2",
-      sharedViaAdventureState: true,
-      optimizedAvatar: true,
-      immediateRemoteRepaint: true,
-      noGlobalMutationObserver: true,
-      lightweightSettings: true,
-      players: Object.fromEntries(PLAYERS.map(name => [name, !!dataFor(name)])),
-      get: name => dataFor(name),
-      setDataUrl: (name, dataUrl) => writeEntry(name, dataUrl),
-      remove: name => writeEntry(name, ""),
-      snapshot: () => JSON.parse(JSON.stringify(readState().profilePhotos || {}))
-    };
+    window.KP_PROFILE_PHOTOS={version:"2.0",sharedViaAdventureState:true,optimizedAvatar:true,immediateRemoteRepaint:true,eventDriven:true,noGlobalMutationObserver:true,noPollingLoop:true,players:Object.fromEntries(PLAYERS.map(name=>[name,!!dataFor(name)])),get:name=>dataFor(name),setDataUrl:(name,dataUrl)=>writeEntry(name,dataUrl),remove:name=>writeEntry(name,""),snapshot:()=>JSON.parse(JSON.stringify(readState().profilePhotos||{}))};
   }
 
-  function schedulePaint() {
-    if (paintRaf) return;
-    paintRaf = requestAnimationFrame(() => { paintRaf = 0; paintProfiles(); });
+  function schedulePaint(){if(!paintRaf)paintRaf=requestAnimationFrame(paintProfiles)}
+  function shortBurst(){schedulePaint();setTimeout(schedulePaint,90)}
+
+  function boot(){
+    ensureStyles();shortBurst();
+    document.addEventListener("click",event=>{if(event.target.closest?.("#kpGameSettings,#openSettings,#kpPlayerPicker [data-kp-player],#kpProfilePhotoReset"))shortBurst()},true);
+    window.addEventListener("storage",event=>{if(event.key===STORAGE||event.key===PLAYER_KEY)shortBurst()});
+    window.addEventListener("kp:profile-hosts-ready",shortBurst);
+    window.addEventListener("kp:profile-photo-change",shortBurst);
+    window.addEventListener("kp:profile-photo-sync",shortBurst);
+    window.addEventListener("pageshow",shortBurst);
+    document.addEventListener("visibilitychange",()=>{if(!document.hidden)shortBurst()});
   }
 
-  function burst(delays = [0, 60, 180, 450]) {
-    delays.forEach(ms => setTimeout(schedulePaint, ms));
-  }
-
-  function settingsBurst() {
-    burst([0, 60, 180, 450, 850, 1300]);
-  }
-
-  function pollSharedState() {
-    const signature = JSON.stringify(readState().profilePhotos || {});
-    if (signature !== lastSignature) schedulePaint();
-    if (document.getElementById("kpPlayerPicker") && !document.getElementById("kpProfilePhotoManager")) schedulePaint();
-  }
-
-  function boot() {
-    ensureStyles();
-    burst([50, 150, 400, 900, 1800, 3200]);
-    document.addEventListener("click", event => {
-      if (event.target.closest?.("#kpPlayerPicker [data-kp-player],#openSettings,#kpGameSettings,#kpGameHud .kp-game-portrait,#kpProfilePhotoReset")) settingsBurst();
-    }, true);
-    window.addEventListener("storage", event => {
-      if (event.key === STORAGE || event.key === PLAYER_KEY) settingsBurst();
-    });
-    window.addEventListener("kp:render", schedulePaint);
-    window.addEventListener("kp:game-render", schedulePaint);
-    window.addEventListener("kp:statechange", schedulePaint);
-    window.addEventListener("pageshow", schedulePaint);
-    window.addEventListener("kp:profile-photo-change", settingsBurst);
-    window.addEventListener("kp:profile-photo-sync", settingsBurst);
-    document.addEventListener("visibilitychange", () => { if (!document.hidden) burst(); });
-    setInterval(pollSharedState, 1200);
-  }
-
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, { once: true });
-  else boot();
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 })();
