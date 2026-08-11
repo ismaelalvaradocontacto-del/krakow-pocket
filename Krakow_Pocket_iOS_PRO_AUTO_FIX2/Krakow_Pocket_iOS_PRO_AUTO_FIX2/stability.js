@@ -10,6 +10,15 @@
     document.head.appendChild(skin);
   }
 
+  // Feedback toasts are purely informational. Safari/WebKit can keep them over the
+  // next control for a fraction longer than Chromium, so they must never intercept taps.
+  if (!document.querySelector('style[data-kp-passive-toast]')) {
+    const passiveToast = document.createElement("style");
+    passiveToast.dataset.kpPassiveToast = "1";
+    passiveToast.textContent = ".toast,#toast{pointer-events:none!important;user-select:none;-webkit-user-select:none}";
+    document.head.appendChild(passiveToast);
+  }
+
   // Never reload just because mission state was normalized in the background.
   // The UI layers already listen to storage/state events and can repaint in place.
   try { sessionStorage.setItem("kpMissionMutation", "1"); } catch {}
@@ -65,5 +74,5 @@
   }, true);
 
   // Diagnostic marker used by automated tests and for support.
-  window.KP_STABILITY = { version: "1.1", automaticReloadsBlocked: true, storybookSkin: true };
+  window.KP_STABILITY = { version: "1.2", automaticReloadsBlocked: true, storybookSkin: true, passiveToasts: true };
 })();
