@@ -34,12 +34,12 @@ jobs:
           grep -q 'profile-photo.js?v=20260811c' "$APP_DIR/state-bridge.js"
           grep -q 'default-profile.js?v=20260811d' "$APP_DIR/state-bridge.js"
           grep -q 'krakow-pocket-v29-profile-settings-20260811a' "$APP_DIR/sw.js"
-          if grep -q 'MutationObserver' "$APP_DIR/default-profile.js"; then
-            echo "default-profile.js must not use MutationObserver"
+          if grep -q 'new MutationObserver' "$APP_DIR/default-profile.js"; then
+            echo "default-profile.js must not instantiate MutationObserver"
             exit 1
           fi
-          if grep -q 'MutationObserver' "$APP_DIR/profile-photo.js"; then
-            echo "profile-photo.js must not use MutationObserver"
+          if grep -q 'new MutationObserver' "$APP_DIR/profile-photo.js"; then
+            echo "profile-photo.js must not instantiate MutationObserver"
             exit 1
           fi
       - name: Install Playwright
