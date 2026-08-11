@@ -24,6 +24,14 @@ jobs:
           done
       - name: Structural data and PWA integrity audit
         run: node .github/scripts/krakow-structural.mjs
+      - name: Visual system integrity audit
+        run: |
+          APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
+          grep -q 'visual system v8.0' "$APP_DIR/profiles.css"
+          grep -q 'focus-visible' "$APP_DIR/profiles.css"
+          grep -q 'grid-template-columns:repeat(3,minmax(0,1fr))' "$APP_DIR/profiles.css"
+          grep -q 'prefers-reduced-motion' "$APP_DIR/profiles.css"
+          test -s "$APP_DIR/STYLE_AUDIT_20260811.md"
       - name: Install browser audit tooling
         run: |
           npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
@@ -80,6 +88,7 @@ jobs:
             GUARD_OK=0
             CELEBRATION_OK=0
             PORTRAIT_OK=0
+            STYLE_OK=0
             CACHE_OK=0
             curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'world-art-stability.js' && STATE_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/network-status.js | grep -q 'offlineUiGuard: true' && NETWORK_OK=1 || true
@@ -90,8 +99,9 @@ jobs:
             curl -fsS https://krakow-pocket.pages.dev/celebration-guard.js | grep -q '__kpCelebrationGuard' && GUARD_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/celebration-stability.js | grep -q 'delayedDuplicateBlocked' && CELEBRATION_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/portrait-stability.js | grep -q 'profilesVerified: profileHealth()' && PORTRAIT_OK=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v18-world-art-repaint-20260810q' && CACHE_OK=1 || true
-            if [ "$STATE_OK" = "1" ] && [ "$NETWORK_OK" = "1" ] && [ "$PLAYER_OK" = "1" ] && [ "$WORLD_OK" = "1" ] && [ "$INTERACTION_OK" = "1" ] && [ "$MISSION_OK" = "1" ] && [ "$GUARD_OK" = "1" ] && [ "$CELEBRATION_OK" = "1" ] && [ "$PORTRAIT_OK" = "1" ] && [ "$CACHE_OK" = "1" ]; then
+            curl -fsS https://krakow-pocket.pages.dev/profiles.css | grep -q 'visual system v8.0' && STYLE_OK=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v19-style-polish-20260811a' && CACHE_OK=1 || true
+            if [ "$STATE_OK" = "1" ] && [ "$NETWORK_OK" = "1" ] && [ "$PLAYER_OK" = "1" ] && [ "$WORLD_OK" = "1" ] && [ "$INTERACTION_OK" = "1" ] && [ "$MISSION_OK" = "1" ] && [ "$GUARD_OK" = "1" ] && [ "$CELEBRATION_OK" = "1" ] && [ "$PORTRAIT_OK" = "1" ] && [ "$STYLE_OK" = "1" ] && [ "$CACHE_OK" = "1" ]; then
               echo "Cloudflare is serving the full audited build"
               exit 0
             fi
@@ -107,6 +117,16 @@ jobs:
         env:
           KP_AUDIT_URL: https://krakow-pocket.pages.dev/
         run: node .github/scripts/krakow-reload-stability.mjs
+      - name: Build complete repository ZIP
+        if: success()
+        run: git archive --format=zip --output=Krakow_Pocket_COMPLETE_20260811.zip HEAD
+      - name: Upload complete repository ZIP
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: krakow-pocket-complete
+          path: Krakow_Pocket_COMPLETE_20260811.zip
+          if-no-files-found: error
       - name: Upload audit screenshots
         if: always()
         uses: actions/upload-artifact@v4
