@@ -24,30 +24,23 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
 
   const page = await context.newPage();
   const errors = [];
-  const isProductionWebKit = name === 'webkit' && base.startsWith('https://krakow-pocket.pages.dev');
-  page.on('pageerror', e => {
-    const text = e.message || '';
-    if (isProductionWebKit && text.includes('supabase.co') && text.includes('access control checks')) return;
-    errors.push(`page:${text}`);
-  });
-  page.on('console', m => {
-    if (m.type() !== 'error') return;
-    const text = m.text();
-    if (isProductionWebKit && text.includes('Kraków Pocket sync pull TypeError: Load failed')) return;
-    errors.push(`console:${text}`);
-  });
+  page.on('pageerror', e => errors.push(`page:${e.message || ''}`));
+  page.on('console', m => { if (m.type() === 'error') errors.push(`console:${m.text()}`); });
 
   await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForTimeout(1800);
+  await page.waitForFunction(() => window.KP_COMPAT_PROFILE?.version === '2.0' && window.KP_PROFILE_PHOTOS?.version === '2.0', { timeout: 7000 });
   await openSettings(page);
   await page.waitForSelector('#kpProfilePhotoManager', { timeout: 5000 });
 
   const initial = await page.evaluate(() => ({
     module: window.KP_PROFILE_PHOTOS?.version,
     bridge: window.KP_STATE_BRIDGE?.version,
+    compat: window.KP_COMPAT_PROFILE?.version,
     shared: window.KP_STATE_BRIDGE?.sharedProfilePhotos,
     immediate: window.KP_STATE_BRIDGE?.immediateRemoteProfileAdoption,
-    lightweight: window.KP_PROFILE_PHOTOS?.lightweightSettings,
+    eventDriven: window.KP_PROFILE_PHOTOS?.eventDriven,
+    noPolling: window.KP_PROFILE_PHOTOS?.noPollingLoop,
+    nativeDefault: window.KP_COMPAT_PROFILE?.nativeDefaultAvatar,
     manager: !!document.querySelector('#kpProfilePhotoManager'),
     choose: !!document.querySelector('#kpProfilePhotoChoose'),
     reset: !!document.querySelector('#kpProfilePhotoReset')
@@ -55,7 +48,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
 
   await page.locator('#kpProfilePhotoInput').setInputFiles({ name: 'avatar.png', mimeType: 'image/png', buffer: tinyPng });
   await page.waitForFunction(() => !!window.KP_PROFILE_PHOTOS?.get('Ismael'), { timeout: 5000 });
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'), { timeout: 5000 });
 
   const afterUpload = await page.evaluate(() => {
     const state = JSON.parse(localStorage.getItem('krakowPocketCoop') || '{}');
@@ -66,6 +59,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
       optimized: (state.profilePhotos?.Ismael?.dataUrl || '').length < 30000,
       header: !!header && header.getBoundingClientRect().width > 20,
       picker: !!picker && picker.getBoundingClientRect().width > 20,
+      fallbackUnderPhoto: !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > svg.kp-profile-default'),
       remoteShared: false
     };
   });
@@ -74,7 +68,8 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   afterUpload.remoteShared = !!remote.profilePhotos?.Ismael?.dataUrl;
 
   await page.reload({ waitUntil: 'domcontentloaded' });
-  await page.waitForTimeout(1800);
+  await page.waitForFunction(() => window.KP_PROFILE_PHOTOS?.version === '2.0', { timeout: 7000 });
+  await page.waitForFunction(() => !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'), { timeout: 5000 });
   const afterReload = await page.evaluate(() => ({
     stored: !!JSON.parse(localStorage.getItem('krakowPocketCoop') || '{}').profilePhotos?.Ismael?.dataUrl,
     header: !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo')
@@ -83,27 +78,31 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   const remoteLaura = 'data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAP//////////////////////////////////////////////////////////////////////////////////////2wBDAf//////////////////////////////////////////////////////////////////////////////////////wAARCAACAAIDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAX/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIQAxAAAAF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABBQJ//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPwF//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPwF//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQAGPwJ//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPyF//9oADAMBAAIAAwAAABAf/8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAwEBPxB//8QAFBEBAAAAAAAAAAAAAAAAAAAAAP/aAAgBAgEBPxB//8QAFBABAAAAAAAAAAAAAAAAAAAAAP/aAAgBAQABPxB//9k=';
   remote.profilePhotos = { ...(remote.profilePhotos || {}), Laura: { dataUrl: remoteLaura, updatedAt: new Date(Date.now() + 5000).toISOString() } };
   remote.updatedAt = new Date(Date.now() + 5000).toISOString();
-  await page.waitForFunction(() => !!JSON.parse(localStorage.getItem('krakowPocketCoop') || '{}').profilePhotos?.Laura?.dataUrl, { timeout: 8500 }).catch(() => {});
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => !!JSON.parse(localStorage.getItem('krakowPocketCoop') || '{}').profilePhotos?.Laura?.dataUrl, { timeout: 8500 });
+  await page.waitForFunction(() => !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Laura"] > .kp-profile-photo'), { timeout: 3000 });
   const remoteMerge = await page.evaluate(() => ({
     lauraStored: !!JSON.parse(localStorage.getItem('krakowPocketCoop') || '{}').profilePhotos?.Laura?.dataUrl,
     lauraHeader: !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Laura"] > .kp-profile-photo')
   }));
 
   await openSettings(page);
+  await page.locator('#kpPlayerPicker [data-kp-player="Ismael"]').click();
+  await page.waitForFunction(() => localStorage.getItem('krakowPlayer') === 'Ismael', { timeout: 2500 });
   await page.locator('#kpProfilePhotoReset').click();
-  await page.waitForTimeout(500);
+  await page.waitForFunction(() => !document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'), { timeout: 3000 });
   const removed = await page.evaluate(() => {
     const entry = JSON.parse(localStorage.getItem('krakowPocketCoop') || '{}').profilePhotos?.Ismael;
+    const fallback = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > svg.kp-profile-default');
+    const box = fallback?.getBoundingClientRect();
     return {
       tombstone: !!entry && entry.dataUrl === '' && !!entry.updatedAt,
       headerGone: !document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'),
-      fallbackVisible: !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] svg')
+      fallbackVisible: !!fallback && box.width > 20 && box.height > 20
     };
   });
 
-  const ok = initial.module === '1.2' && initial.bridge === '1.3' && initial.shared && initial.immediate && initial.lightweight && initial.manager && initial.choose && initial.reset &&
-    afterUpload.stored && afterUpload.optimized && afterUpload.header && afterUpload.picker && afterUpload.remoteShared &&
+  const ok = initial.module === '2.0' && initial.bridge === '1.4' && initial.compat === '2.0' && initial.shared && initial.immediate && initial.eventDriven && initial.noPolling && initial.nativeDefault && initial.manager && initial.choose && initial.reset &&
+    afterUpload.stored && afterUpload.optimized && afterUpload.header && afterUpload.picker && afterUpload.fallbackUnderPhoto && afterUpload.remoteShared &&
     afterReload.stored && afterReload.header && remoteMerge.lauraStored && remoteMerge.lauraHeader && removed.tombstone && removed.headerGone && removed.fallbackVisible && errors.length === 0;
 
   console.log(`\n=== ${name.toUpperCase()} PROFILE PHOTO AUDIT ===`);
