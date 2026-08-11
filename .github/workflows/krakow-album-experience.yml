@@ -1,0 +1,62 @@
+name: Krakow Pocket interactive album audit
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-experience.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/stability.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/sw.js'
+      - '.github/scripts/krakow-album-experience.mjs'
+      - '.github/workflows/krakow-album-experience.yml'
+  workflow_dispatch:
+
+jobs:
+  album:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Static album checks
+        run: |
+          set -euxo pipefail
+          APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
+          node --check "$APP_DIR/album-experience.js"
+          node --check .github/scripts/krakow-album-experience.mjs
+          grep -q 'const VERSION="2.0"' "$APP_DIR/album-experience.js"
+          grep -q 'offlineHtml:true' "$APP_DIR/album-experience.js"
+          grep -q 'pdfViaPrint:true' "$APP_DIR/album-experience.js"
+          grep -q '@media print' "$APP_DIR/album-experience.js"
+          grep -q 'interactiveAlbum: true' "$APP_DIR/stability.js"
+          grep -q 'album-experience.js' "$APP_DIR/sw.js"
+          grep -q 'krakow-pocket-v38-interactive-album-20260811a' "$APP_DIR/sw.js"
+      - name: Install browser tooling
+        run: |
+          npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
+          npx playwright install --with-deps chromium webkit >/tmp/playwright-install.log 2>&1
+      - name: Start local app
+        run: |
+          APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory "$APP_DIR" >/tmp/kp-album-http.log 2>&1 &
+          sleep 2
+          curl -fsS http://127.0.0.1:4173/album-experience.js | grep -q 'const VERSION="2.0"'
+      - name: Verify interactive album locally
+        run: node .github/scripts/krakow-album-experience.mjs
+      - name: Wait for Cloudflare build
+        run: |
+          for i in {1..45}; do
+            ALBUM=0; CACHE=0; LOADER=0
+            curl -fsS https://krakow-pocket.pages.dev/album-experience.js | grep -q 'const VERSION="2.0"' && ALBUM=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v38-interactive-album-20260811a' && CACHE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/stability.js | grep -q 'interactiveAlbum: true' && LOADER=1 || true
+            if [ "$ALBUM" = 1 ] && [ "$CACHE" = 1 ] && [ "$LOADER" = 1 ]; then exit 0; fi
+            sleep 4
+          done
+          exit 1
+      - name: Verify interactive album on Cloudflare
+        env:
+          KP_AUDIT_URL: https://krakow-pocket.pages.dev/
+        run: node .github/scripts/krakow-album-experience.mjs
