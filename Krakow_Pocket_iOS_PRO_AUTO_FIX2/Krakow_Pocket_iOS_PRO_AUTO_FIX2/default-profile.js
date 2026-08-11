@@ -95,7 +95,7 @@
 
   function paintManager() {
     const manager = document.getElementById("kpProfilePhotoManager");
-    if (!manager) return;
+    if (!manager) return false;
     const name = currentPlayer();
     const reset = manager.querySelector("#kpProfilePhotoReset");
     if (reset) {
@@ -109,11 +109,11 @@
     }
 
     const preview = manager.querySelector("#kpProfilePhotoPreview");
-    if (!preview) return;
+    if (!preview) return false;
     const customPreview = [...preview.children].some(node => node.tagName === "IMG" && !node.classList.contains("kp-profile-default"));
     if (customPhoto(name) || customPreview) {
       removeDefaults(preview);
-      return;
+      return true;
     }
 
     let fallback = directChild(preview, "kp-profile-default");
@@ -122,6 +122,7 @@
       fallback = null;
     }
     if (!fallback) preview.appendChild(createDefaultAvatar(name));
+    return true;
   }
 
   function paint() {
@@ -131,10 +132,11 @@
     document.querySelectorAll('#kpPlayerPicker [data-kp-player] .kp-picker-face').forEach(host => ensureDefault(host, playerForHost(host)));
     paintManager();
     window.KP_DEFAULT_PROFILE = {
-      version: "1.1",
+      version: "1.2",
       genericDefault: true,
       inlineSvg: true,
       noExternalImageDependency: true,
+      lightweightSettingsRepaint: true,
       replacesIllustratedProfileFallback: true
     };
   }
@@ -147,6 +149,14 @@
     [0, 50, 160, 420].forEach(ms => setTimeout(schedule, ms));
   }
 
+  function settingsBurst() {
+    [0, 50, 160, 420, 760, 1050, 1400].forEach(ms => setTimeout(() => {
+      const sheet = document.getElementById("settingsSheet");
+      if (ms > 420 && sheet && !sheet.open) return;
+      schedule();
+    }, ms));
+  }
+
   function boot() {
     ensureStyles();
     burst();
@@ -154,18 +164,20 @@
     document.addEventListener("click", event => {
       const target = event.target.closest?.("#kpGameSettings,#openSettings,#closeSettings,#kpPlayerPicker [data-kp-player],#kpProfilePhotoChoose,#kpProfilePhotoReset");
       if (!target) return;
-      burst();
+      if (target.id === "kpGameSettings" || target.id === "openSettings" || target.closest?.("#kpPlayerPicker [data-kp-player]")) settingsBurst();
+      else burst();
       if (target.id === "kpProfilePhotoReset") {
         setTimeout(() => {
           const toast = document.getElementById("toast");
           if (toast && toast.style.display !== "none") toast.textContent = `Imagen por defecto restaurada para ${currentPlayer()}`;
+          settingsBurst();
         }, 30);
       }
     }, true);
 
     window.addEventListener("storage", burst);
-    window.addEventListener("kp:profile-photo-change", burst);
-    window.addEventListener("kp:profile-photo-sync", burst);
+    window.addEventListener("kp:profile-photo-change", settingsBurst);
+    window.addEventListener("kp:profile-photo-sync", settingsBurst);
     window.addEventListener("kp:render", burst);
     window.addEventListener("kp:game-render", burst);
     window.addEventListener("kp:statechange", burst);
