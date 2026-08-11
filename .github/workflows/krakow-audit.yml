@@ -36,7 +36,9 @@ jobs:
           grep -q 'overflow-x:clip!important' "$APP_DIR/mobile-hotfix.css"
           grep -q 'pageScaleLocked: true' "$APP_DIR/stability.js"
           grep -q 'landmarkArtLayer: true' "$APP_DIR/stability.js"
-          grep -q "version: '2.1'" "$APP_DIR/landmark-art-fix.js"
+          grep -q "version: '2.2'" "$APP_DIR/landmark-art-fix.js"
+          grep -q 'externalUse: false' "$APP_DIR/landmark-art-fix.js"
+          grep -q 'data-kp-landmark-inline' "$APP_DIR/landmark-art-fix.js"
           grep -q 'landmark-dragon' "$APP_DIR/assets/landmarks-v2.svg"
           grep -q 'landmark-ghetto' "$APP_DIR/assets/landmarks-v2.svg"
           test -s "$APP_DIR/STYLE_AUDIT_20260811.md"
@@ -54,7 +56,8 @@ jobs:
           curl -fsS -I http://127.0.0.1:4173/
           curl -fsS http://127.0.0.1:4173/stability.js | grep -q 'automaticReloadsBlocked'
           curl -fsS http://127.0.0.1:4173/mobile-hotfix.css | grep -q 'iPhone layout hotfix v8.1'
-          curl -fsS http://127.0.0.1:4173/landmark-art-fix.js | grep -q "version: '2.1'"
+          curl -fsS http://127.0.0.1:4173/landmark-art-fix.js | grep -q "version: '2.2'"
+          curl -fsS http://127.0.0.1:4173/landmark-art-fix.js | grep -q 'externalUse: false'
           curl -fsS http://127.0.0.1:4173/assets/landmarks-v2.svg | grep -q 'landmark-dragon'
           curl -fsS http://127.0.0.1:4173/state-bridge.js | grep -q '__kpStateBridge'
           curl -fsS http://127.0.0.1:4173/network-status.js | grep -q 'offlineUiGuard: true'
@@ -117,9 +120,9 @@ jobs:
             curl -fsS https://krakow-pocket.pages.dev/portrait-stability.js | grep -q 'profilesVerified: profileHealth()' && PORTRAIT_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/profiles.css | grep -q 'visual system v8.0' && STYLE_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/mobile-hotfix.css | grep -q 'iPhone layout hotfix v8.1' && HOTFIX_OK=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/landmark-art-fix.js | grep -q "version: '2.1'" && LANDMARK_OK=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/landmark-art-fix.js | grep -q "version: '2.2'" && LANDMARK_OK=1 || true
             curl -fsS https://krakow-pocket.pages.dev/assets/landmarks-v2.svg | grep -q 'landmark-dragon' && SPRITE_OK=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v22-landmark-art-20260811b' && CACHE_OK=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v23-inline-landmarks-20260811c' && CACHE_OK=1 || true
             if [ "$STATE_OK" = "1" ] && [ "$NETWORK_OK" = "1" ] && [ "$PLAYER_OK" = "1" ] && [ "$WORLD_OK" = "1" ] && [ "$INTERACTION_OK" = "1" ] && [ "$MISSION_OK" = "1" ] && [ "$GUARD_OK" = "1" ] && [ "$CELEBRATION_OK" = "1" ] && [ "$PORTRAIT_OK" = "1" ] && [ "$STYLE_OK" = "1" ] && [ "$HOTFIX_OK" = "1" ] && [ "$LANDMARK_OK" = "1" ] && [ "$SPRITE_OK" = "1" ] && [ "$CACHE_OK" = "1" ]; then
               echo "Cloudflare is serving the full audited build"
               exit 0
