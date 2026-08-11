@@ -14,20 +14,20 @@ for(const [name,engine] of engines){
     await live.route('https://ahzmwkztlakejmrvgcdm.supabase.co/rest/v1/rpc/**',async route=>route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(seeded)}));
     const page=await live.newPage();
     await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});
-    await page.waitForFunction(()=>window.KP_ALBUM_EXPERIENCE?.version==='2.0'&&window.KP_ALBUM_IOS_COMPAT?.version==='1.0'&&window.KP_ALBUM_EXPERIENCE?.iosQuickLookCompatible===true,{timeout:18000});
+    await page.waitForFunction(()=>window.KP_ALBUM_EXPERIENCE?.version==='2.0'&&window.KP_ALBUM_IOS_COMPAT?.version==='1.1'&&window.KP_ALBUM_EXPERIENCE?.iosQuickLookCompatible===true,{timeout:18000});
     const html=await page.evaluate(()=>window.KP_ALBUM_EXPERIENCE.html());
-    const structural=html.includes('data-kp-offline-compat="1"')&&html.includes('id="albumTop"')&&html.includes('<a id="topAlbum" href="#albumTop">')&&html.includes('<a id="endAlbum" href="#albumEnd">')&&html.includes('<a id="printAlbum" href="#pdfHelp">')&&html.includes('id="pdfHelp"')&&html.includes('kpOfflineReveal');
+    const structural=html.includes('data-kp-offline-compat="1"')&&html.includes('id="albumTop"')&&html.includes('<a id="topAlbum" href="#albumTop">')&&html.includes('<a id="endAlbum" href="#albumEnd">')&&html.includes('<a id="printAlbum" href="#pdfHelp">')&&html.includes('id="pdfHelp"')&&html.includes('kpOfflineReveal')&&html.includes('scroll-behavior:auto!important');
     await live.close();
 
     const nojs=await browser.newContext({viewport:{width:390,height:844},javaScriptEnabled:false});
     const offline=await nojs.newPage();
     await offline.setContent(html,{waitUntil:'load'});
     const revealVisible=await offline.locator('.reveal').first().isVisible();
-    await offline.locator('#endAlbum').click();
+    await offline.locator('#endAlbum').click({timeout:8000});
     const endHash=offline.url().endsWith('#albumEnd');
-    await offline.locator('#topAlbum').click();
+    await offline.locator('#topAlbum').click({timeout:8000});
     const topHash=offline.url().endsWith('#albumTop');
-    await offline.locator('#printAlbum').click();
+    await offline.locator('#printAlbum').click({timeout:8000});
     const pdfHash=offline.url().endsWith('#pdfHelp');
     const helpVisible=await offline.locator('#pdfHelp').isVisible();
     const labels=await offline.locator('.toolbar a').allTextContents();
