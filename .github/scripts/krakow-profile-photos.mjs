@@ -4,6 +4,12 @@ const base = process.env.KP_AUDIT_URL || 'http://127.0.0.1:4173/';
 const tinyPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFElEQVR42mP8z8AARAwMjIwgAAMAAgEBAf8B9ukAAAAASUVORK5CYII=', 'base64');
 let failed = false;
 
+async function openSettings(page) {
+  await page.waitForSelector('#kpGameSettings', { timeout: 5000 });
+  await page.locator('#kpGameSettings').click();
+  await page.waitForSelector('#settingsSheet[open]', { timeout: 5000 });
+}
+
 for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   const browser = await engine.launch({ headless: true });
   const context = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, serviceWorkers: 'block' });
@@ -23,7 +29,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
 
   await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForTimeout(1800);
-  await page.locator('#openSettings').click();
+  await openSettings(page);
   await page.waitForSelector('#kpProfilePhotoManager', { timeout: 5000 });
 
   const initial = await page.evaluate(() => ({
@@ -71,7 +77,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     lauraHeader: !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Laura"] > .kp-profile-photo')
   }));
 
-  await page.locator('#openSettings').click();
+  await openSettings(page);
   await page.locator('#kpProfilePhotoReset').click();
   await page.waitForTimeout(500);
   const removed = await page.evaluate(() => {
