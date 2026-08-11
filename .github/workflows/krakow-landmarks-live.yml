@@ -31,7 +31,7 @@ jobs:
             ART=0
             CACHE=0
             curl -fsS https://krakow-pocket.pages.dev/landmark-art-fix.js | grep -q "version: '2.2'" && ART=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v23-inline-landmarks-20260811c' && CACHE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v37-auschwitz-extra-20260811a' && CACHE=1 || true
             if [ "$ART" = "1" ] && [ "$CACHE" = "1" ]; then
               echo "Cloudflare landmark build is live"
               exit 0
