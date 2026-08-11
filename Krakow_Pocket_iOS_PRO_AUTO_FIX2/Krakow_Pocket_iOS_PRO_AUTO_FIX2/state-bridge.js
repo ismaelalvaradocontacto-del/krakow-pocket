@@ -148,6 +148,7 @@
   };
 })();
 if(!window.__kpProfilePhotoLoader){window.__kpProfilePhotoLoader=true;document.write('<script src="./profile-photo.js?v=20260811b" data-kp-profile-photo="1"><\/script>')}
+if(!window.__kpDefaultProfileLoader){window.__kpDefaultProfileLoader=true;document.write('<script src="./default-profile.js?v=20260811a" data-kp-default-profile="1"><\/script>')}
 if(!window.__kpNetworkStatusLoader){window.__kpNetworkStatusLoader=true;document.write('<script src="./network-status.js?v=20260810n" data-kp-network-status="1"><\/script>')}
 if(!window.__kpPlayerStabilityLoader){window.__kpPlayerStabilityLoader=true;document.write('<script src="./player-stability.js?v=20260810o" data-kp-player-stability="1"><\/script>')}
 if(!window.__kpWorldArtStabilityLoader){window.__kpWorldArtStabilityLoader=true;document.write('<script src="./world-art-stability.js?v=20260810q" data-kp-world-art-stability="1"><\/script>')}
