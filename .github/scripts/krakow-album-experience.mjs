@@ -16,6 +16,8 @@ for(const [name,engine] of engines){
   try{
     await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});
     await page.waitForFunction(()=>window.KP_ALBUM_EXPERIENCE?.version==='2.0',{timeout:18000});
+    await page.evaluate(()=>document.querySelector('.tab[data-panel="diary"]')?.click());
+    await page.waitForTimeout(350);
     await page.waitForSelector('#kpAlbumExperienceCard',{state:'visible',timeout:8000});
     const card=await page.locator('#kpAlbumExperienceCard').evaluate(el=>({text:el.textContent,preview:el.querySelectorAll('.kp-ae-preview img').length,open:!!el.querySelector('#kpAlbumOpenExperience')}));
     await page.locator('#kpAlbumOpenExperience').click();
