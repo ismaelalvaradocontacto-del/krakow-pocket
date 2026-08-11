@@ -87,3 +87,4 @@ function boot(){
 
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 })();
+if(!window.__kpAutoHeadingLoader){window.__kpAutoHeadingLoader=true;const s=document.createElement("script");s.src="./auto-heading.js?v=20260811a";s.dataset.kpAutoHeading="1";(document.head||document.documentElement).appendChild(s)}
