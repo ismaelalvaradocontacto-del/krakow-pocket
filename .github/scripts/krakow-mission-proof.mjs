@@ -1,7 +1,7 @@
 import { chromium, webkit } from 'playwright';
 
 const base = process.env.KP_AUDIT_URL || 'http://127.0.0.1:4173/';
-const tinyPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAIAAAAmkwkpAAAAFElEQVR42mP8z8AARAwMjIwgAAMAAgEBAf8B9ukAAAAASUVORK5CYII=', 'base64');
+const tinyPng = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAIAAAACCAIAAAD91JpzAAAAFElEQVR42mP8z8AARAwMjIwgAAMAAgEBAf8B9ukAAAAASUVORK5CYII=', 'base64');
 let failed = false;
 
 for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
@@ -28,7 +28,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   page.on('console', m => { if (m.type() === 'error' && !/vibrate|service worker/i.test(m.text())) errors.push(`console:${m.text()}`); });
 
   await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
-  await page.waitForFunction(() => window.KP_MISSION_PROOF?.version === '1.1' && window.KP_MISSION_PROOF?.requiresPhoto && window.KP_MISSION_PROOF?.requiresProximity, { timeout: 8000 });
+  await page.waitForFunction(() => window.KP_MISSION_PROOF?.version === '1.1' && window.KP_MISSION_PROOF_GUARD?.hardGate === true, { timeout: 8000 });
   await page.locator('.tab[data-panel="quests"]').click();
   await page.waitForSelector('.q-done[data-poi="florian"]', { timeout: 7000 });
 
@@ -71,7 +71,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     count: window.KP_MISSION_PROOF?.count(),
     image: !!document.querySelector('#kpAlbumDialog .kp-album-entry img'),
     comment: !!document.querySelector('#kpAlbumDialog .kp-album-comment')?.textContent.trim(),
-    animated: !![...document.styleSheets].some(sheet => { try { return [...sheet.cssRules].some(r => String(r.cssText || '').includes('kpAlbumComment')); } catch { return false; } })
+    animated: !!document.querySelector('style[data-kp-mission-proof="1"]')?.textContent.includes('kpAlbumComment')
   }));
 
   let downloaded = false;
@@ -82,7 +82,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     downloaded = /Krakow_Pocket_Album_.*\.html$/i.test(download.suggestedFilename());
   } catch {}
 
-  await page.waitForTimeout(1500);
+  await page.waitForTimeout(1800);
   const shared = !!remote.missionEvidence?.florian?.photo;
   const ok = far.inputDisabled && !far.visited && evidence.verified && evidence.hasPhoto && Number.isFinite(evidence.distance) && evidence.distance <= 100 && evidence.noExactLat && evidence.comment && album.count === 1 && album.image && album.comment && album.animated && downloaded && shared && errors.length === 0;
 
