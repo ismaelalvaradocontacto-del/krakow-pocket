@@ -40,14 +40,20 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   }));
 
   await page.evaluate(value => window.KP_PROFILE_PHOTOS.setDataUrl('Ismael', value), custom);
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => {
+    const host = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"]');
+    return !!host?.querySelector(':scope > .kp-profile-photo') && !host?.querySelector(':scope > .kp-profile-default');
+  }, { timeout: 3000 });
   const customState = await page.evaluate(() => ({
     customVisible: !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'),
     defaultGone: !document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-default')
   }));
 
   await page.evaluate(() => window.KP_PROFILE_PHOTOS.remove('Ismael'));
-  await page.waitForTimeout(250);
+  await page.waitForFunction(() => {
+    const host = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"]');
+    return !host?.querySelector(':scope > .kp-profile-photo') && !!host?.querySelector(':scope > .kp-profile-default');
+  }, { timeout: 3000 });
   const restored = await page.evaluate(() => ({
     customGone: !document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'),
     defaultBack: !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-default')
