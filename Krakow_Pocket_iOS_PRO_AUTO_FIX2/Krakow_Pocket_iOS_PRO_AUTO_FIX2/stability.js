@@ -35,6 +35,18 @@
     document.head.appendChild(passiveToast);
   }
 
+  // Load the final quest landmark layer before the mission board is first opened.
+  // It uses self-contained SVGs, so no landmark can disappear because an inline SVG
+  // references another symbol that Safari cannot resolve after extraction.
+  if (!window.__kpLandmarkArtLoader && !document.querySelector('script[data-kp-landmark-art]')) {
+    window.__kpLandmarkArtLoader = true;
+    const landmarks = document.createElement("script");
+    landmarks.src = "./landmark-art-fix.js?v=20260811a";
+    landmarks.async = false;
+    landmarks.dataset.kpLandmarkArt = "1";
+    document.head.appendChild(landmarks);
+  }
+
   // Never reload just because mission state was normalized in the background.
   // The UI layers already listen to storage/state events and can repaint in place.
   try { sessionStorage.setItem("kpMissionMutation", "1"); } catch {}
@@ -91,11 +103,12 @@
 
   // Diagnostic marker used by automated tests and for support.
   window.KP_STABILITY = {
-    version: "1.3",
+    version: "1.4",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
     pageScaleLocked: true,
-    mobileLayoutHotfix: true
+    mobileLayoutHotfix: true,
+    landmarkArtLayer: true
   };
 })();
