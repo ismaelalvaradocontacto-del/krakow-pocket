@@ -106,3 +106,4 @@ if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",
 if(!window.__kpStateBridgeLoader){window.__kpStateBridgeLoader=true;document.write('<script src="./state-bridge.js?v=20260811g" data-kp-state-bridge="1"><\/script>')}
 if(!window.__kpMissionFixLoader){window.__kpMissionFixLoader=true;document.write('<script src="./mission-fix.js?v=20260810h" data-kp-mission-fix="1"><\/script>')}
 if(!window.__kpCelebrationGuardLoader){window.__kpCelebrationGuardLoader=true;document.write('<script src="./celebration-guard.js?v=20260810k" data-kp-celebration-guard="1"><\/script>')}
+if(!window.__kpAutoLocationLoader){window.__kpAutoLocationLoader=true;document.write('<script src="./auto-location.js?v=20260811a" data-kp-auto-location="1"><\/script>')}
