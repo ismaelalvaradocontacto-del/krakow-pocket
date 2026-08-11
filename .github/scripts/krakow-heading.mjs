@@ -25,17 +25,26 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   await page.waitForFunction(() => window.KP_HEADING?.version === '1.0' && window.KP_HEADING?.noPermissionPrompt === true, { timeout: 8000 });
   await page.waitForFunction(() => !!document.querySelector('.loc-dot'), { timeout: 10000 });
 
-  await page.evaluate(() => {
+  const sendHeading = value => page.evaluate(v => {
     const event = new Event('deviceorientation');
-    Object.defineProperty(event, 'webkitCompassHeading', { value: 90, configurable: true });
+    Object.defineProperty(event, 'webkitCompassHeading', { value: v, configurable: true });
     Object.defineProperty(event, 'webkitCompassAccuracy', { value: 4, configurable: true });
     window.dispatchEvent(event);
-  });
+  }, value);
 
+  await sendHeading(90);
   await page.waitForFunction(() => {
     const dot = document.querySelector('.loc-dot');
     return !!dot?.classList.contains('kp-has-heading') && /deg$/.test(dot.style.getPropertyValue('--kp-heading')) && !!dot.querySelector('.kp-heading-arrow') && !!dot.querySelector('.kp-heading-cone');
   }, { timeout: 5000 });
+  const firstCss = await page.locator('.loc-dot').evaluate(el => el.style.getPropertyValue('--kp-heading'));
+
+  await sendHeading(180);
+  await page.waitForFunction(first => {
+    const dot = document.querySelector('.loc-dot');
+    return !!dot && dot.style.getPropertyValue('--kp-heading') !== first;
+  }, firstCss, { timeout: 5000 });
+  const secondCss = await page.locator('.loc-dot').evaluate(el => el.style.getPropertyValue('--kp-heading'));
 
   const result = await page.evaluate(() => {
     const dot = document.querySelector('.loc-dot');
@@ -46,6 +55,8 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
       requestsOrientationPermission: window.KP_HEADING?.requestsOrientationPermission,
       sensorPreferred: window.KP_HEADING?.sensorPreferred,
       gpsFallback: window.KP_HEADING?.gpsFallback,
+      staleProtection: window.KP_HEADING?.staleProtection,
+      highAccuracyGpsCourse: window.KP_HEADING?.highAccuracyGpsCourse,
       active: window.KP_HEADING?.active,
       source: window.KP_HEADING?.source,
       heading: window.KP_HEADING?.heading,
@@ -56,10 +67,11 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     };
   });
 
-  const ok = result.module === '1.0' && result.silent === true && result.noPermissionPrompt === true && result.requestsOrientationPermission === false && result.sensorPreferred === true && result.gpsFallback === true && result.active === true && result.source === 'sensor-ios' && Number.isFinite(result.heading) && Math.abs(result.heading - 90) < 2 && result.markerClass && /deg$/.test(result.cssHeading) && result.arrow && result.cone && errors.length === 0;
+  const moved = firstCss !== secondCss;
+  const ok = result.module === '1.0' && result.silent === true && result.noPermissionPrompt === true && result.requestsOrientationPermission === false && result.sensorPreferred === true && result.gpsFallback === true && result.staleProtection === true && result.highAccuracyGpsCourse === true && result.active === true && result.source === 'sensor-ios' && Number.isFinite(result.heading) && moved && result.markerClass && /deg$/.test(result.cssHeading) && result.arrow && result.cone && errors.length === 0;
 
   console.log(`\n=== ${name.toUpperCase()} SILENT HEADING AUDIT ===`);
-  console.log(JSON.stringify({ ok, result, errors }, null, 2));
+  console.log(JSON.stringify({ ok, moved, firstCss, secondCss, result, errors }, null, 2));
   if (!ok) failed = true;
   await browser.close();
 }
