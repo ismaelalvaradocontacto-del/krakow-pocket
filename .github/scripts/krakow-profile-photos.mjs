@@ -97,7 +97,12 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   await page.locator('#kpPlayerPicker [data-kp-player="Ismael"]').click();
   await page.waitForFunction(() => localStorage.getItem('krakowPlayer') === 'Ismael', { timeout: 2500 });
   await page.locator('#kpProfilePhotoReset').click();
-  await page.waitForFunction(() => !document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'), { timeout: 3000 });
+  await page.waitForFunction(() => {
+    const host = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"]');
+    const fallback = host?.querySelector(':scope > svg.kp-profile-default[data-kp-inline]');
+    const box = fallback?.getBoundingClientRect();
+    return !host?.querySelector(':scope > .kp-profile-photo') && !!fallback && box.width > 20 && box.height > 20;
+  }, { timeout: 3500 });
   const removed = await page.evaluate(() => {
     const entry = JSON.parse(localStorage.getItem('krakowPocketCoop') || '{}').profilePhotos?.Ismael;
     const fallback = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > svg.kp-profile-default[data-kp-inline]');
