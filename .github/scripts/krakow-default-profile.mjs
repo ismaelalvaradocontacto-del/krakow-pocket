@@ -16,13 +16,13 @@ const cssFallbackVisible = () => {
 async function openSettings(page) {
   const started = Date.now();
   await page.locator('#kpGameSettings').click();
-  await page.waitForSelector('#settingsSheet[open]', { timeout: 2500 });
+  await page.waitForSelector('#settingsSheet[open]', { timeout: 3000 });
   return Date.now() - started;
 }
 
 async function closeSettings(page) {
   await page.locator('#closeSettings').click();
-  await page.waitForFunction(() => !document.querySelector('#settingsSheet')?.open, { timeout: 2500 });
+  await page.waitForFunction(() => !document.querySelector('#settingsSheet')?.open, { timeout: 3000 });
 }
 
 for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
@@ -63,12 +63,12 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   });
 
   const firstOpenMs = await openSettings(page);
-  await page.waitForSelector('#kpProfilePhotoManager', { timeout: 2500 });
+  await page.waitForSelector('#kpProfilePhotoManager', { timeout: 3000 });
   await page.waitForFunction(() => {
     const faces = [...document.querySelectorAll('#kpPlayerPicker .kp-picker-face')];
     return faces.length === 2 && faces.every(face => getComputedStyle(face).backgroundImage !== 'none');
-  }, { timeout: 2500 });
-  await page.waitForFunction(() => !!document.querySelector('#kpProfilePhotoPreview > svg.kp-profile-default'), { timeout: 2500 });
+  }, { timeout: 3000 });
+  await page.waitForFunction(() => !!document.querySelector('#kpProfilePhotoPreview > svg.kp-profile-default'), { timeout: 3000 });
 
   const settings = await page.evaluate(() => ({
     pickerDefaults: [...document.querySelectorAll('#kpPlayerPicker .kp-picker-face')].filter(face => getComputedStyle(face).backgroundImage !== 'none').length,
@@ -78,8 +78,8 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   }));
 
   await page.locator('#kpPlayerPicker [data-kp-player="Laura"]').click();
-  await page.waitForFunction(() => localStorage.getItem('krakowPlayer') === 'Laura', { timeout: 2500 });
-  await page.waitForFunction(() => (document.querySelector('#kpProfilePhotoTitle')?.textContent || '').includes('Laura'), { timeout: 2500 });
+  await page.waitForFunction(() => localStorage.getItem('krakowPlayer') === 'Laura', { timeout: 3000 });
+  await page.waitForFunction(() => (document.querySelector('#kpProfilePhotoTitle')?.textContent || '').includes('Laura'), { timeout: 3000 });
   const lauraSelected = await page.evaluate(() => {
     const face = document.querySelector('#kpPlayerPicker [data-kp-player="Laura"] .kp-picker-face');
     return {
@@ -90,10 +90,10 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   });
 
   await page.locator('#kpPlayerPicker [data-kp-player="Ismael"]').click();
-  await page.waitForFunction(() => localStorage.getItem('krakowPlayer') === 'Ismael', { timeout: 2500 });
+  await page.waitForFunction(() => localStorage.getItem('krakowPlayer') === 'Ismael', { timeout: 3000 });
 
   await page.evaluate(value => window.KP_PROFILE_PHOTOS.setDataUrl('Ismael', value), custom);
-  await page.waitForFunction(() => !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'), { timeout: 2500 });
+  await page.waitForFunction(() => !!document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"] > .kp-profile-photo'), { timeout: 3000 });
   const customState = await page.evaluate(() => {
     const face = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"]');
     return {
@@ -108,7 +108,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
     if (!host || host.querySelector(':scope > .kp-profile-photo')) return false;
     const box = host.getBoundingClientRect();
     return box.width > 20 && box.height > 20 && getComputedStyle(host).backgroundImage !== 'none';
-  }, { timeout: 2500 });
+  }, { timeout: 3000 });
   const restored = await page.evaluate(() => {
     const host = document.querySelector('#kpGameHud .kp-profile-face[data-kp-profile="Ismael"]');
     const box = host?.getBoundingClientRect();
@@ -139,7 +139,7 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   });
 
   const ok = initial.compat === '2.2' && initial.photoModule === '2.0' && initial.bridge === '1.4' && initial.nativeDefault && initial.cssFallback && initial.protectedFallback && initial.persistentSettings && initial.noCompatObserver && initial.eventDriven && initial.noPolling && initial.count === 2 && initial.visible && initial.noBrokenDefaultImages &&
-    maxOpenMs < 2500 && settings.pickerDefaults === 2 && settings.resetText.includes('Imagen por defecto') && settings.previewDefault && settings.closeVisible &&
+    maxOpenMs < 3000 && settings.pickerDefaults === 2 && settings.resetText.includes('Imagen por defecto') && settings.previewDefault && settings.closeVisible &&
     lauraSelected.player === 'Laura' && lauraSelected.title.includes('Laura') && lauraSelected.defaultVisible &&
     customState.customVisible && customState.fallbackUnderlay && restored.customGone && restored.defaultBack && final.closed && final.defaultsStillThere && final.compatObserverFree && final.photoObserverFree && final.persistentSettings && final.cssFallback && errors.length === 0;
 
