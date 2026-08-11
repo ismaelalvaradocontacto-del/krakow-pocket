@@ -24,18 +24,22 @@ jobs:
           node --check .github/scripts/krakow-default-profile.mjs
           grep -q 'sharedViaAdventureState: true' "$APP_DIR/profile-photo.js"
           grep -q 'immediateRemoteRepaint: true' "$APP_DIR/profile-photo.js"
+          grep -q 'noGlobalMutationObserver: true' "$APP_DIR/profile-photo.js"
+          grep -q 'lightweightSettings: true' "$APP_DIR/profile-photo.js"
           grep -q 'genericDefault: true' "$APP_DIR/default-profile.js"
           grep -q 'inlineSvg: true' "$APP_DIR/default-profile.js"
           grep -q 'noExternalImageDependency: true' "$APP_DIR/default-profile.js"
           grep -q 'lightweightSettingsRepaint: true' "$APP_DIR/default-profile.js"
-          grep -q 'replacesIllustratedProfileFallback: true' "$APP_DIR/default-profile.js"
           grep -q 'sharedProfilePhotos: true' "$APP_DIR/state-bridge.js"
-          grep -q 'immediateRemoteProfileAdoption: true' "$APP_DIR/state-bridge.js"
+          grep -q 'profile-photo.js?v=20260811c' "$APP_DIR/state-bridge.js"
           grep -q 'default-profile.js?v=20260811d' "$APP_DIR/state-bridge.js"
-          grep -q 'default-profile.js' "$APP_DIR/sw.js"
-          grep -q 'krakow-pocket-v28-default-profile-settings-20260811a' "$APP_DIR/sw.js"
+          grep -q 'krakow-pocket-v29-profile-settings-20260811a' "$APP_DIR/sw.js"
           if grep -q 'MutationObserver' "$APP_DIR/default-profile.js"; then
-            echo "default-profile.js must not use a global MutationObserver"
+            echo "default-profile.js must not use MutationObserver"
+            exit 1
+          fi
+          if grep -q 'MutationObserver' "$APP_DIR/profile-photo.js"; then
+            echo "profile-photo.js must not use MutationObserver"
             exit 1
           fi
       - name: Install Playwright
@@ -47,7 +51,7 @@ jobs:
           APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
           python3 -m http.server 4173 --bind 127.0.0.1 --directory "$APP_DIR" >/tmp/krakow-http.log 2>&1 &
           sleep 2
-          curl -fsS http://127.0.0.1:4173/profile-photo.js | grep -q 'optimizedAvatar: true'
+          curl -fsS http://127.0.0.1:4173/profile-photo.js | grep -q 'lightweightSettings: true'
           curl -fsS http://127.0.0.1:4173/default-profile.js | grep -q 'lightweightSettingsRepaint: true'
       - name: Test upload persistence and shared merge locally
         run: node .github/scripts/krakow-profile-photos.mjs
@@ -57,12 +61,12 @@ jobs:
         run: |
           for i in {1..45}; do
             PHOTO=0; DEFAULT=0; BRIDGE=0; CACHE=0
-            curl -fsS https://krakow-pocket.pages.dev/profile-photo.js | grep -q 'immediateRemoteRepaint: true' && PHOTO=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/profile-photo.js | grep -q 'lightweightSettings: true' && PHOTO=1 || true
             curl -fsS https://krakow-pocket.pages.dev/default-profile.js | grep -q 'lightweightSettingsRepaint: true' && DEFAULT=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'default-profile.js?v=20260811d' && BRIDGE=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v28-default-profile-settings-20260811a' && CACHE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'profile-photo.js?v=20260811c' && BRIDGE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v29-profile-settings-20260811a' && CACHE=1 || true
             if [ "$PHOTO" = "1" ] && [ "$DEFAULT" = "1" ] && [ "$BRIDGE" = "1" ] && [ "$CACHE" = "1" ]; then
-              echo "Cloudflare default profile build is live"
+              echo "Cloudflare lightweight profile settings build is live"
               exit 0
             fi
             sleep 4
