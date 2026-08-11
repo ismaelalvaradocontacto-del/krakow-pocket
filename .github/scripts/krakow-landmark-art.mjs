@@ -20,36 +20,53 @@ for (const [name, engine] of [['chromium', chromium], ['webkit', webkit]]) {
   await page.goto(base, { waitUntil: 'domcontentloaded', timeout: 30000 });
   await page.waitForTimeout(isLocal ? 1700 : 2800);
   await page.evaluate(() => document.querySelector('.tab[data-panel="quests"]')?.click());
-  await page.waitForFunction(() => window.KP_LANDMARK_ART?.complete === true && window.KP_LANDMARK_ART?.painted === 12, { timeout: 8000 }).catch(() => {});
+  await page.waitForFunction(() => window.KP_LANDMARK_ART?.complete === true && window.KP_LANDMARK_ART?.visibleVectors === 12, { timeout: 8000 }).catch(() => {});
   await page.waitForTimeout(500);
-  const report = await page.evaluate(async expectedIds => {
-    let spriteOk = false;
-    try { spriteOk = (await fetch('./assets/landmarks-v2.svg', {cache:'no-store'})).ok; } catch {}
+
+  const report = await page.evaluate(expectedIds => {
     const rows = expectedIds.map(id => {
       const node = document.querySelector(`.kp-world-node[data-pixel-poi="${id}"]`);
-      const art = node?.querySelector(`.kp-landmark-v2-host[data-kp-landmark-v2="${id}"] .kp-landmark-v2`);
-      const use = art?.querySelector('use');
+      const host = node?.querySelector(`.kp-landmark-v2-host[data-kp-landmark-v2="${id}"]`);
+      const art = host?.querySelector(`svg[data-kp-landmark-inline="${id}"]`);
       const r = art?.getBoundingClientRect();
+      let box = null;
+      try {
+        const b = art?.getBBox?.();
+        if (b) box = {x:b.x,y:b.y,width:b.width,height:b.height};
+      } catch {}
+      const vectorCount = art?.querySelectorAll('path,rect,circle,ellipse,line,polyline,polygon').length || 0;
+      const useCount = art?.querySelectorAll('use').length || 0;
+      const paintedVectorCount = art ? [...art.querySelectorAll('path,rect,circle,ellipse,line,polyline,polygon')].filter(el => {
+        const fill = el.getAttribute('fill');
+        const stroke = el.getAttribute('stroke');
+        return (fill && fill !== 'none' && fill !== 'transparent') || (stroke && stroke !== 'none' && stroke !== 'transparent');
+      }).length : 0;
+      const geometryVisible = !!box && box.width >= 20 && box.height >= 20;
       return {
         id,
         node: !!node,
+        host: !!host,
         art: !!art,
-        href: use?.getAttribute('href') || '',
         width: r?.width || 0,
         height: r?.height || 0,
-        visible: !!art && getComputedStyle(art).visibility !== 'hidden' && getComputedStyle(art).display !== 'none' && (r?.width || 0) >= 35 && (r?.height || 0) >= 35
+        bbox: box,
+        vectorCount,
+        paintedVectorCount,
+        useCount,
+        visible: !!art && getComputedStyle(art).visibility !== 'hidden' && getComputedStyle(art).display !== 'none' && getComputedStyle(art).opacity !== '0' && (r?.width || 0) >= 35 && (r?.height || 0) >= 35,
+        realDrawing: vectorCount >= 2 && paintedVectorCount >= 2 && useCount === 0 && geometryVisible
       };
     });
     return {
-      spriteOk,
       diagnostic: window.KP_LANDMARK_ART || null,
       rows,
-      complete: spriteOk && rows.length === expectedIds.length && rows.every(x => x.node && x.art && x.visible && x.href.endsWith(`#landmark-${x.id}`))
+      complete: rows.length === expectedIds.length && rows.every(x => x.node && x.host && x.art && x.visible && x.realDrawing)
     };
   }, expected);
+
   console.log(`\n=== ${name.toUpperCase()} LANDMARK ART AUDIT ===`);
   console.log(JSON.stringify(report, null, 2));
-  if (!report.complete || report.diagnostic?.version !== '2.1' || report.diagnostic?.complete !== true || report.diagnostic?.painted !== 12) failed = true;
+  if (!report.complete || report.diagnostic?.version !== '2.2' || report.diagnostic?.complete !== true || report.diagnostic?.painted !== 12 || report.diagnostic?.visibleVectors !== 12 || report.diagnostic?.externalUse !== false) failed = true;
   await page.screenshot({ path: `audit-landmarks-${name}.png`, fullPage: true }).catch(() => {});
   await browser.close();
 }
