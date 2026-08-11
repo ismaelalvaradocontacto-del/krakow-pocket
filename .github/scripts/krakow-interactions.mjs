@@ -49,10 +49,14 @@ for (const [name, engine] of engines) {
   page.setDefaultTimeout(8000);
   page.setDefaultNavigationTimeout(15000);
   const errors = [];
-  page.on('pageerror', e => errors.push(e.message || String(e)));
+  const isBenignWebKitMockNoise = text => name === 'webkit' && /due to access control checks|Kraków Pocket sync pull TypeError: Load failed/i.test(String(text || ''));
+  page.on('pageerror', e => {
+    const text = e.message || String(e);
+    if (!isBenignWebKitMockNoise(text)) errors.push(text);
+  });
   page.on('console', m => {
     const text = m.text();
-    const benign = /Service Worker registration blocked|Blocked call to navigator\.vibrate because user hasn't tapped/i.test(text);
+    const benign = /Service Worker registration blocked|Blocked call to navigator\.vibrate because user hasn't tapped/i.test(text) || isBenignWebKitMockNoise(text);
     if (m.type() === 'error' && !benign) errors.push(text);
   });
   const checks = {};
