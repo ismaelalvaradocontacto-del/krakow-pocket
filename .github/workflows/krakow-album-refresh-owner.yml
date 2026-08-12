@@ -1,0 +1,27 @@
+name: Krakow Pocket album refresh owner trace
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/krakow-album-refresh-owner.mjs'
+      - '.github/workflows/krakow-album-refresh-owner.yml'
+  workflow_dispatch:
+
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: |
+          node --check .github/scripts/krakow-album-refresh-owner.mjs
+          npm install --no-save playwright@1.55.0 >/tmp/npm.log 2>&1
+          npx playwright install --with-deps chromium webkit >/tmp/pw.log 2>&1
+      - run: |
+          APP_DIR='Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2'
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory "$APP_DIR" >/tmp/http.log 2>&1 &
+          sleep 2
+          node .github/scripts/krakow-album-refresh-owner.mjs
