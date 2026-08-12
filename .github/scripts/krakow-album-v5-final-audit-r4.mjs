@@ -25,7 +25,7 @@ async function contextFor(browser,state,shared,player='Ismael',printSpy=false){
  const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,acceptDownloads:true,serviceWorkers:'block'});
  await ctx.addInitScript(({state,player,printSpy})=>{localStorage.setItem('krakowPocketCoop',JSON.stringify(state));localStorage.setItem('krakowPlayer',player);if(printSpy){window.__auditPrintCalled=false;window.print=()=>{window.__auditPrintCalled=true}}},{state:clone(state),player,printSpy});
  await ctx.route('https://ahzmwkztlakejmrvgcdm.supabase.co/rest/v1/rpc/**',shared.route);
- const page=await ctx.newPage();await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});await page.waitForFunction(()=>window.KP_ALBUM_V5?.version==='5.0'&&window.KP_ALBUM_NEXT?.version==='6.0'&&window.KP_MISSION_PROOF?.version==='2.0'&&window.KP_AUSCHWITZ_EXTRA?.version==='2.0'&&window.KP_STATE_BRIDGE?.bridgeRevision==='20260812e'&&window.KP_STABILITY?.albumIframeGuardRevision==='20260812b',{timeout:20000});return{ctx,page};
+ const page=await ctx.newPage();await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});await page.waitForFunction(()=>window.KP_ALBUM_V5?.version==='5.0'&&window.KP_ALBUM_NEXT?.version==='6.0'&&window.KP_MISSION_PROOF?.version==='2.0'&&window.KP_AUSCHWITZ_EXTRA?.version==='2.0'&&window.KP_STATE_BRIDGE?.bridgeRevision==='20260812e'&&window.KP_STABILITY?.albumIframeGuardRevision==='20260812c'&&window.KP_STABILITY?.albumUserScrollCancelsRestore===true,{timeout:20000});return{ctx,page};
 }
 async function stableFrameEval(frame,selector,fn,arg){
  let last;
