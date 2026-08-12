@@ -34,10 +34,6 @@
     document.head.appendChild(album);
   }
 
-  // Safari/WebKit may restore an iframe's own historical scroll after a srcdoc
-  // navigation. Track the real reading position outside the iframe, capture it
-  // again on pagehide/beforeunload, and bind listeners per inner document rather
-  // than per WindowProxy (the outer contentWindow can be reused across reloads).
   let albumFrame = null;
   let albumScrollY = 0;
   let albumScrollBoundDocument = null;
@@ -122,7 +118,7 @@
   document.addEventListener("click", event => { if (!event.target.closest?.("#applyUpdate")) return; try { sessionStorage.setItem("kpApplyUpdate", "1"); } catch {} }, true);
 
   window.KP_STABILITY = {
-    version: "3.2",
+    version: "3.1",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
@@ -137,6 +133,7 @@
     albumPhotoQuality: true,
     albumSafariIframeScrollGuard: true,
     albumIframePerDocumentBinding: true,
-    albumIframePagehideCapture: true
+    albumIframePagehideCapture: true,
+    albumIframeGuardRevision: "20260812b"
   };
 })();
