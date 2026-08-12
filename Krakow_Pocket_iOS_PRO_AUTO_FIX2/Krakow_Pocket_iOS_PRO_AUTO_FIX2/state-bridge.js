@@ -9,7 +9,7 @@
   const now = () => new Date().toISOString();
   const parse = value => { try { return JSON.parse(value || "{}"); } catch { return null; } };
   const ts = op => {
-    const raw = op && typeof op === "object" ? (op.updatedAt || op.completedAt || op.verifiedAt || op.ts || 0) : op;
+    const raw = op && typeof op === "object" ? (op.updatedAt || op.deletedAt || op.completedAt || op.verifiedAt || op.ts || 0) : op;
     const n = new Date(raw || 0).getTime();
     return Number.isFinite(n) ? n : 0;
   };
@@ -27,6 +27,16 @@
       }
     }
     return out;
+  }
+
+  function mergeRecords(a = [], b = []) {
+    const out = new Map();
+    for (const item of [...(Array.isArray(a) ? a : []), ...(Array.isArray(b) ? b : [])]) {
+      if (!item || !item.id) continue;
+      const prev = out.get(item.id);
+      if (!prev || ts(item) >= ts(prev)) out.set(item.id, { ...item });
+    }
+    return [...out.values()];
   }
 
   function absorbMissionEvidence(...sources) {
@@ -60,37 +70,44 @@
 
   function mergeLocalStatus(state, local = read()) {
     state = state && typeof state === "object" ? { ...state } : {};
-    state.missionStatus = mergeTimed(state.missionStatus || {}, local.missionStatus || {});
-    state.discoveryStatus = mergeTimed(state.discoveryStatus || {}, local.discoveryStatus || {});
-    state.profilePhotos = absorbProfilePhotos(state.profilePhotos || {}, local.profilePhotos || {});
-    state.missionEvidence = absorbMissionEvidence(state.missionEvidence || {}, local.missionEvidence || {});
+    state.expenses = mergeRecords(local.expenses || [], state.expenses || []);
+    state.memories = mergeRecords(local.memories || [], state.memories || []);
+    state.missionStatus = mergeTimed(local.missionStatus || {}, state.missionStatus || {});
+    state.discoveryStatus = mergeTimed(local.discoveryStatus || {}, state.discoveryStatus || {});
+    state.profilePhotos = absorbProfilePhotos(local.profilePhotos || {}, state.profilePhotos || {});
+    state.missionEvidence = absorbMissionEvidence(local.missionEvidence || {}, state.missionEvidence || {});
     return applyStatus(state);
   }
 
-  function adoptMergedProfilePhotos(merged) {
+  function adoptSharedFieldsAtomically(merged) {
     const local = read();
-    const nextPhotos = absorbProfilePhotos(merged?.profilePhotos || {}, local.profilePhotos || {});
-    if (JSON.stringify(local.profilePhotos || {}) === JSON.stringify(nextPhotos)) return false;
-    const nextLocal = { ...local, profilePhotos: nextPhotos, updatedAt: merged?.updatedAt || local.updatedAt || now() };
-    nativeSetItem.call(localStorage, STORAGE, JSON.stringify(nextLocal));
-    try { window.dispatchEvent(new CustomEvent("kp:profile-photo-sync", { detail: { profilePhotos: JSON.parse(JSON.stringify(nextPhotos)) } })); } catch {}
-    return true;
-  }
+    const nextPhotos = absorbProfilePhotos(local.profilePhotos || {}, merged?.profilePhotos || {});
+    const nextEvidence = absorbMissionEvidence(local.missionEvidence || {}, merged?.missionEvidence || {});
+    const photosChanged = JSON.stringify(local.profilePhotos || {}) !== JSON.stringify(nextPhotos);
+    const evidenceChanged = JSON.stringify(local.missionEvidence || {}) !== JSON.stringify(nextEvidence);
+    if (!photosChanged && !evidenceChanged) return false;
 
-  function adoptMergedMissionEvidence(merged) {
-    const local = read();
-    const nextEvidence = absorbMissionEvidence(merged?.missionEvidence || {}, local.missionEvidence || {});
-    if (JSON.stringify(local.missionEvidence || {}) === JSON.stringify(nextEvidence)) return false;
-    const nextLocal = { ...local, missionEvidence: nextEvidence, updatedAt: merged?.updatedAt || local.updatedAt || now() };
+    const nextLocal = mergeLocalStatus({
+      ...local,
+      profilePhotos: nextPhotos,
+      missionEvidence: nextEvidence,
+      updatedAt: merged?.updatedAt || local.updatedAt || now()
+    }, local);
     nativeSetItem.call(localStorage, STORAGE, JSON.stringify(nextLocal));
-    try { window.dispatchEvent(new CustomEvent("kp:mission-evidence-sync", { detail: { missionEvidence: JSON.parse(JSON.stringify(nextEvidence)) } })); } catch {}
+
+    if (photosChanged) {
+      try { window.dispatchEvent(new CustomEvent("kp:profile-photo-sync", { detail: { profilePhotos: JSON.parse(JSON.stringify(nextPhotos)) } })); } catch {}
+    }
+    if (evidenceChanged) {
+      try { window.dispatchEvent(new CustomEvent("kp:mission-evidence-sync", { detail: { missionEvidence: JSON.parse(JSON.stringify(nextEvidence)) } })); } catch {}
+    }
     return true;
   }
 
   Storage.prototype.setItem = function(key, value) {
     if (this === localStorage && key === STORAGE) {
       const incoming = parse(value);
-      if (incoming) value = JSON.stringify(mergeLocalStatus(incoming));
+      if (incoming) value = JSON.stringify(mergeLocalStatus(incoming, read()));
     }
     return nativeSetItem.call(this, key, value);
   };
@@ -105,7 +122,7 @@
       try {
         const payload = JSON.parse(next.body);
         if (payload?.p_state) {
-          payload.p_state = mergeLocalStatus(payload.p_state);
+          payload.p_state = mergeLocalStatus(payload.p_state, read());
           payload.p_state.missionEvidence = absorbMissionEvidence(payload.p_state.missionEvidence || {});
           payload.p_state.profilePhotos = absorbProfilePhotos(payload.p_state.profilePhotos || {});
           next.body = JSON.stringify(payload);
@@ -124,21 +141,19 @@
     catch { return response; }
     if (!remote || typeof remote !== "object") return response;
 
-    // Absorb the freshest remote records before app.js gets a chance to merge its in-memory state.
     absorbMissionEvidence(remote.missionEvidence || {});
     absorbProfilePhotos(remote.profilePhotos || {});
 
-    const before = JSON.stringify({ v: remote.visited || [], m: remote.missionStatus || {}, d: remote.discoveryStatus || {}, p: remote.profilePhotos || {}, e: remote.missionEvidence || {} });
-    const merged = mergeLocalStatus(remote);
-    adoptMergedProfilePhotos(merged);
-    adoptMergedMissionEvidence(merged);
-    const after = JSON.stringify({ v: merged.visited || [], m: merged.missionStatus || {}, d: merged.discoveryStatus || {}, p: merged.profilePhotos || {}, e: merged.missionEvidence || {} });
+    const before = JSON.stringify({ v: remote.visited || [], x: remote.expenses || [], r: remote.memories || [], m: remote.missionStatus || {}, d: remote.discoveryStatus || {}, p: remote.profilePhotos || {}, e: remote.missionEvidence || {} });
+    const merged = mergeLocalStatus(remote, read());
+    adoptSharedFieldsAtomically(merged);
+    const after = JSON.stringify({ v: merged.visited || [], x: merged.expenses || [], r: merged.memories || [], m: merged.missionStatus || {}, d: merged.discoveryStatus || {}, p: merged.profilePhotos || {}, e: merged.missionEvidence || {} });
 
     if (before !== after && next.body) {
       try {
         const auth = JSON.parse(next.body);
         const putUrl = url.replace(/adventure_get(?:\?.*)?$/, "adventure_put");
-        const protectedState = mergeLocalStatus({ ...merged, updatedAt: now() });
+        const protectedState = mergeLocalStatus({ ...merged, updatedAt: now() }, read());
         const putBody = JSON.stringify({ ...auth, p_state: protectedState });
         window.fetch(putUrl, { method: "POST", headers: next.headers || { "Content-Type": "application/json" }, body: putBody }).catch(() => {});
       } catch {}
@@ -151,6 +166,7 @@
 
   window.KP_STATE_BRIDGE = {
     version: "1.7",
+    bridgeRevision: "20260812c",
     reversibleDiscoveries: true,
     sharedProfilePhotos: true,
     immediateRemoteProfileAdoption: true,
@@ -158,11 +174,13 @@
     immediateRemoteMissionEvidenceAdoption: true,
     staleMissionEvidenceProtection: true,
     staleProfilePhotoProtection: true,
+    staleDiaryRecordProtection: true,
+    atomicSharedFieldAdoption: true,
     remoteEvidenceAbsorbedBeforeAppMerge: true,
     outgoingEvidenceTimestampGuard: true,
     simplifiedProfileRuntime: true,
     proofOnlyAlbumSources: true,
-    normalize: state => mergeLocalStatus(state),
+    normalize: state => mergeLocalStatus(state, read()),
     protectedMissionEvidence: () => mergeTimed({}, stickyMissionEvidence)
   };
 })();
