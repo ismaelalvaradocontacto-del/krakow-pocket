@@ -1,0 +1,8 @@
+Krakow Pocket album final candidate
+Candidate includes:
+- multi-photo album model 6.0
+- state bridge 1.8
+- stale in-memory app state merge fix
+- serialized Safari album refresh/PDF lifecycle
+- resilient R4 browser audit
+Triggered: 2026-08-12
