@@ -16,6 +16,7 @@
   const read = () => parse(localStorage.getItem(STORAGE)) || {};
   let stickyMissionEvidence = {};
   let stickyProfilePhotos = {};
+  let reconcileQueued = false;
 
   function mergeTimed(a = {}, b = {}) {
     const out = {};
@@ -79,6 +80,50 @@
     return applyStatus(state);
   }
 
+  function dispatchSharedChanges(local, next) {
+    const photosChanged = JSON.stringify(local.profilePhotos || {}) !== JSON.stringify(next.profilePhotos || {});
+    const evidenceChanged = JSON.stringify(local.missionEvidence || {}) !== JSON.stringify(next.missionEvidence || {});
+    if (photosChanged) {
+      try { window.dispatchEvent(new CustomEvent("kp:profile-photo-sync", { detail: { profilePhotos: JSON.parse(JSON.stringify(next.profilePhotos || {})) } })); } catch {}
+    }
+    if (evidenceChanged) {
+      try { window.dispatchEvent(new CustomEvent("kp:mission-evidence-sync", { detail: { missionEvidence: JSON.parse(JSON.stringify(next.missionEvidence || {})) } })); } catch {}
+    }
+    return photosChanged || evidenceChanged;
+  }
+
+  function reconcileProtectedState() {
+    reconcileQueued = false;
+    const local = read();
+    const next = mergeLocalStatus(local, local);
+    const changed = JSON.stringify({
+      e: local.missionEvidence || {},
+      p: local.profilePhotos || {},
+      m: local.memories || [],
+      x: local.expenses || []
+    }) !== JSON.stringify({
+      e: next.missionEvidence || {},
+      p: next.profilePhotos || {},
+      m: next.memories || [],
+      x: next.expenses || []
+    });
+    if (!changed) return false;
+    nativeSetItem.call(localStorage, STORAGE, JSON.stringify(next));
+    dispatchSharedChanges(local, next);
+    try { window.dispatchEvent(new CustomEvent("kp:statechange", { detail: { source:"state-bridge-reconcile" } })); } catch {}
+    return true;
+  }
+
+  function queueReconcile() {
+    if (reconcileQueued) return;
+    reconcileQueued = true;
+    queueMicrotask(() => {
+      reconcileQueued = false;
+      reconcileProtectedState();
+    });
+    [0, 60, 240, 700].forEach(delay => setTimeout(reconcileProtectedState, delay));
+  }
+
   function adoptSharedFieldsAtomically(merged) {
     const local = read();
     const nextPhotos = absorbProfilePhotos(local.profilePhotos || {}, merged?.profilePhotos || {});
@@ -94,13 +139,8 @@
       updatedAt: merged?.updatedAt || local.updatedAt || now()
     }, local);
     nativeSetItem.call(localStorage, STORAGE, JSON.stringify(nextLocal));
-
-    if (photosChanged) {
-      try { window.dispatchEvent(new CustomEvent("kp:profile-photo-sync", { detail: { profilePhotos: JSON.parse(JSON.stringify(nextPhotos)) } })); } catch {}
-    }
-    if (evidenceChanged) {
-      try { window.dispatchEvent(new CustomEvent("kp:mission-evidence-sync", { detail: { missionEvidence: JSON.parse(JSON.stringify(nextEvidence)) } })); } catch {}
-    }
+    dispatchSharedChanges(local, nextLocal);
+    queueReconcile();
     return true;
   }
 
@@ -108,6 +148,9 @@
     if (this === localStorage && key === STORAGE) {
       const incoming = parse(value);
       if (incoming) value = JSON.stringify(mergeLocalStatus(incoming, read()));
+      const result = nativeSetItem.call(this, key, value);
+      queueReconcile();
+      return result;
     }
     return nativeSetItem.call(this, key, value);
   };
@@ -128,7 +171,9 @@
           next.body = JSON.stringify(payload);
         }
       } catch {}
-      return nativeFetch(input, next);
+      const response = await nativeFetch(input, next);
+      queueReconcile();
+      return response;
     }
 
     if (!isRpc(url, "adventure_get")) return nativeFetch(input, next);
@@ -159,6 +204,7 @@
       } catch {}
     }
 
+    queueReconcile();
     const headers = new Headers(response.headers);
     headers.set("Content-Type", "application/json");
     return new Response(JSON.stringify(merged), { status: response.status, statusText: response.statusText, headers });
@@ -167,6 +213,7 @@
   window.KP_STATE_BRIDGE = {
     version: "1.7",
     bridgeRevision: "20260812c",
+    bridgeReconciliationRevision: "20260812d",
     reversibleDiscoveries: true,
     sharedProfilePhotos: true,
     immediateRemoteProfileAdoption: true,
@@ -178,9 +225,12 @@
     atomicSharedFieldAdoption: true,
     remoteEvidenceAbsorbedBeforeAppMerge: true,
     outgoingEvidenceTimestampGuard: true,
+    postAppWriteReconciliation: true,
+    postSyncReconciliation: true,
     simplifiedProfileRuntime: true,
     proofOnlyAlbumSources: true,
     normalize: state => mergeLocalStatus(state, read()),
+    reconcile: reconcileProtectedState,
     protectedMissionEvidence: () => mergeTimed({}, stickyMissionEvidence)
   };
 })();
