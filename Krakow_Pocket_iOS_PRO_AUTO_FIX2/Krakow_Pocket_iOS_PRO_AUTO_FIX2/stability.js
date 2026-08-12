@@ -27,9 +27,6 @@
     document.head.appendChild(passiveToast);
   }
 
-  // Safari/iPhone fix: load the landmark renderer with an explicit cache-busting URL.
-  // The renderer now copies real vector nodes into the page instead of relying on
-  // external SVG <use> references, which can exist in the DOM while painting nothing.
   if (!window.__kpLandmarkArtLoader && !document.querySelector('script[data-kp-landmark-art]')) {
     window.__kpLandmarkArtLoader = true;
     const landmarks = document.createElement("script");
@@ -39,23 +36,19 @@
     document.head.appendChild(landmarks);
   }
 
-  // Keep the enhanced album isolated from the mission engine. It reads the same
-  // shared state but renders/export its own self-contained interactive document.
   if (!window.__kpAlbumExperienceLoader && !document.querySelector('script[data-kp-album-experience]')) {
     window.__kpAlbumExperienceLoader = true;
     const album = document.createElement("script");
-    album.src = "./album-experience.js?v=20260811a";
+    album.src = "./album-experience.js?v=20260812a";
     album.async = false;
     album.dataset.kpAlbumExperience = "1";
     document.head.appendChild(album);
   }
 
-  // iOS Files/Quick Look can render downloaded HTML while suppressing page JavaScript.
-  // This layer makes the exported controls usable without JS and keeps PDF guidance visible.
   if (!window.__kpAlbumIosCompatLoader && !document.querySelector('script[data-kp-album-ios-compat]')) {
     window.__kpAlbumIosCompatLoader = true;
     const albumCompat = document.createElement("script");
-    albumCompat.src = "./album-ios-compat.js?v=20260811a";
+    albumCompat.src = "./album-ios-compat.js?v=20260811b";
     albumCompat.async = false;
     albumCompat.dataset.kpAlbumIosCompat = "1";
     document.head.appendChild(albumCompat);
@@ -108,7 +101,7 @@
   }, true);
 
   window.KP_STABILITY = {
-    version: "1.7",
+    version: "1.8",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
@@ -117,6 +110,7 @@
     landmarkArtLayer: true,
     inlineLandmarks: true,
     interactiveAlbum: true,
+    albumExperienceV3: true,
     albumOfflineCompat: true
   };
 })();
