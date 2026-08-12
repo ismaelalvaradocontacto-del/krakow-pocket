@@ -1,0 +1,59 @@
+name: Krakow Pocket digital album visual review
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/krakow-album-visual-review-v4.mjs'
+      - '.github/workflows/krakow-album-visual-review-v4.yml'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-digital-v4.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-digital-v4-runtime-fix.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-digital-v4-ambient-fix.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/stability.js'
+  workflow_dispatch:
+
+jobs:
+  visual-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Check visual audit syntax
+        run: node --check .github/scripts/krakow-album-visual-review-v4.mjs
+      - name: Install browsers
+        run: |
+          npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
+          npx playwright install --with-deps chromium webkit >/tmp/playwright-install.log 2>&1
+      - name: Start local mirror
+        run: |
+          APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory "$APP_DIR" >/tmp/kp-album-visual-http.log 2>&1 &
+          sleep 2
+      - name: Capture all visual states locally
+        run: node .github/scripts/krakow-album-visual-review-v4.mjs
+      - name: Wait for Cloudflare version
+        run: |
+          for i in {1..45}; do
+            V4=0; AMBIENT=0; ORDER=0
+            curl -fsS https://krakow-pocket.pages.dev/album-digital-v4.js | grep -q 'const VERSION = "4.0"' && V4=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/album-digital-v4-ambient-fix.js | grep -q 'timingIndependent:true' && AMBIENT=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/stability.js | grep -q 'deterministicAlbumLoaderOrder: true' && ORDER=1 || true
+            if [ "$V4" = 1 ] && [ "$AMBIENT" = 1 ] && [ "$ORDER" = 1 ]; then exit 0; fi
+            sleep 4
+          done
+          exit 1
+      - name: Capture all visual states on Cloudflare
+        env:
+          KP_AUDIT_URL: https://krakow-pocket.pages.dev/
+        run: node .github/scripts/krakow-album-visual-review-v4.mjs
+      - name: Upload exhaustive visual states
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: album-v4-exhaustive-visual-states
+          path: /tmp/album-visual-*.png
+          if-no-files-found: error
+          retention-days: 7
