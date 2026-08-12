@@ -19,6 +19,7 @@ concurrency:
 jobs:
   stress:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -37,6 +38,8 @@ jobs:
           grep -q 'printRefreshLock:true' "$APP_DIR/album-next.js"
           grep -q 'protectedEvidenceProjection:true' "$APP_DIR/album-next.js"
           grep -q 'scrollIntentProtocol:true' "$APP_DIR/album-next.js"
+          grep -q 'canonicalStateSignature:true' "$APP_DIR/album-next.js"
+          grep -q 'deferredOverlayRefresh:true' "$APP_DIR/album-next.js"
           ! grep -q 'new MutationObserver' "$APP_DIR/album-next.js"
           grep -q 'albumNextOwnsScroll' "$APP_DIR/stability.js"
       - name: Install Chromium and WebKit
@@ -54,9 +57,9 @@ jobs:
           cp /tmp/album-idle-stress.json /tmp/album-idle-stress-local.json
       - name: Wait for Cloudflare album build
         run: |
-          for i in {1..50}; do
+          for i in {1..60}; do
             A=0; S=0
-            curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'scrollIntentProtocol:true' && A=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'canonicalStateSignature:true' && curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'deferredOverlayRefresh:true' && A=1 || true
             curl -fsS https://krakow-pocket.pages.dev/stability.js | grep -q 'albumNextOwnsScroll' && S=1 || true
             if [ "$A" = 1 ] && [ "$S" = 1 ]; then exit 0; fi
             sleep 4
