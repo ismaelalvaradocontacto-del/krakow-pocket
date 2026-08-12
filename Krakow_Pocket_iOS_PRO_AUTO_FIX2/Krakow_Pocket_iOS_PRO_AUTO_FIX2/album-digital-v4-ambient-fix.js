@@ -2,7 +2,7 @@
 "use strict";
 if(window.__kpAlbumDigitalV4AmbientFix)return;
 window.__kpAlbumDigitalV4AmbientFix=true;
-const VERSION="1.0";
+const VERSION="1.1";
 let sourceHtml=null,patched=false;
 
 const EXPORT_SCRIPT=`
@@ -11,7 +11,10 @@ const EXPORT_SCRIPT=`
  function syncAmbient(){
   const story=document.getElementById("storyMode"),img=story?.querySelector(".story-card img");
   if(!story||!img?.src)return false;
-  story.style.setProperty("--digital-bg","url("+JSON.stringify(img.src)+")","important");
+  const image="url("+JSON.stringify(img.src)+")";
+  story.style.setProperty("--digital-bg",image,"important");
+  story.style.setProperty("background-image","linear-gradient(rgba(12,10,8,.48),rgba(12,10,8,.48)),"+image,"important");
+  story.dataset.kpAmbientReady="1";
   return true;
  }
  function bootAmbient(){
@@ -39,6 +42,7 @@ function patchApi(){
  sourceHtml=api.html.bind(api);
  api.html=()=>enhance(sourceHtml());
  api.ambientBackdropStable=true;
+ api.ambientBackdropWebKit=true;
  patched=true;
  return true;
 }
@@ -47,7 +51,10 @@ function syncLive(){
  const frame=document.getElementById("kpAlbumExperienceFrame"),doc=frame?.contentDocument;
  const story=doc?.getElementById("storyMode"),img=story?.querySelector(".story-card img");
  if(!story||!img?.src)return false;
- story.style.setProperty("--digital-bg",`url(${JSON.stringify(img.src)})`,"important");
+ const image=`url(${JSON.stringify(img.src)})`;
+ story.style.setProperty("--digital-bg",image,"important");
+ story.style.setProperty("background-image",`linear-gradient(rgba(12,10,8,.48),rgba(12,10,8,.48)),${image}`,"important");
+ story.dataset.kpAmbientReady="1";
  return true;
 }
 
@@ -86,5 +93,5 @@ function boot(){
 }
 
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
-window.KP_ALBUM_DIGITAL_AMBIENT_FIX={version:VERSION,enhance,syncLive,ambientBackdropStable:true,importantCustomProperty:true,offlineExport:true};
+window.KP_ALBUM_DIGITAL_AMBIENT_FIX={version:VERSION,enhance,syncLive,ambientBackdropStable:true,ambientBackdropWebKit:true,importantCustomProperty:true,directBackgroundImage:true,offlineExport:true};
 })();
