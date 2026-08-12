@@ -8,9 +8,14 @@
   const nativeSetItem = Storage.prototype.setItem;
   const now = () => new Date().toISOString();
   const parse = value => { try { return JSON.parse(value || "{}"); } catch { return null; } };
-  const ts = value => { const n = new Date(value || 0).getTime(); return Number.isFinite(n) ? n : 0; };
+  const ts = op => {
+    const raw = op && typeof op === "object" ? (op.updatedAt || op.completedAt || op.verifiedAt || op.ts || 0) : op;
+    const n = new Date(raw || 0).getTime();
+    return Number.isFinite(n) ? n : 0;
+  };
   const read = () => parse(localStorage.getItem(STORAGE)) || {};
   let stickyMissionEvidence = {};
+  let stickyProfilePhotos = {};
 
   function mergeTimed(a = {}, b = {}) {
     const out = {};
@@ -18,13 +23,24 @@
       for (const [id, op] of Object.entries(src || {})) {
         if (!op || typeof op !== "object") continue;
         const prev = out[id];
-        if (!prev || ts(op.updatedAt) >= ts(prev.updatedAt)) out[id] = { ...op };
+        if (!prev || ts(op) >= ts(prev)) out[id] = { ...op };
       }
     }
     return out;
   }
 
-  stickyMissionEvidence = mergeTimed({}, read().missionEvidence || {});
+  function absorbMissionEvidence(...sources) {
+    for (const source of sources) stickyMissionEvidence = mergeTimed(stickyMissionEvidence, source || {});
+    return mergeTimed({}, stickyMissionEvidence);
+  }
+  function absorbProfilePhotos(...sources) {
+    for (const source of sources) stickyProfilePhotos = mergeTimed(stickyProfilePhotos, source || {});
+    return mergeTimed({}, stickyProfilePhotos);
+  }
+
+  const initial = read();
+  absorbMissionEvidence(initial.missionEvidence || {});
+  absorbProfilePhotos(initial.profilePhotos || {});
 
   function applyStatus(state) {
     state = state && typeof state === "object" ? state : {};
@@ -46,16 +62,14 @@
     state = state && typeof state === "object" ? { ...state } : {};
     state.missionStatus = mergeTimed(state.missionStatus || {}, local.missionStatus || {});
     state.discoveryStatus = mergeTimed(state.discoveryStatus || {}, local.discoveryStatus || {});
-    state.profilePhotos = mergeTimed(state.profilePhotos || {}, local.profilePhotos || {});
-    const currentEvidence = mergeTimed(state.missionEvidence || {}, local.missionEvidence || {});
-    state.missionEvidence = mergeTimed(currentEvidence, stickyMissionEvidence);
-    stickyMissionEvidence = mergeTimed(stickyMissionEvidence, state.missionEvidence);
+    state.profilePhotos = absorbProfilePhotos(state.profilePhotos || {}, local.profilePhotos || {});
+    state.missionEvidence = absorbMissionEvidence(state.missionEvidence || {}, local.missionEvidence || {});
     return applyStatus(state);
   }
 
   function adoptMergedProfilePhotos(merged) {
     const local = read();
-    const nextPhotos = merged?.profilePhotos || {};
+    const nextPhotos = absorbProfilePhotos(merged?.profilePhotos || {}, local.profilePhotos || {});
     if (JSON.stringify(local.profilePhotos || {}) === JSON.stringify(nextPhotos)) return false;
     const nextLocal = { ...local, profilePhotos: nextPhotos, updatedAt: merged?.updatedAt || local.updatedAt || now() };
     nativeSetItem.call(localStorage, STORAGE, JSON.stringify(nextLocal));
@@ -65,8 +79,7 @@
 
   function adoptMergedMissionEvidence(merged) {
     const local = read();
-    const nextEvidence = mergeTimed(merged?.missionEvidence || {}, stickyMissionEvidence);
-    stickyMissionEvidence = mergeTimed(stickyMissionEvidence, nextEvidence);
+    const nextEvidence = absorbMissionEvidence(merged?.missionEvidence || {}, local.missionEvidence || {});
     if (JSON.stringify(local.missionEvidence || {}) === JSON.stringify(nextEvidence)) return false;
     const nextLocal = { ...local, missionEvidence: nextEvidence, updatedAt: merged?.updatedAt || local.updatedAt || now() };
     nativeSetItem.call(localStorage, STORAGE, JSON.stringify(nextLocal));
@@ -93,6 +106,8 @@
         const payload = JSON.parse(next.body);
         if (payload?.p_state) {
           payload.p_state = mergeLocalStatus(payload.p_state);
+          payload.p_state.missionEvidence = absorbMissionEvidence(payload.p_state.missionEvidence || {});
+          payload.p_state.profilePhotos = absorbProfilePhotos(payload.p_state.profilePhotos || {});
           next.body = JSON.stringify(payload);
         }
       } catch {}
@@ -109,6 +124,10 @@
     catch { return response; }
     if (!remote || typeof remote !== "object") return response;
 
+    // Absorb the freshest remote records before app.js gets a chance to merge its in-memory state.
+    absorbMissionEvidence(remote.missionEvidence || {});
+    absorbProfilePhotos(remote.profilePhotos || {});
+
     const before = JSON.stringify({ v: remote.visited || [], m: remote.missionStatus || {}, d: remote.discoveryStatus || {}, p: remote.profilePhotos || {}, e: remote.missionEvidence || {} });
     const merged = mergeLocalStatus(remote);
     adoptMergedProfilePhotos(merged);
@@ -119,7 +138,8 @@
       try {
         const auth = JSON.parse(next.body);
         const putUrl = url.replace(/adventure_get(?:\?.*)?$/, "adventure_put");
-        const putBody = JSON.stringify({ ...auth, p_state: { ...merged, updatedAt: now() } });
+        const protectedState = mergeLocalStatus({ ...merged, updatedAt: now() });
+        const putBody = JSON.stringify({ ...auth, p_state: protectedState });
         window.fetch(putUrl, { method: "POST", headers: next.headers || { "Content-Type": "application/json" }, body: putBody }).catch(() => {});
       } catch {}
     }
@@ -130,16 +150,20 @@
   };
 
   window.KP_STATE_BRIDGE = {
-    version: "1.6",
+    version: "1.7",
     reversibleDiscoveries: true,
     sharedProfilePhotos: true,
     immediateRemoteProfileAdoption: true,
     sharedMissionEvidence: true,
     immediateRemoteMissionEvidenceAdoption: true,
     staleMissionEvidenceProtection: true,
+    staleProfilePhotoProtection: true,
+    remoteEvidenceAbsorbedBeforeAppMerge: true,
+    outgoingEvidenceTimestampGuard: true,
     simplifiedProfileRuntime: true,
     proofOnlyAlbumSources: true,
-    normalize: state => mergeLocalStatus(state)
+    normalize: state => mergeLocalStatus(state),
+    protectedMissionEvidence: () => mergeTimed({}, stickyMissionEvidence)
   };
 })();
 if(!window.__kpProfilePhotoLoader){window.__kpProfilePhotoLoader=true;document.write('<script src="./profile-photo.js?v=20260811f" data-kp-profile-photo="1"><\/script>')}
