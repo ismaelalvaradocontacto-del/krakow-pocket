@@ -1,0 +1,63 @@
+name: Krakow Pocket multi-photo album R1
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  album-multi-r1:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify multi-photo runtime
+        run: |
+          set -euxo pipefail
+          APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
+          node --check "$APP_DIR/state-bridge.js"
+          node --check "$APP_DIR/album-next.js"
+          node --check .github/scripts/krakow-album-multi-r1.mjs
+          grep -q 'version: "1.8"' "$APP_DIR/state-bridge.js"
+          grep -q 'staleMissionEvidenceSurvivesReload: true' "$APP_DIR/state-bridge.js"
+          grep -q 'sharedAlbumPhotos: true' "$APP_DIR/state-bridge.js"
+          grep -q 'const VERSION="6.0"' "$APP_DIR/album-next.js"
+          grep -q 'multiPhoto:true' "$APP_DIR/album-next.js"
+          grep -q 'verticalPhotosUncropped:true' "$APP_DIR/album-next.js"
+          grep -q './album-next.js' "$APP_DIR/sw.js"
+      - name: Install browsers
+        run: |
+          npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
+          npx playwright install --with-deps chromium webkit >/tmp/playwright-install.log 2>&1
+      - name: Start local app
+        run: |
+          APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory "$APP_DIR" >/tmp/kp-album-multi.log 2>&1 &
+          sleep 2
+      - name: Multi-photo audit locally
+        run: node .github/scripts/krakow-album-multi-r1.mjs
+      - name: Wait for Cloudflare build
+        run: |
+          for i in {1..60}; do
+            NEXT=0; BRIDGE=0; CACHE=0
+            curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'const VERSION="6.0"' && NEXT=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'staleMissionEvidenceSurvivesReload: true' && BRIDGE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v50-album-multi-20260812a' && CACHE=1 || true
+            if [ "$NEXT" = 1 ] && [ "$BRIDGE" = 1 ] && [ "$CACHE" = 1 ]; then exit 0; fi
+            sleep 4
+          done
+          exit 1
+      - name: Multi-photo audit on Cloudflare
+        env:
+          KP_AUDIT_URL: https://krakow-pocket.pages.dev/
+        run: node .github/scripts/krakow-album-multi-r1.mjs
+      - name: Upload report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: album-multi-r1
+          path: /tmp/album-multi-r1.json
+          if-no-files-found: ignore
