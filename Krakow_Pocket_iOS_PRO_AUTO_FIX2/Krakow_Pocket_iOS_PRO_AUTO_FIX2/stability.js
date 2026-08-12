@@ -29,17 +29,46 @@
     window.__kpAlbumPhotoQualityLoader = true; const quality = document.createElement("script"); quality.src = "./album-photo-quality.js?v=20260812a"; quality.async = false; quality.dataset.kpAlbumPhotoQuality = "1"; document.head.appendChild(quality);
   }
 
-  // Arm the cross-frame safety layer before V4. It suppresses the retired iframe
-  // runtime before the visual layer can inject it, then waits for V4 to patch export.
-  if (!window.__kpAlbumDigitalRuntimeFixLoader && !document.querySelector('script[data-kp-album-digital-runtime-fix]')) {
-    window.__kpAlbumDigitalRuntimeFixLoader = true; const runtimeFix = document.createElement("script"); runtimeFix.src = "./album-digital-v4-runtime-fix.js?v=20260812b"; runtimeFix.async = false; runtimeFix.dataset.kpAlbumDigitalRuntimeFix = "1"; document.head.appendChild(runtimeFix);
+  // Digital album scripts are deliberately sequenced. Dynamic scripts can otherwise
+  // finish downloading out of order in Chromium/WebKit. The safety runtime must be
+  // active before V4 can paint an iframe; the ambient layer is loaded only after V4.
+  function loadAmbientLayer() {
+    if (window.__kpAlbumDigitalAmbientLoader || document.querySelector('script[data-kp-album-digital-ambient]')) return;
+    window.__kpAlbumDigitalAmbientLoader = true;
+    const ambient = document.createElement("script");
+    ambient.src = "./album-digital-v4-ambient-fix.js?v=20260812c";
+    ambient.async = false;
+    ambient.dataset.kpAlbumDigitalAmbient = "1";
+    document.head.appendChild(ambient);
   }
-  if (!window.__kpAlbumDigitalV4Loader && !document.querySelector('script[data-kp-album-digital-v4]')) {
-    window.__kpAlbumDigitalV4Loader = true; const digital = document.createElement("script"); digital.src = "./album-digital-v4.js?v=20260812a"; digital.async = false; digital.dataset.kpAlbumDigitalV4 = "1"; document.head.appendChild(digital);
+
+  function loadDigitalV4() {
+    if (window.__kpAlbumDigitalV4Loader || document.querySelector('script[data-kp-album-digital-v4]')) {
+      if (window.KP_ALBUM_DIGITAL_V4) loadAmbientLayer();
+      return;
+    }
+    window.__kpAlbumDigitalV4Loader = true;
+    const digital = document.createElement("script");
+    digital.src = "./album-digital-v4.js?v=20260812c";
+    digital.async = false;
+    digital.dataset.kpAlbumDigitalV4 = "1";
+    digital.addEventListener("load", loadAmbientLayer, { once: true });
+    document.head.appendChild(digital);
   }
-  if (!window.__kpAlbumDigitalAmbientLoader && !document.querySelector('script[data-kp-album-digital-ambient]')) {
-    window.__kpAlbumDigitalAmbientLoader = true; const ambient = document.createElement("script"); ambient.src = "./album-digital-v4-ambient-fix.js?v=20260812a"; ambient.async = false; ambient.dataset.kpAlbumDigitalAmbient = "1"; document.head.appendChild(ambient);
+
+  function loadRuntimeThenV4() {
+    if (window.KP_ALBUM_DIGITAL_RUNTIME_FIX) { loadDigitalV4(); return; }
+    const existing = document.querySelector('script[data-kp-album-digital-runtime-fix]');
+    if (existing) { existing.addEventListener("load", loadDigitalV4, { once: true }); return; }
+    window.__kpAlbumDigitalRuntimeFixLoader = true;
+    const runtimeFix = document.createElement("script");
+    runtimeFix.src = "./album-digital-v4-runtime-fix.js?v=20260812c";
+    runtimeFix.async = false;
+    runtimeFix.dataset.kpAlbumDigitalRuntimeFix = "1";
+    runtimeFix.addEventListener("load", loadDigitalV4, { once: true });
+    document.head.appendChild(runtimeFix);
   }
+  loadRuntimeThenV4();
 
   try { sessionStorage.setItem("kpMissionMutation", "1"); } catch {}
 
@@ -67,7 +96,7 @@
   document.addEventListener("click", event => { if (!event.target.closest?.("#applyUpdate")) return; try { sessionStorage.setItem("kpApplyUpdate", "1"); } catch {} }, true);
 
   window.KP_STABILITY = {
-    version: "2.3",
+    version: "2.4",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
@@ -83,6 +112,7 @@
     albumPhotoQuality: true,
     digitalAlbumRuntimeStable: true,
     runtimeArmedBeforeV4: true,
-    digitalAlbumAmbientStable: true
+    digitalAlbumAmbientStable: true,
+    deterministicAlbumLoaderOrder: true
   };
 })();
