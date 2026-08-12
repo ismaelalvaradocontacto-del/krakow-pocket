@@ -101,7 +101,7 @@ function standaloneHtml(){
   const chapters=a.groups.map(chapterMarkup).join("");
   const storyButton=a.entries.length?'<button class="js-only story-launch" type="button" id="storyAlbum">▶ Historia</button>':'';
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#171310"><meta name="color-scheme" content="light"><meta name="kp-album-version" content="${VERSION}"><title>Kraków · Ismael & Laura · 2026</title><style>
-:root{--ink:#2d2723;--muted:#776e67;--paper:#f8f5ee;--warm:#eee5d8;--dark:#171310;--line:rgba(52,42,35,.14);--green:#5d7252;--serif:Georgia,"Times New Roman",serif}*{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--dark);scroll-padding-top:70px}body{margin:0;background:var(--dark);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;overflow-x:hidden}.book{max-width:1180px;margin:auto;min-height:100vh;background:var(--paper);overflow:hidden}.js-only{display:none!important}.js .js-only{display:inline-flex!important}button,a{font:inherit}button:focus-visible,a:focus-visible{outline:3px solid #3477b8;outline-offset:3px}
+:root{--ink:#2d2723;--muted:#776e67;--paper:#f8f5ee;--warm:#eee5d8;--dark:#171310;--line:rgba(52,42,35,.14);--green:#5d7252;--serif:Georgia,"Times New Roman",serif}*{box-sizing:border-box}html{scroll-behavior:smooth;background:var(--dark);scroll-padding-top:70px;overflow-anchor:none}body{margin:0;background:var(--dark);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI",sans-serif;overflow-x:hidden}.book{max-width:1180px;margin:auto;min-height:100vh;background:var(--paper);overflow:hidden}.js-only{display:none!important}.js .js-only{display:inline-flex!important}button,a{font:inherit}button:focus-visible,a:focus-visible{outline:3px solid #3477b8;outline-offset:3px}
 .cover{min-height:min(94svh,900px);position:relative;display:grid;align-items:end;isolation:isolate;background:linear-gradient(145deg,#5d4d41,#1b1714);overflow:hidden}.cover-photo{position:absolute;inset:-2%;width:104%;height:104%;object-fit:cover;z-index:-3;filter:saturate(.94) contrast(1.04) brightness(.87)}.cover::before{content:"";position:absolute;inset:0;z-index:-2;background:linear-gradient(180deg,rgba(8,7,6,.04),rgba(8,7,6,.12) 40%,rgba(8,7,6,.88))}.cover-copy{padding:72px clamp(22px,6vw,78px) max(68px,env(safe-area-inset-bottom));color:#fff7eb;max-width:980px}.cover-kicker{font-size:11px;letter-spacing:.2em;font-weight:800}.cover h1{font:500 clamp(46px,8vw,92px)/.92 var(--serif);letter-spacing:-.045em;margin:16px 0;max-width:820px}.cover p{font-size:clamp(16px,2.6vw,22px);line-height:1.45;margin:0;max-width:670px}.cover-progress{margin-top:26px;width:min(390px,92%);display:grid;grid-template-columns:1fr auto;gap:8px 10px;font-size:12px;font-weight:800}.cover-progress i{grid-column:1/-1;height:5px;background:#ffffff40;border-radius:99px;overflow:hidden}.cover-progress i::before{content:"";display:block;height:100%;width:${Math.min(100,(a.stats.missions/Math.max(1,a.stats.total))*100)}%;background:#efd194}.scroll-cue{margin-top:28px;width:44px;height:44px;border:1px solid #ffffff70;border-radius:50%;display:grid;place-items:center;color:white;text-decoration:none;background:#ffffff14}
 .toolbar{position:sticky;top:8px;z-index:40;width:max-content;max-width:calc(100% - 18px);margin:-56px auto 34px;padding:6px;display:flex;gap:4px;border:1px solid var(--line);border-radius:999px;background:#faf7f1e8;box-shadow:0 10px 34px #21191322;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}.toolbar a,.toolbar button{min-height:40px;display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:999px;background:transparent;color:#403731;text-decoration:none;padding:8px 11px;font-size:12px;font-weight:760;white-space:nowrap}.toolbar .story-launch{background:#2f2a26;color:white}
 .stats-wrap{max-width:900px;margin:auto;padding:5px 22px 40px}.stats{display:grid;grid-template-columns:repeat(4,1fr);border-block:1px solid var(--line)}.stat{padding:20px 8px;text-align:center;border-right:1px solid var(--line)}.stat:last-child{border-right:0}.stat strong{display:block;font:500 clamp(22px,4vw,32px)/1 var(--serif)}.stat span{display:block;margin-top:7px;font-size:9px;letter-spacing:.11em;color:var(--muted);font-weight:850}
@@ -130,9 +130,29 @@ async function share(){
   try{if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){await navigator.share({title:"Kraków · Ismael & Laura",text:"Nuestro álbum digital de Cracovia",files:[file]});return true;}}catch(e){if(e?.name==="AbortError")return true;}
   return download();
 }
-function printAlbum(){
+function frameHasAlbum(){
+  try{return !!frame?.contentDocument?.querySelector('[data-kp-album-v5="1"]')}catch{return false}
+}
+function waitForFrameAlbum(timeout=4500){
+  if(frameHasAlbum())return Promise.resolve(true);
+  return new Promise(resolve=>{
+    if(!frame){resolve(false);return}
+    let settled=false;
+    const done=ok=>{if(settled)return;settled=true;clearTimeout(timer);frame.removeEventListener("load",onLoad);resolve(ok)};
+    const onLoad=()=>{requestAnimationFrame(()=>done(frameHasAlbum()))};
+    const timer=setTimeout(()=>done(frameHasAlbum()),timeout);
+    frame.addEventListener("load",onLoad);
+  });
+}
+async function printAlbum(){
   if(!dialog?.open)open();
-  try{frame?.contentWindow?.focus();frame?.contentWindow?.print();return true;}catch{return false;}
+  if(!(await waitForFrameAlbum()))return false;
+  try{
+    frame.contentWindow.focus();
+    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+    frame.contentWindow.print();
+    return true;
+  }catch{return false}
 }
 
 function injectShellStyles(){
@@ -156,7 +176,12 @@ function refreshFrame(preserve=true){
   if(doc?.querySelector("#storyMode.open,#lightbox.open")){pendingRefresh=true;return false;}
   const y=preserve?frame.contentWindow?.scrollY||0:0;
   const content=standaloneHtml();
-  frame.addEventListener("load",()=>{try{if(y)frame.contentWindow.scrollTo(0,y);}catch{}},{once:true});
+  frame.addEventListener("load",()=>{
+    const restore=()=>{try{frame.contentWindow.scrollTo(0,y)}catch{}};
+    restore();
+    try{frame.contentWindow.requestAnimationFrame(()=>{restore();frame.contentWindow.requestAnimationFrame(restore)})}catch{}
+    setTimeout(restore,60);
+  },{once:true});
   frame.srcdoc=content;openSignature=stateSignature();pendingRefresh=false;return true;
 }
 function monitorOpen(){
@@ -182,6 +207,6 @@ function boot(){
   setTimeout(()=>{cleanupLegacy();renderCard();patchLegacyApis();},700);
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
-window.KP_ALBUM_EXPERIENCE={version:VERSION,open,html:standaloneHtml,download,share,print:printAlbum,file:albumFile,digitalAlbum:true,unifiedSingleSource:true,legacyUiDisabled:true,iosQuickLookCompatible:true,noJsNavigation:true,offlineHtml:true,photoDataDeduplicated:true,storyMode:true,storyAutoplay:true,filmstrip:true,ambientStory:true,responsive:true,printReady:true};
-window.KP_ALBUM_V5={version:VERSION,open,html:standaloneHtml,download,share,print:printAlbum,renderCard,cleanupLegacy,stateSignature,singleSource:true,uniqueControlIds:true,boundedOpenMonitor:true};
+window.KP_ALBUM_EXPERIENCE={version:VERSION,open,html:standaloneHtml,download,share,print:printAlbum,file:albumFile,digitalAlbum:true,unifiedSingleSource:true,legacyUiDisabled:true,iosQuickLookCompatible:true,noJsNavigation:true,offlineHtml:true,photoDataDeduplicated:true,storyMode:true,storyAutoplay:true,filmstrip:true,ambientStory:true,responsive:true,printReady:true,pdfWaitsForFrame:true,safariScrollRestore:true};
+window.KP_ALBUM_V5={version:VERSION,open,html:standaloneHtml,download,share,print:printAlbum,renderCard,cleanupLegacy,stateSignature,singleSource:true,uniqueControlIds:true,boundedOpenMonitor:true,pdfWaitsForFrame:true,safariScrollRestore:true};
 })();
