@@ -50,7 +50,7 @@ pass(Object.keys(D?.expenseCategories || {}).length >= 5, 'Expense categories mi
 
 const requiredFiles = [
   'index.html','manifest.webmanifest','sw.js','data.js','app.js','enhancements.js','runtime.js','stability.js',
-  'compat.js','state-bridge.js','network-status.js','player-stability.js','world-art-stability.js','interaction-fix.js','mission-fix.js','mission-proof.js','mission-proof-guard.js','auschwitz-extra.js','celebration-guard.js','celebration-stability.js','portrait-stability.js','game.js','visuals.js','styles.css','game.css','storybook.css',
+  'compat.js','state-bridge.js','network-status.js','player-stability.js','world-art-stability.js','interaction-fix.js','mission-fix.js','mission-proof.js','mission-proof-guard.js','auschwitz-extra.js','album-photo-quality.js','album-v5.js','celebration-guard.js','celebration-stability.js','portrait-stability.js','game.js','visuals.js','styles.css','game.css','storybook.css',
   'compat.css','profiles.css','assets/game-art.svg','assets/characters.svg','assets/village.svg','assets/world-map.svg',
   'icon-192.svg','icon-512.svg'
 ];
@@ -96,20 +96,37 @@ pass(celebrationGuard.includes('portrait-stability.js'), 'celebration-guard.js d
 const portrait = fs.readFileSync(path.join(root, 'portrait-stability.js'), 'utf8');
 pass(portrait.includes('version: "2.0"') && portrait.includes('noMutationObserver: true') && portrait.includes('noRepairBurst: true'), 'portrait-stability.js compatibility shim markers missing');
 
+// Album architecture: V5 is the only loaded presentation/export layer.
+const stability = fs.readFileSync(path.join(root, 'stability.js'), 'utf8');
+const albumV5 = fs.readFileSync(path.join(root, 'album-v5.js'), 'utf8');
+pass(stability.includes('album-v5.js'), 'stability.js does not load album-v5.js');
+pass(stability.includes('albumV5Unified: true') && stability.includes('singleSourceAlbum: true') && stability.includes('legacyAlbumLayersDisabled: true'), 'V5 album stability markers missing');
+for (const retired of ['album-experience.js','album-v3-polish.js','album-ios-compat.js','album-digital-v4.js','album-digital-v4-runtime-fix.js','album-digital-v4-ambient-fix.js']) {
+  pass(!stability.includes(retired), `stability.js still loads retired album layer ${retired}`);
+}
+pass(albumV5.includes('const VERSION = "5.0"'), 'album-v5.js version marker missing');
+pass(albumV5.includes('unifiedSingleSource:true') && albumV5.includes('legacyUiDisabled:true'), 'album-v5.js single-source markers missing');
+pass(albumV5.includes('data-kp-album-v5="1"'), 'album-v5.js exported HTML marker missing');
+pass(!albumV5.includes('kpAlbumPhotoData'), 'album-v5.js reintroduced duplicated JSON photo payload');
+
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'manifest.webmanifest'), 'utf8'));
 pass(typeof manifest.name === 'string' && manifest.name.trim(), 'Manifest name missing');
 pass(Array.isArray(manifest.icons) && manifest.icons.length >= 2, 'Manifest icons missing');
 pass(manifest.display === 'standalone' || manifest.display === 'fullscreen', 'Manifest is not installable standalone/fullscreen');
 
 const sw = fs.readFileSync(path.join(root, 'sw.js'), 'utf8');
-for (const file of ['index.html','compat.js','state-bridge.js','network-status.js','world-art-stability.js','interaction-fix.js','mission-fix.js','mission-proof.js','mission-proof-guard.js','auschwitz-extra.js','celebration-guard.js','celebration-stability.js','app.js','enhancements.js','manifest.webmanifest']) {
+for (const file of ['index.html','compat.js','state-bridge.js','network-status.js','world-art-stability.js','interaction-fix.js','mission-fix.js','mission-proof.js','mission-proof-guard.js','auschwitz-extra.js','album-photo-quality.js','album-v5.js','celebration-guard.js','celebration-stability.js','app.js','enhancements.js','manifest.webmanifest']) {
   pass(sw.includes(file), `Service worker core does not include ${file}`);
 }
-pass(sw.includes('krakow-pocket-v37-auschwitz-extra-20260811a'), 'Service worker cache marker is not current');
+for (const retired of ['album-experience.js','album-v3-polish.js','album-ios-compat.js','album-digital-v4.js','album-digital-v4-runtime-fix.js','album-digital-v4-ambient-fix.js']) {
+  pass(!sw.includes(`"./${retired}"`), `Service worker still precaches retired album layer ${retired}`);
+}
+pass(sw.includes('krakow-pocket-v47-album-v5-unified-20260812a'), 'Service worker cache marker is not current');
 
 console.log(JSON.stringify({
   checks: failures.length ? 'FAILED' : 'PASS',
   counts: { pois: pois.length, quests: quests.length, days: days.length, categories: Object.keys(categories).length },
+  album: { version: '5.0', singleSource: true },
   failures
 }, null, 2));
 if (failures.length) process.exit(1);
