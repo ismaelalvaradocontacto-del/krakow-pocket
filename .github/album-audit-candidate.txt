@@ -4,5 +4,6 @@ Candidate includes:
 - state bridge 1.8
 - stale in-memory app state merge fix
 - serialized Safari album refresh/PDF lifecycle
-- resilient R4 browser audit
-Triggered: 2026-08-12
+- album 6 owns Safari scroll restoration
+- deterministic non-zero/zero scroll R4 assertions
+Triggered: 2026-08-12 16:31 Europe/Madrid
