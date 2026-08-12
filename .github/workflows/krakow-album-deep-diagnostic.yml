@@ -1,0 +1,34 @@
+name: Krakow Pocket deep album diagnostic
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  album-diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install Playwright
+        run: |
+          npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
+          npx playwright install --with-deps chromium webkit >/tmp/playwright-install.log 2>&1
+      - name: Start local app
+        run: |
+          APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory "$APP_DIR" >/tmp/kp-album-deep-http.log 2>&1 &
+          sleep 2
+      - name: Deep album diagnostic locally
+        run: node .github/scripts/krakow-album-deep-diagnostic.mjs
+      - name: Upload diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: album-deep-diagnostic
+          path: /tmp/album-deep-diagnostic.json
+          if-no-files-found: ignore
