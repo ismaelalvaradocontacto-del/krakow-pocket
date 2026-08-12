@@ -35,7 +35,8 @@ jobs:
           grep -q 'remoteEvidenceAbsorbedBeforeAppMerge: true' "$APP_DIR/state-bridge.js"
           grep -q 'outgoingEvidenceTimestampGuard: true' "$APP_DIR/state-bridge.js"
           grep -q 'version: "3.1"' "$APP_DIR/stability.js"
-          grep -q 'albumSafariIframeScrollGuard: true' "$APP_DIR/stability.js"
+          grep -q 'albumIframePagehideCapture: true' "$APP_DIR/stability.js"
+          grep -q 'albumIframeGuardRevision: "20260812b"' "$APP_DIR/stability.js"
           grep -q 'pdfWaitsForFrame:true' "$APP_DIR/album-v5.js"
           grep -q 'safariScrollRestore:true' "$APP_DIR/album-v5.js"
           grep -q 'krakow-pocket-v48-album-v5-audit-clean-20260812a' "$APP_DIR/sw.js"
@@ -62,7 +63,7 @@ jobs:
             curl -fsS https://krakow-pocket.pages.dev/mission-proof.js | grep -q 'const VERSION="2.0"' && PROOF=1 || true
             curl -fsS https://krakow-pocket.pages.dev/auschwitz-extra.js | grep -q 'const VERSION="2.0"' && AUS=1 || true
             curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'version: "1.7"' && BRIDGE=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/stability.js | grep -q 'version: "3.1"' && STABLE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/stability.js | grep -q 'albumIframeGuardRevision: "20260812b"' && STABLE=1 || true
             curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v48-album-v5-audit-clean-20260812a' && CACHE=1 || true
             if [ "$V5" = 1 ] && [ "$PROOF" = 1 ] && [ "$AUS" = 1 ] && [ "$BRIDGE" = 1 ] && [ "$STABLE" = 1 ] && [ "$CACHE" = 1 ]; then exit 0; fi
             sleep 4
