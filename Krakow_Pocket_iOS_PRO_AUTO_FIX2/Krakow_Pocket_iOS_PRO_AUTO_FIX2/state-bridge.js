@@ -18,6 +18,8 @@
   let stickyMissionEvidence = {};
   let stickyProfilePhotos = {};
   let stickyAlbumPhotos = [];
+  let stickyMemories = [];
+  let stickyExpenses = [];
   let reconcileQueued = false;
   let shadowSig = "";
 
@@ -71,12 +73,22 @@
     for (const source of sources) stickyAlbumPhotos = mergeRecords(stickyAlbumPhotos, source || []);
     return mergeRecords([], stickyAlbumPhotos);
   }
+  function absorbMemories(...sources) {
+    for (const source of sources) stickyMemories = mergeRecords(stickyMemories, source || []);
+    return mergeRecords([], stickyMemories);
+  }
+  function absorbExpenses(...sources) {
+    for (const source of sources) stickyExpenses = mergeRecords(stickyExpenses, source || []);
+    return mergeRecords([], stickyExpenses);
+  }
 
   restoreEvidenceShadow();
   const initial = read();
   absorbMissionEvidence(initial.missionEvidence || {});
   absorbProfilePhotos(initial.profilePhotos || {});
   absorbAlbumPhotos(initial.albumPhotos || []);
+  absorbMemories(initial.memories || []);
+  absorbExpenses(initial.expenses || []);
 
   function applyStatus(state) {
     state = state && typeof state === "object" ? state : {};
@@ -96,8 +108,8 @@
 
   function mergeLocalStatus(state, local = read()) {
     state = state && typeof state === "object" ? { ...state } : {};
-    state.expenses = mergeRecords(local.expenses || [], state.expenses || []);
-    state.memories = mergeRecords(local.memories || [], state.memories || []);
+    state.expenses = absorbExpenses(local.expenses || [], state.expenses || []);
+    state.memories = absorbMemories(local.memories || [], state.memories || []);
     state.albumPhotos = absorbAlbumPhotos(local.albumPhotos || [], state.albumPhotos || []);
     state.missionStatus = mergeTimed(local.missionStatus || {}, state.missionStatus || {});
     state.discoveryStatus = mergeTimed(local.discoveryStatus || {}, state.discoveryStatus || {});
@@ -110,6 +122,8 @@
     const photosChanged = JSON.stringify(local.profilePhotos || {}) !== JSON.stringify(next.profilePhotos || {});
     const evidenceChanged = JSON.stringify(local.missionEvidence || {}) !== JSON.stringify(next.missionEvidence || {});
     const albumChanged = JSON.stringify(local.albumPhotos || []) !== JSON.stringify(next.albumPhotos || []);
+    const memoriesChanged = JSON.stringify(local.memories || []) !== JSON.stringify(next.memories || []);
+    const expensesChanged = JSON.stringify(local.expenses || []) !== JSON.stringify(next.expenses || []);
     if (photosChanged) {
       try { window.dispatchEvent(new CustomEvent("kp:profile-photo-sync", { detail: { profilePhotos: JSON.parse(JSON.stringify(next.profilePhotos || {})) } })); } catch {}
     }
@@ -119,7 +133,10 @@
     if (albumChanged) {
       try { window.dispatchEvent(new CustomEvent("kp:album-photos-sync", { detail: { albumPhotos: JSON.parse(JSON.stringify(next.albumPhotos || [])) } })); } catch {}
     }
-    return photosChanged || evidenceChanged || albumChanged;
+    if (memoriesChanged || expensesChanged) {
+      try { window.dispatchEvent(new CustomEvent("kp:diary-sync", { detail: { memories: JSON.parse(JSON.stringify(next.memories || [])), expenses: JSON.parse(JSON.stringify(next.expenses || [])) } })); } catch {}
+    }
+    return photosChanged || evidenceChanged || albumChanged || memoriesChanged || expensesChanged;
   }
 
   function reconcileProtectedState() {
@@ -162,16 +179,22 @@
     const nextPhotos = absorbProfilePhotos(local.profilePhotos || {}, merged?.profilePhotos || {});
     const nextEvidence = absorbMissionEvidence(local.missionEvidence || {}, merged?.missionEvidence || {});
     const nextAlbum = absorbAlbumPhotos(local.albumPhotos || [], merged?.albumPhotos || []);
+    const nextMemories = absorbMemories(local.memories || [], merged?.memories || []);
+    const nextExpenses = absorbExpenses(local.expenses || [], merged?.expenses || []);
     const photosChanged = JSON.stringify(local.profilePhotos || {}) !== JSON.stringify(nextPhotos);
     const evidenceChanged = JSON.stringify(local.missionEvidence || {}) !== JSON.stringify(nextEvidence);
     const albumChanged = JSON.stringify(local.albumPhotos || []) !== JSON.stringify(nextAlbum);
-    if (!photosChanged && !evidenceChanged && !albumChanged) return false;
+    const memoriesChanged = JSON.stringify(local.memories || []) !== JSON.stringify(nextMemories);
+    const expensesChanged = JSON.stringify(local.expenses || []) !== JSON.stringify(nextExpenses);
+    if (!photosChanged && !evidenceChanged && !albumChanged && !memoriesChanged && !expensesChanged) return false;
 
     const nextLocal = mergeLocalStatus({
       ...local,
       profilePhotos: nextPhotos,
       missionEvidence: nextEvidence,
       albumPhotos: nextAlbum,
+      memories: nextMemories,
+      expenses: nextExpenses,
       updatedAt: merged?.updatedAt || local.updatedAt || now()
     }, local);
     nativeSetItem.call(localStorage, STORAGE, JSON.stringify(nextLocal));
@@ -205,6 +228,8 @@
           payload.p_state.missionEvidence = absorbMissionEvidence(payload.p_state.missionEvidence || {});
           payload.p_state.profilePhotos = absorbProfilePhotos(payload.p_state.profilePhotos || {});
           payload.p_state.albumPhotos = absorbAlbumPhotos(payload.p_state.albumPhotos || []);
+          payload.p_state.memories = absorbMemories(payload.p_state.memories || []);
+          payload.p_state.expenses = absorbExpenses(payload.p_state.expenses || []);
           next.body = JSON.stringify(payload);
         }
       } catch {}
@@ -226,6 +251,8 @@
     absorbMissionEvidence(remote.missionEvidence || {});
     absorbProfilePhotos(remote.profilePhotos || {});
     absorbAlbumPhotos(remote.albumPhotos || []);
+    absorbMemories(remote.memories || []);
+    absorbExpenses(remote.expenses || []);
 
     const before = JSON.stringify({ v: remote.visited || [], x: remote.expenses || [], r: remote.memories || [], a: remote.albumPhotos || [], m: remote.missionStatus || {}, d: remote.discoveryStatus || {}, p: remote.profilePhotos || {}, e: remote.missionEvidence || {} });
     const merged = mergeLocalStatus(remote, read());
@@ -252,9 +279,9 @@
   document.addEventListener("visibilitychange", () => { if (!document.hidden) { restoreEvidenceShadow(); queueReconcile(); } });
 
   window.KP_STATE_BRIDGE = {
-    version: "1.8",
+    version: "1.9",
     bridgeRevision: "20260812e",
-    bridgeReconciliationRevision: "20260812f",
+    bridgeReconciliationRevision: "20260812g",
     reversibleDiscoveries: true,
     sharedProfilePhotos: true,
     immediateRemoteProfileAdoption: true,
@@ -265,6 +292,7 @@
     staleMissionEvidenceSurvivesReload: true,
     staleProfilePhotoProtection: true,
     staleDiaryRecordProtection: true,
+    stickyDiaryRecordProtection: true,
     staleAlbumPhotoProtection: true,
     atomicSharedFieldAdoption: true,
     remoteEvidenceAbsorbedBeforeAppMerge: true,
@@ -276,7 +304,9 @@
     normalize: state => mergeLocalStatus(state, read()),
     reconcile: reconcileProtectedState,
     protectedMissionEvidence: () => mergeTimed({}, stickyMissionEvidence),
-    protectedAlbumPhotos: () => mergeRecords([], stickyAlbumPhotos)
+    protectedAlbumPhotos: () => mergeRecords([], stickyAlbumPhotos),
+    protectedMemories: () => mergeRecords([], stickyMemories),
+    protectedExpenses: () => mergeRecords([], stickyExpenses)
   };
 })();
 if(!window.__kpProfilePhotoLoader){window.__kpProfilePhotoLoader=true;document.write('<script src="./profile-photo.js?v=20260811f" data-kp-profile-photo="1"><\/script>')}
