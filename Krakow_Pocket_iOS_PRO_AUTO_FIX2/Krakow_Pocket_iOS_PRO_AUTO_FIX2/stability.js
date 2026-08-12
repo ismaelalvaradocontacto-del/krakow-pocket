@@ -38,6 +38,7 @@
   let albumScrollY = 0;
   let albumScrollIntent = null;
   let albumScrollBoundDocument = null;
+  const albumNextOwnsScroll = () => window.KP_ALBUM_NEXT?.version === "6.0";
   const captureAlbumScroll = frame => {
     if (albumScrollIntent != null) {
       albumScrollY = Math.max(0, Number(albumScrollIntent) || 0);
@@ -62,6 +63,11 @@
   const restoreAlbumScroll = frame => {
     const win = frame?.contentWindow, doc = frame?.contentDocument;
     if (!win || !doc?.documentElement) return;
+    if (albumNextOwnsScroll()) {
+      bindAlbumInnerDocument(frame);
+      albumScrollIntent = null;
+      return;
+    }
     const target = Math.max(0, Number(albumScrollIntent != null ? albumScrollIntent : albumScrollY) || 0);
     albumScrollY = target;
     const root = doc.documentElement;
@@ -148,6 +154,7 @@
     albumIframePerDocumentBinding: true,
     albumIframePagehideCapture: true,
     albumScrollIntentProtocol: true,
+    albumNextOwnsScrollRestore: true,
     albumIframeGuardRevision: "20260812b"
   };
 })();
