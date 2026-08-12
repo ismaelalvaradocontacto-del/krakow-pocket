@@ -41,14 +41,17 @@ jobs:
           grep -q 'outgoingEvidenceTimestampGuard: true' "$APP_DIR/state-bridge.js"
           grep -q 'staleMissionEvidenceSurvivesReload: true' "$APP_DIR/state-bridge.js"
           grep -q 'sharedAlbumPhotos: true' "$APP_DIR/state-bridge.js"
-          grep -q 'version: "3.1"' "$APP_DIR/stability.js"
+          grep -q 'version: "3.3"' "$APP_DIR/stability.js"
           grep -q 'albumIframePagehideCapture: true' "$APP_DIR/stability.js"
-          grep -q 'albumIframeGuardRevision: "20260812b"' "$APP_DIR/stability.js"
+          grep -q 'albumUserScrollCancelsRestore: true' "$APP_DIR/stability.js"
+          grep -q 'albumIframeGuardRevision: "20260812c"' "$APP_DIR/stability.js"
           grep -q 'pdfWaitsForFrame:true' "$APP_DIR/album-v5.js"
           grep -q 'safariScrollRestore:true' "$APP_DIR/album-v5.js"
           grep -q 'const VERSION="6.0"' "$APP_DIR/album-next.js"
           grep -q 'multiPhoto:true' "$APP_DIR/album-next.js"
           grep -q 'verticalPhotosUncropped:true' "$APP_DIR/album-next.js"
+          grep -q 'canonicalStateSignature:true' "$APP_DIR/album-next.js"
+          grep -q 'deferredOverlayRefresh:true' "$APP_DIR/album-next.js"
           grep -q 'krakow-pocket-v50-album-multi-20260812a' "$APP_DIR/sw.js"
 
       - name: Install browser tooling
@@ -70,11 +73,11 @@ jobs:
           for i in {1..60}; do
             V5=0; NEXT=0; PROOF=0; AUS=0; BRIDGE=0; STABLE=0; CACHE=0
             curl -fsS https://krakow-pocket.pages.dev/album-v5.js | grep -q 'pdfWaitsForFrame:true' && V5=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'const VERSION="6.0"' && NEXT=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'canonicalStateSignature:true' && curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'deferredOverlayRefresh:true' && NEXT=1 || true
             curl -fsS https://krakow-pocket.pages.dev/mission-proof.js | grep -q 'const VERSION="2.0"' && PROOF=1 || true
             curl -fsS https://krakow-pocket.pages.dev/auschwitz-extra.js | grep -q 'const VERSION="2.0"' && AUS=1 || true
             curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'bridgeRevision: "20260812e"' && BRIDGE=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/stability.js | grep -q 'albumIframeGuardRevision: "20260812b"' && STABLE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/stability.js | grep -q 'albumIframeGuardRevision: "20260812c"' && STABLE=1 || true
             curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v50-album-multi-20260812a' && CACHE=1 || true
             if [ "$V5" = 1 ] && [ "$NEXT" = 1 ] && [ "$PROOF" = 1 ] && [ "$AUS" = 1 ] && [ "$BRIDGE" = 1 ] && [ "$STABLE" = 1 ] && [ "$CACHE" = 1 ]; then exit 0; fi
             sleep 4
