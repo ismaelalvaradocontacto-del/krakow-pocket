@@ -37,8 +37,46 @@
   let albumFrame = null;
   let albumScrollY = 0;
   let albumScrollIntent = null;
+  let albumScrollAnchor = null;
   let albumScrollBoundDocument = null;
   const albumNextOwnsScroll = () => window.KP_ALBUM_NEXT?.version === "6.0";
+  const albumAnchorFor = (frame, y) => {
+    try {
+      const doc = frame?.contentDocument, win = frame?.contentWindow;
+      if (!doc || !win) return null;
+      const scrollY = Math.max(0, Number(y ?? win.scrollY) || 0);
+      if (scrollY <= 4) return { kind:"top", offset:0, fallback:0 };
+      const candidates = [...doc.querySelectorAll('.photo-card,.memory-card,.chapter,#albumIndex,.stats-wrap')];
+      let best = null;
+      for (const el of candidates) {
+        const r = el.getBoundingClientRect();
+        if (r.bottom <= 0 || r.top > Math.min(180, win.innerHeight * .3)) continue;
+        if (!best || r.top > best.rect.top) best = { el, rect:r };
+      }
+      if (!best) return { kind:"pixel", offset:0, fallback:scrollY };
+      const el = best.el;
+      let kind = "pixel", key = "";
+      if (el.classList.contains("photo-card")) { kind="photo"; key=el.getAttribute("data-photo-index") || ""; }
+      else if (el.classList.contains("memory-card")) { kind="memory"; key=String([...doc.querySelectorAll('.memory-card')].indexOf(el)); }
+      else if (el.classList.contains("chapter")) { kind="id"; key=el.id || ""; }
+      else if (el.id) { kind="id"; key=el.id; }
+      return { kind, key, offset:scrollY - el.offsetTop, fallback:scrollY };
+    } catch { return null; }
+  };
+  const albumTargetFor = (frame, anchor, fallback) => {
+    try {
+      const doc = frame?.contentDocument;
+      if (!doc) return Math.max(0, Number(fallback)||0);
+      if (!anchor || anchor.kind === "pixel") return Math.max(0, Number(anchor?.fallback ?? fallback)||0);
+      if (anchor.kind === "top") return 0;
+      let el = null;
+      if (anchor.kind === "photo") el = [...doc.querySelectorAll('.photo-card')].find(x => (x.getAttribute('data-photo-index')||"") === String(anchor.key));
+      else if (anchor.kind === "memory") el = doc.querySelectorAll('.memory-card')[Number(anchor.key)] || null;
+      else if (anchor.kind === "id" && anchor.key) el = doc.getElementById(anchor.key);
+      if (!el) return Math.max(0, Number(anchor.fallback ?? fallback)||0);
+      return Math.max(0, el.offsetTop + (Number(anchor.offset)||0));
+    } catch { return Math.max(0, Number(fallback)||0); }
+  };
   const captureAlbumScroll = frame => {
     if (albumScrollIntent != null) {
       albumScrollY = Math.max(0, Number(albumScrollIntent) || 0);
@@ -63,21 +101,23 @@
   const restoreAlbumScroll = frame => {
     const win = frame?.contentWindow, doc = frame?.contentDocument;
     if (!win || !doc?.documentElement) return;
-    if (albumNextOwnsScroll()) {
-      bindAlbumInnerDocument(frame);
-      albumScrollIntent = null;
-      return;
-    }
-    const target = Math.max(0, Number(albumScrollIntent != null ? albumScrollIntent : albumScrollY) || 0);
-    albumScrollY = target;
+    const intended = Math.max(0, Number(albumScrollIntent != null ? albumScrollIntent : albumScrollY) || 0);
+    const anchor = albumScrollAnchor;
     const root = doc.documentElement;
     const previousInline = root.style.scrollBehavior;
     root.style.scrollBehavior = "auto";
-    const restore = () => { try { win.scrollTo(0, target); } catch {} };
+    const restore = () => {
+      try {
+        const target = albumTargetFor(frame, anchor, intended);
+        win.scrollTo(0, target);
+        albumScrollY = target;
+      } catch {}
+    };
     restore();
     try { win.requestAnimationFrame(() => { restore(); win.requestAnimationFrame(restore); }); } catch {}
-    [50, 120, 240, 420].forEach(delay => setTimeout(restore, delay));
-    setTimeout(() => { try { root.style.scrollBehavior = previousInline; } catch {} }, 460);
+    const delays = albumNextOwnsScroll() ? [70, 160, 300, 480] : [50, 120, 240, 420];
+    delays.forEach(delay => setTimeout(restore, delay));
+    setTimeout(() => { try { root.style.scrollBehavior = previousInline; } catch {} }, Math.max(...delays)+40);
     bindAlbumInnerDocument(frame);
   };
   const bindAlbumFrame = () => {
@@ -87,12 +127,13 @@
     frame.addEventListener("load", () => {
       albumScrollBoundDocument = null;
       restoreAlbumScroll(frame);
-      albumScrollIntent = null;
+      setTimeout(() => { albumScrollIntent = null; albumScrollAnchor = null; }, 560);
     });
     const dialog = document.getElementById("kpAlbumV5Dialog");
     dialog?.addEventListener("close", () => {
       albumScrollY = 0;
       albumScrollIntent = null;
+      albumScrollAnchor = null;
       albumScrollBoundDocument = null;
     });
     bindAlbumInnerDocument(frame);
@@ -102,12 +143,13 @@
   albumObserver.observe(document.documentElement, { childList:true, subtree:true });
   window.addEventListener("kp:album-scroll-intent", event => {
     const y = Math.max(0, Number(event?.detail?.y) || 0);
+    albumScrollAnchor = albumAnchorFor(albumFrame, y);
     albumScrollY = y;
     albumScrollIntent = y;
   });
   document.addEventListener("click", event => {
-    if (event.target.closest?.("#kpAlbumV5Open")) { albumScrollY = 0; albumScrollIntent = 0; }
-    if (event.target.closest?.("#kpAlbumV5Close")) { albumScrollY = 0; albumScrollIntent = null; }
+    if (event.target.closest?.("#kpAlbumV5Open")) { albumScrollY = 0; albumScrollIntent = 0; albumScrollAnchor = {kind:"top",offset:0,fallback:0}; }
+    if (event.target.closest?.("#kpAlbumV5Close")) { albumScrollY = 0; albumScrollIntent = null; albumScrollAnchor = null; }
   }, true);
   bindAlbumFrame();
 
@@ -137,7 +179,7 @@
   document.addEventListener("click", event => { if (!event.target.closest?.("#applyUpdate")) return; try { sessionStorage.setItem("kpApplyUpdate", "1"); } catch {} }, true);
 
   window.KP_STABILITY = {
-    version: "3.1",
+    version: "3.2",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
@@ -155,6 +197,7 @@
     albumIframePagehideCapture: true,
     albumScrollIntentProtocol: true,
     albumNextOwnsScrollRestore: true,
+    albumSemanticScrollAnchor: true,
     albumIframeGuardRevision: "20260812b"
   };
 })();
