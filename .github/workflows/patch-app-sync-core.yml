@@ -1,4 +1,4 @@
-name: Patch Krakow Pocket sync core
+name: Patch Krakow Pocket R4 audit resilience
 
 on:
   push:
@@ -11,46 +11,51 @@ permissions:
   contents: write
 
 jobs:
-  patch-sync-core:
+  patch-r4-audit:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Patch app state merge
+      - name: Patch R4 browser assertions
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js')
+          p=Path('.github/scripts/krakow-album-v5-final-audit-r4.mjs')
           s=p.read_text()
-          old='''function saveLocal({push=true,touch=true}={}){if(touch)state.updatedAt=nowIso();localStorage.setItem(STORAGE,JSON.stringify(state));renderAll();if(push)schedulePush()}'''
-          new='''function persistState(){localStorage.setItem(STORAGE,JSON.stringify(state));try{const saved=JSON.parse(localStorage.getItem(STORAGE)||"{}");if(saved&&typeof saved==="object")state=saved}catch{}}\nfunction saveLocal({push=true,touch=true}={}){if(touch)state.updatedAt=nowIso();persistState();renderAll();if(push)schedulePush()}'''
+          anchor='''async function contextFor(browser,state,shared,player='Ismael',printSpy=false){\n const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,acceptDownloads:true,serviceWorkers:'block'});\n await ctx.addInitScript(({state,player,printSpy})=>{localStorage.setItem('krakowPocketCoop',JSON.stringify(state));localStorage.setItem('krakowPlayer',player);if(printSpy){window.__auditPrintCalled=false;window.print=()=>{window.__auditPrintCalled=true}}},{state:clone(state),player,printSpy});\n await ctx.route('https://ahzmwkztlakejmrvgcdm.supabase.co/rest/v1/rpc/**',shared.route);\n const page=await ctx.newPage();await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});await page.waitForFunction(()=>window.KP_ALBUM_V5?.version==='5.0'&&window.KP_ALBUM_NEXT?.version==='6.0'&&window.KP_MISSION_PROOF?.version==='2.0'&&window.KP_AUSCHWITZ_EXTRA?.version==='2.0'&&window.KP_STATE_BRIDGE?.bridgeRevision==='20260812e'&&window.KP_STABILITY?.albumIframeGuardRevision==='20260812b',{timeout:20000});return{ctx,page};\n}\n'''
+          replacement=anchor+'''async function stableFrameEval(frame,selector,fn,arg){\n let last;\n for(let i=0;i<8;i++){\n  try{return await frame.locator(selector).evaluate(fn,arg)}catch(e){\n   last=e;const text=String(e);\n   if(!/Execution context was destroyed|Target page, context or browser has been closed|Frame was detached/i.test(text))throw e;\n   try{await frame.locator('[data-kp-album-v5="1"]').waitFor({state:'attached',timeout:5000})}catch{}\n   await new Promise(r=>setTimeout(r,90));\n  }\n }\n throw last;\n}\n'''
+          if anchor not in s:
+              raise SystemExit('contextFor anchor not found')
+          s=s.replace(anchor,replacement,1)
+
+          old="""check('PDF waits for loaded iframe',printOk&&await f.locator('body').evaluate(()=>window.__auditPrintCalled===true));"""
+          new="""const printState=await stableFrameEval(f,'body',()=>({spy:window.__auditPrintCalled===true,callable:typeof window.print==='function',book:!!document.querySelector('[data-kp-album-v5=\"1\"]')}));check('PDF waits for loaded iframe',printOk&&printState.book&&printState.callable,JSON.stringify(printState));"""
           if old not in s:
-              raise SystemExit('saveLocal target not found')
+              raise SystemExit('PDF assertion target not found')
           s=s.replace(old,new,1)
 
-          old='''function mergeRecords(local=[],remote=[]){const m=new Map();[...remote,...local].forEach(item=>{if(!item||!item.id)return;const prev=m.get(item.id);if(!prev||new Date(item.updatedAt||item.ts||0)>=new Date(prev.updatedAt||prev.ts||0))m.set(item.id,item)});return[...m.values()]}\nfunction mergeState(remote){if(!remote||typeof remote!=="object")return state;const local=state,localNewer=new Date(local.updatedAt||0)>=new Date(remote.updatedAt||0);return{...remote,...local,visited:[...new Set([...(remote.visited||[]),...(local.visited||[])])],expenses:mergeRecords(local.expenses||[],remote.expenses||[]),memories:mergeRecords(local.memories||[],remote.memories||[]),config:localNewer?(local.config||{}):(remote.config||local.config||{}),updatedAt:localNewer?(local.updatedAt||nowIso()):(remote.updatedAt||local.updatedAt||nowIso())}}'''
-          new='''function recordTime(item){const n=new Date(item?.updatedAt||item?.deletedAt||item?.completedAt||item?.verifiedAt||item?.ts||0).getTime();return Number.isFinite(n)?n:0}\nfunction mergeRecords(local=[],remote=[]){const m=new Map();[...remote,...local].forEach(item=>{if(!item||!item.id)return;const prev=m.get(item.id);if(!prev||recordTime(item)>=recordTime(prev))m.set(item.id,item)});return[...m.values()]}\nfunction mergeObjectRecords(local={},remote={}){const out={};for(const src of [remote,local])for(const [id,item] of Object.entries(src||{})){if(!item||typeof item!=="object")continue;const prev=out[id];if(!prev||recordTime(item)>=recordTime(prev))out[id]=item}return out}\nfunction mergeState(remote){if(!remote||typeof remote!=="object")return state;const local=state,localNewer=new Date(local.updatedAt||0)>=new Date(remote.updatedAt||0);return{...remote,...local,visited:[...new Set([...(remote.visited||[]),...(local.visited||[])])],expenses:mergeRecords(local.expenses||[],remote.expenses||[]),memories:mergeRecords(local.memories||[],remote.memories||[]),albumPhotos:mergeRecords(local.albumPhotos||[],remote.albumPhotos||[]),missionEvidence:mergeObjectRecords(local.missionEvidence||{},remote.missionEvidence||{}),missionStatus:mergeObjectRecords(local.missionStatus||{},remote.missionStatus||{}),discoveryStatus:mergeObjectRecords(local.discoveryStatus||{},remote.discoveryStatus||{}),profilePhotos:mergeObjectRecords(local.profilePhotos||{},remote.profilePhotos||{}),config:localNewer?(local.config||{}):(remote.config||local.config||{}),updatedAt:localNewer?(local.updatedAt||nowIso()):(remote.updatedAt||local.updatedAt||nowIso())}}'''
-          if old not in s:
-              raise SystemExit('mergeState target not found')
-          s=s.replace(old,new,1)
-
-          old='''async function pullCloud(){if(syncing)return;syncing=true;syncUi("busy");try{const remote=await rpc("adventure_get",{p_code:CLOUD.code,p_secret:CLOUD.secret});state=mergeState(remote);localStorage.setItem(STORAGE,JSON.stringify(state));lastSyncAt=nowIso();syncUi("ok","Los cambios de ambos iPhone se actualizan automáticamente.");renderAll()}catch(e){console.error("Kraków Pocket sync pull",e);syncUi("error",`No se pudo sincronizar: ${e.message||e}`)}finally{syncing=false}}\nasync function pushCloud(){if(syncing)return;syncing=true;syncUi("busy");try{let remote=null;try{remote=await rpc("adventure_get",{p_code:CLOUD.code,p_secret:CLOUD.secret})}catch{}state=mergeState(remote);await rpc("adventure_put",{p_code:CLOUD.code,p_secret:CLOUD.secret,p_state:state});localStorage.setItem(STORAGE,JSON.stringify(state));lastSyncAt=nowIso();syncUi("ok","Aventura compartida sincronizada.");renderAll()}catch(e){console.error("Kraków Pocket sync push",e);syncUi("error",`No se pudo sincronizar: ${e.message||e}`)}finally{syncing=false}}'''
-          new='''async function pullCloud(){if(syncing)return;syncing=true;syncUi("busy");try{const remote=await rpc("adventure_get",{p_code:CLOUD.code,p_secret:CLOUD.secret});state=mergeState(remote);persistState();lastSyncAt=nowIso();syncUi("ok","Los cambios de ambos iPhone se actualizan automáticamente.");renderAll()}catch(e){console.error("Kraków Pocket sync pull",e);syncUi("error",`No se pudo sincronizar: ${e.message||e}`)}finally{syncing=false}}\nasync function pushCloud(){if(syncing)return;syncing=true;syncUi("busy");try{let remote=null;try{remote=await rpc("adventure_get",{p_code:CLOUD.code,p_secret:CLOUD.secret})}catch{}state=mergeState(remote);persistState();await rpc("adventure_put",{p_code:CLOUD.code,p_secret:CLOUD.secret,p_state:state});persistState();lastSyncAt=nowIso();syncUi("ok","Aventura compartida sincronizada.");renderAll()}catch(e){console.error("Kraków Pocket sync push",e);syncUi("error",`No se pudo sincronizar: ${e.message||e}`)}finally{syncing=false}}'''
-          if old not in s:
-              raise SystemExit('cloud sync target not found')
-          s=s.replace(old,new,1)
+          replacements={
+            "await f.locator('html').evaluate(()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,180)})":"await stableFrameEval(f,'html',()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,180)})",
+            "const y1=await f.locator('body').evaluate(()=>scrollY)":"const y1=await stableFrameEval(f,'body',()=>scrollY)",
+            "const y2=await f.locator('body').evaluate(()=>scrollY)":"const y2=await stableFrameEval(f,'body',()=>scrollY)",
+            "await f.locator('html').evaluate(()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,0)})":"await stableFrameEval(f,'html',()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,0)})",
+            "const y0=await f.locator('body').evaluate(()=>scrollY)":"const y0=await stableFrameEval(f,'body',()=>scrollY)"
+          }
+          for old,new in replacements.items():
+              if old not in s:
+                  raise SystemExit('scroll assertion target not found: '+old[:45])
+              s=s.replace(old,new,1)
           p.write_text(s)
           PY
-          node --check Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js
-          grep -q 'missionEvidence:mergeObjectRecords' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js
-          grep -q 'albumPhotos:mergeRecords' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js
-          grep -q 'function persistState' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js
-      - name: Commit patched core
+          node --check .github/scripts/krakow-album-v5-final-audit-r4.mjs
+          grep -q 'stableFrameEval' .github/scripts/krakow-album-v5-final-audit-r4.mjs
+          grep -q 'printState.book&&printState.callable' .github/scripts/krakow-album-v5-final-audit-r4.mjs
+      - name: Commit resilient audit
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js
-          git commit -m "Fix stale in-memory two-iPhone state merge"
+          git add .github/scripts/krakow-album-v5-final-audit-r4.mjs
+          git commit -m "Harden R4 audit against iframe refresh races"
           git push origin HEAD:main
