@@ -1,4 +1,4 @@
-name: Patch Krakow Pocket Safari album refresh
+name: Patch Krakow Pocket R4 stability expectation
 
 on:
   push:
@@ -11,55 +11,32 @@ permissions:
   contents: write
 
 jobs:
-  patch-album-refresh:
+  patch-r4-stability:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Canonicalize and coalesce album refreshes
+      - name: Align current stability revision
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js')
+          p=Path('.github/scripts/krakow-album-v5-final-audit-r4.mjs')
           s=p.read_text()
-
-          old='''function sig(){const s=projected();return JSON.stringify({e:Object.entries(s.missionEvidence||{}).map(([id,x])=>[id,x?.updatedAt,x?.photo?.length,x?.title]),a:active(s.albumPhotos).map(x=>[x.id,x.updatedAt,x.photo?.length,x.title,x.deletedAt]),m:active(s.memories).map(x=>[x.id,x.updatedAt||x.ts,x.title,x.note])})}'''
-          new='''const canonId=x=>String(x?.id||"");\nfunction sig(){const s=projected(),e=Object.entries(s.missionEvidence||{}).sort(([a],[b])=>String(a).localeCompare(String(b))).map(([id,x])=>[id,x?.updatedAt,x?.photo?.length,x?.title]),a=active(s.albumPhotos).slice().sort((x,y)=>canonId(x).localeCompare(canonId(y))).map(x=>[x.id,x.updatedAt,x.photo?.length,x.title,x.deletedAt]),m=active(s.memories).slice().sort((x,y)=>canonId(x).localeCompare(canonId(y))).map(x=>[x.id,x.updatedAt||x.ts,x.title,x.note]);return JSON.stringify({e,a,m})}'''
+          old="window.KP_STABILITY?.albumIframeGuardRevision==='20260812b'"
+          new="window.KP_STABILITY?.albumIframeGuardRevision==='20260812c'&&window.KP_STABILITY?.albumUserScrollCancelsRestore===true"
           if old not in s:
-              raise SystemExit('signature target not found')
-          s=s.replace(old,new,1)
-
-          old='''function open(){ensureViewer();clearTimeout(refreshTimer);refreshTimer=0;refreshing=false;pendingRefresh=false;lastSig=sig();scrollIntent(0);frame.srcdoc=html();document.documentElement.classList.add("kp-album-v5-open");if(!dialog.open)dialog.showModal();clearInterval(monitor);monitor=setInterval(()=>{if(!dialog?.open)return;const s=sig();if(s!==lastSig)scheduleRefresh(90)},1200);return true}'''
-          new='''function open(){ensureViewer();clearTimeout(refreshTimer);refreshTimer=0;refreshing=false;pendingRefresh=false;lastSig=sig();scrollIntent(0);frame.srcdoc=html();document.documentElement.classList.add("kp-album-v5-open");if(!dialog.open)dialog.showModal();clearInterval(monitor);monitor=setInterval(()=>{if(!dialog?.open)return;if(refreshing||printing)return;const doc=frame?.contentDocument;if(pendingRefresh&&!doc?.querySelector("#storyMode.open,#lightbox.open")){scheduleRefresh(40);return}const current=sig();if(current!==lastSig)scheduleRefresh(180)},700);return true}'''
-          if old not in s:
-              raise SystemExit('open monitor target not found')
-          s=s.replace(old,new,1)
-
-          old='''function handleState(){archiveReplacedEvidence();patch();if(dialog?.open&&sig()!==lastSig)scheduleRefresh(120)}'''
-          new='''function handleState(){archiveReplacedEvidence();patch();if(dialog?.open&&sig()!==lastSig)scheduleRefresh(280)}'''
-          if old not in s:
-              raise SystemExit('handleState target not found')
-          s=s.replace(old,new,1)
-
-          old='''window.KP_ALBUM_NEXT={version:VERSION,multiPhoto:true,open,add:openAdd,html,download,print,share,photoCount:count,archiveReplacedEvidence,eventDrivenRefresh:true,noGlobalMutationObserver:true,coalescedRefresh:true,serializedRefresh:true,printRefreshLock:true,protectedEvidenceProjection:true,scrollIntentProtocol:true}}'''
-          new='''window.KP_ALBUM_NEXT={version:VERSION,multiPhoto:true,open,add:openAdd,html,download,print,share,photoCount:count,archiveReplacedEvidence,eventDrivenRefresh:true,noGlobalMutationObserver:true,coalescedRefresh:true,serializedRefresh:true,printRefreshLock:true,protectedEvidenceProjection:true,scrollIntentProtocol:true,canonicalStateSignature:true,deferredOverlayRefresh:true}}'''
-          if old not in s:
-              raise SystemExit('flags target not found')
-          s=s.replace(old,new,1)
-
-          p.write_text(s)
+              raise SystemExit('R4 stability target not found')
+          p.write_text(s.replace(old,new))
           PY
-          node --check Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js
-          grep -q 'canonicalStateSignature:true' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js
-          grep -q 'deferredOverlayRefresh:true' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js
-          grep -q 'sort((x,y)=>canonId' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js
-          grep -q 'pendingRefresh&&!doc' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js
-      - name: Commit refresh fix
+          node --check .github/scripts/krakow-album-v5-final-audit-r4.mjs
+          grep -q "albumIframeGuardRevision==='20260812c'" .github/scripts/krakow-album-v5-final-audit-r4.mjs
+          grep -q 'albumUserScrollCancelsRestore===true' .github/scripts/krakow-album-v5-final-audit-r4.mjs
+      - name: Commit aligned audit
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js
-          git commit -m "Deduplicate Safari album refresh lifecycle"
+          git add .github/scripts/krakow-album-v5-final-audit-r4.mjs
+          git commit -m "Align R4 audit with Safari stability 3.3"
           git push origin HEAD:main
