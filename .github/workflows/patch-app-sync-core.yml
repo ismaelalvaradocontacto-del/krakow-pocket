@@ -30,8 +30,8 @@ jobs:
               raise SystemExit('signature target not found')
           s=s.replace(old,new,1)
 
-          old='''function monitorViewer(){clearInterval(monitor);monitor=setInterval(()=>{if(!dialog?.open){clearInterval(monitor);monitor=0;return}const s=sig();if(s!==lastSig)scheduleRefresh(90)},1200)}'''
-          new='''function monitorViewer(){clearInterval(monitor);monitor=setInterval(()=>{if(!dialog?.open){clearInterval(monitor);monitor=0;return}const doc=frame?.contentDocument;if(pendingRefresh&&!doc?.querySelector("#storyMode.open,#lightbox.open")){scheduleRefresh(40);return}const s=sig();if(s!==lastSig)scheduleRefresh(180)},700)}'''
+          old='''function monitorViewer(){clearInterval(monitor);monitor=setInterval(()=>{if(!dialog?.open){clearInterval(monitor);monitor=0;return}if(refreshing||printing)return;const s=sig();if(s!==lastSig)scheduleRefresh(90)},900)}'''
+          new='''function monitorViewer(){clearInterval(monitor);monitor=setInterval(()=>{if(!dialog?.open){clearInterval(monitor);monitor=0;return}if(refreshing||printing)return;const doc=frame?.contentDocument;if(pendingRefresh&&!doc?.querySelector("#storyMode.open,#lightbox.open")){scheduleRefresh(40);return}const s=sig();if(s!==lastSig)scheduleRefresh(180)},700)}'''
           if old not in s:
               raise SystemExit('monitor target not found')
           s=s.replace(old,new,1)
