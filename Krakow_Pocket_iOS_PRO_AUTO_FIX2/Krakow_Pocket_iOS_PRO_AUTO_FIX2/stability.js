@@ -36,8 +36,13 @@
 
   let albumFrame = null;
   let albumScrollY = 0;
+  let albumScrollIntent = null;
   let albumScrollBoundDocument = null;
   const captureAlbumScroll = frame => {
+    if (albumScrollIntent != null) {
+      albumScrollY = Math.max(0, Number(albumScrollIntent) || 0);
+      return albumScrollY;
+    }
     try {
       const win = frame?.contentWindow;
       if (win) albumScrollY = Math.max(0, Number(win.scrollY) || 0);
@@ -57,7 +62,8 @@
   const restoreAlbumScroll = frame => {
     const win = frame?.contentWindow, doc = frame?.contentDocument;
     if (!win || !doc?.documentElement) return;
-    const target = Math.max(0, Number(albumScrollY) || 0);
+    const target = Math.max(0, Number(albumScrollIntent != null ? albumScrollIntent : albumScrollY) || 0);
+    albumScrollY = target;
     const root = doc.documentElement;
     const previousInline = root.style.scrollBehavior;
     root.style.scrollBehavior = "auto";
@@ -75,10 +81,12 @@
     frame.addEventListener("load", () => {
       albumScrollBoundDocument = null;
       restoreAlbumScroll(frame);
+      albumScrollIntent = null;
     });
     const dialog = document.getElementById("kpAlbumV5Dialog");
     dialog?.addEventListener("close", () => {
       albumScrollY = 0;
+      albumScrollIntent = null;
       albumScrollBoundDocument = null;
     });
     bindAlbumInnerDocument(frame);
@@ -86,9 +94,14 @@
   };
   const albumObserver = new MutationObserver(bindAlbumFrame);
   albumObserver.observe(document.documentElement, { childList:true, subtree:true });
+  window.addEventListener("kp:album-scroll-intent", event => {
+    const y = Math.max(0, Number(event?.detail?.y) || 0);
+    albumScrollY = y;
+    albumScrollIntent = y;
+  });
   document.addEventListener("click", event => {
-    if (event.target.closest?.("#kpAlbumV5Open")) albumScrollY = 0;
-    if (event.target.closest?.("#kpAlbumV5Close")) albumScrollY = 0;
+    if (event.target.closest?.("#kpAlbumV5Open")) { albumScrollY = 0; albumScrollIntent = 0; }
+    if (event.target.closest?.("#kpAlbumV5Close")) { albumScrollY = 0; albumScrollIntent = null; }
   }, true);
   bindAlbumFrame();
 
@@ -134,6 +147,7 @@
     albumSafariIframeScrollGuard: true,
     albumIframePerDocumentBinding: true,
     albumIframePagehideCapture: true,
+    albumScrollIntentProtocol: true,
     albumIframeGuardRevision: "20260812b"
   };
 })();
