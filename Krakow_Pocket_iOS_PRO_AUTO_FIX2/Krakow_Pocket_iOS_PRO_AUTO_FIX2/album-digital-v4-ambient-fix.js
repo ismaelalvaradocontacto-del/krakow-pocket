@@ -2,7 +2,7 @@
 "use strict";
 if(window.__kpAlbumDigitalV4AmbientFix)return;
 window.__kpAlbumDigitalV4AmbientFix=true;
-const VERSION="1.2";
+const VERSION="1.1";
 let sourceHtml=null,patched=false;
 
 const EXPORT_SCRIPT=`
