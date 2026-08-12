@@ -17,8 +17,6 @@
     window.__kpLandmarkArtLoader = true; const landmarks = document.createElement("script"); landmarks.src = "./landmark-art-fix.js?v=20260811c"; landmarks.async = false; landmarks.dataset.kpLandmarkArt = "1"; document.head.appendChild(landmarks);
   }
 
-  // Album V5 intentionally replaces the previous stack of album-experience + V3/V4
-  // patches. One module owns the card, viewer, HTML export, share and print paths.
   if (!window.__kpAlbumPhotoQualityLoader && !document.querySelector('script[data-kp-album-photo-quality]')) {
     window.__kpAlbumPhotoQualityLoader = true;
     const quality = document.createElement("script");
@@ -36,12 +34,30 @@
     document.head.appendChild(album);
   }
 
-  // WebKit can restore an iframe's previous internal scroll after srcdoc reloads,
-  // overriding the position V5 just restored. Keep the user's real reading position
-  // outside the iframe and re-apply it after Safari has finished its own restoration.
+  // Safari/WebKit may restore an iframe's own historical scroll after a srcdoc
+  // navigation. Track the real reading position outside the iframe, capture it
+  // again on pagehide/beforeunload, and bind listeners per inner document rather
+  // than per WindowProxy (the outer contentWindow can be reused across reloads).
   let albumFrame = null;
   let albumScrollY = 0;
-  let albumScrollBoundWindow = null;
+  let albumScrollBoundDocument = null;
+  const captureAlbumScroll = frame => {
+    try {
+      const win = frame?.contentWindow;
+      if (win) albumScrollY = Math.max(0, Number(win.scrollY) || 0);
+    } catch {}
+    return albumScrollY;
+  };
+  const bindAlbumInnerDocument = frame => {
+    const win = frame?.contentWindow, doc = frame?.contentDocument;
+    if (!win || !doc || albumScrollBoundDocument === doc) return;
+    albumScrollBoundDocument = doc;
+    const capture = () => captureAlbumScroll(frame);
+    win.addEventListener("scroll", capture, { passive:true });
+    win.addEventListener("pagehide", capture, { passive:true });
+    win.addEventListener("beforeunload", capture);
+    doc.addEventListener("visibilitychange", () => { if (doc.visibilityState === "hidden") capture(); }, { passive:true });
+  };
   const restoreAlbumScroll = frame => {
     const win = frame?.contentWindow, doc = frame?.contentDocument;
     if (!win || !doc?.documentElement) return;
@@ -52,20 +68,24 @@
     const restore = () => { try { win.scrollTo(0, target); } catch {} };
     restore();
     try { win.requestAnimationFrame(() => { restore(); win.requestAnimationFrame(restore); }); } catch {}
-    [60, 140, 280].forEach(delay => setTimeout(restore, delay));
-    setTimeout(() => { try { root.style.scrollBehavior = previousInline; } catch {} }, 340);
-    if (albumScrollBoundWindow !== win) {
-      albumScrollBoundWindow = win;
-      win.addEventListener("scroll", () => { albumScrollY = Math.max(0, win.scrollY || 0); }, { passive:true });
-    }
+    [50, 120, 240, 420].forEach(delay => setTimeout(restore, delay));
+    setTimeout(() => { try { root.style.scrollBehavior = previousInline; } catch {} }, 460);
+    bindAlbumInnerDocument(frame);
   };
   const bindAlbumFrame = () => {
     const frame = document.getElementById("kpAlbumV5Frame");
     if (!frame || frame === albumFrame) return;
     albumFrame = frame;
-    frame.addEventListener("load", () => restoreAlbumScroll(frame));
+    frame.addEventListener("load", () => {
+      albumScrollBoundDocument = null;
+      restoreAlbumScroll(frame);
+    });
     const dialog = document.getElementById("kpAlbumV5Dialog");
-    dialog?.addEventListener("close", () => { albumScrollY = 0; albumScrollBoundWindow = null; });
+    dialog?.addEventListener("close", () => {
+      albumScrollY = 0;
+      albumScrollBoundDocument = null;
+    });
+    bindAlbumInnerDocument(frame);
     restoreAlbumScroll(frame);
   };
   const albumObserver = new MutationObserver(bindAlbumFrame);
@@ -102,7 +122,7 @@
   document.addEventListener("click", event => { if (!event.target.closest?.("#applyUpdate")) return; try { sessionStorage.setItem("kpApplyUpdate", "1"); } catch {} }, true);
 
   window.KP_STABILITY = {
-    version: "3.1",
+    version: "3.2",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
@@ -115,6 +135,8 @@
     singleSourceAlbum: true,
     legacyAlbumLayersDisabled: true,
     albumPhotoQuality: true,
-    albumSafariIframeScrollGuard: true
+    albumSafariIframeScrollGuard: true,
+    albumIframePerDocumentBinding: true,
+    albumIframePagehideCapture: true
   };
 })();
