@@ -1,0 +1,78 @@
+name: Krakow Pocket album idle stress
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-v5.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/state-bridge.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/stability.js'
+      - '.github/scripts/krakow-album-idle-stress.mjs'
+      - '.github/workflows/krakow-album-idle-stress.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: krakow-album-idle-stress-main
+  cancel-in-progress: true
+
+jobs:
+  stress:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Static album lifecycle audit
+        run: |
+          set -euxo pipefail
+          APP_DIR='Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2'
+          node --check "$APP_DIR/album-next.js"
+          node --check "$APP_DIR/stability.js"
+          node --check .github/scripts/krakow-album-idle-stress.mjs
+          grep -q 'const VERSION="6.0"' "$APP_DIR/album-next.js"
+          grep -q 'eventDrivenRefresh:true' "$APP_DIR/album-next.js"
+          grep -q 'serializedRefresh:true' "$APP_DIR/album-next.js"
+          grep -q 'printRefreshLock:true' "$APP_DIR/album-next.js"
+          grep -q 'protectedEvidenceProjection:true' "$APP_DIR/album-next.js"
+          grep -q 'scrollIntentProtocol:true' "$APP_DIR/album-next.js"
+          ! grep -q 'new MutationObserver' "$APP_DIR/album-next.js"
+          grep -q 'albumNextOwnsScroll' "$APP_DIR/stability.js"
+      - name: Install Chromium and WebKit
+        run: |
+          npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
+          npx playwright install --with-deps chromium webkit >/tmp/playwright-install.log 2>&1
+      - name: Start local mirror
+        run: |
+          APP_DIR='Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2'
+          python3 -m http.server 4173 --bind 127.0.0.1 --directory "$APP_DIR" >/tmp/kp-album-stress-http.log 2>&1 &
+          sleep 2
+      - name: Exhaustive idle stress locally
+        run: |
+          node .github/scripts/krakow-album-idle-stress.mjs
+          cp /tmp/album-idle-stress.json /tmp/album-idle-stress-local.json
+      - name: Wait for Cloudflare album build
+        run: |
+          for i in {1..50}; do
+            A=0; S=0
+            curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'scrollIntentProtocol:true' && A=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/stability.js | grep -q 'albumNextOwnsScroll' && S=1 || true
+            if [ "$A" = 1 ] && [ "$S" = 1 ]; then exit 0; fi
+            sleep 4
+          done
+          exit 1
+      - name: Exhaustive idle stress on Cloudflare
+        env:
+          KP_AUDIT_URL: https://krakow-pocket.pages.dev/
+        run: |
+          node .github/scripts/krakow-album-idle-stress.mjs
+          cp /tmp/album-idle-stress.json /tmp/album-idle-stress-cloudflare.json
+      - name: Upload stress reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: album-idle-stress-reports
+          path: /tmp/album-idle-stress-*.json
+          if-no-files-found: ignore
+          retention-days: 14
