@@ -10,6 +10,7 @@
   const parse = value => { try { return JSON.parse(value || "{}"); } catch { return null; } };
   const ts = value => { const n = new Date(value || 0).getTime(); return Number.isFinite(n) ? n : 0; };
   const read = () => parse(localStorage.getItem(STORAGE)) || {};
+  let stickyMissionEvidence = {};
 
   function mergeTimed(a = {}, b = {}) {
     const out = {};
@@ -22,6 +23,8 @@
     }
     return out;
   }
+
+  stickyMissionEvidence = mergeTimed({}, read().missionEvidence || {});
 
   function applyStatus(state) {
     state = state && typeof state === "object" ? state : {};
@@ -44,7 +47,9 @@
     state.missionStatus = mergeTimed(state.missionStatus || {}, local.missionStatus || {});
     state.discoveryStatus = mergeTimed(state.discoveryStatus || {}, local.discoveryStatus || {});
     state.profilePhotos = mergeTimed(state.profilePhotos || {}, local.profilePhotos || {});
-    state.missionEvidence = mergeTimed(state.missionEvidence || {}, local.missionEvidence || {});
+    const currentEvidence = mergeTimed(state.missionEvidence || {}, local.missionEvidence || {});
+    state.missionEvidence = mergeTimed(currentEvidence, stickyMissionEvidence);
+    stickyMissionEvidence = mergeTimed(stickyMissionEvidence, state.missionEvidence);
     return applyStatus(state);
   }
 
@@ -60,7 +65,8 @@
 
   function adoptMergedMissionEvidence(merged) {
     const local = read();
-    const nextEvidence = merged?.missionEvidence || {};
+    const nextEvidence = mergeTimed(merged?.missionEvidence || {}, stickyMissionEvidence);
+    stickyMissionEvidence = mergeTimed(stickyMissionEvidence, nextEvidence);
     if (JSON.stringify(local.missionEvidence || {}) === JSON.stringify(nextEvidence)) return false;
     const nextLocal = { ...local, missionEvidence: nextEvidence, updatedAt: merged?.updatedAt || local.updatedAt || now() };
     nativeSetItem.call(localStorage, STORAGE, JSON.stringify(nextLocal));
@@ -124,12 +130,13 @@
   };
 
   window.KP_STATE_BRIDGE = {
-    version: "1.5",
+    version: "1.6",
     reversibleDiscoveries: true,
     sharedProfilePhotos: true,
     immediateRemoteProfileAdoption: true,
     sharedMissionEvidence: true,
     immediateRemoteMissionEvidenceAdoption: true,
+    staleMissionEvidenceProtection: true,
     simplifiedProfileRuntime: true,
     proofOnlyAlbumSources: true,
     normalize: state => mergeLocalStatus(state)
