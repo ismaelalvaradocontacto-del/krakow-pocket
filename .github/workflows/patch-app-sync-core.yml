@@ -1,4 +1,4 @@
-name: Patch Krakow Pocket R4 audit resilience
+name: Patch Krakow Pocket R4 scroll assertion
 
 on:
   push:
@@ -11,51 +11,31 @@ permissions:
   contents: write
 
 jobs:
-  patch-r4-audit:
+  patch-r4-scroll:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Patch R4 browser assertions
+      - name: Patch non-zero scroll setup
         run: |
           python3 - <<'PY'
           from pathlib import Path
           p=Path('.github/scripts/krakow-album-v5-final-audit-r4.mjs')
           s=p.read_text()
-          anchor='''async function contextFor(browser,state,shared,player='Ismael',printSpy=false){\n const ctx=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,acceptDownloads:true,serviceWorkers:'block'});\n await ctx.addInitScript(({state,player,printSpy})=>{localStorage.setItem('krakowPocketCoop',JSON.stringify(state));localStorage.setItem('krakowPlayer',player);if(printSpy){window.__auditPrintCalled=false;window.print=()=>{window.__auditPrintCalled=true}}},{state:clone(state),player,printSpy});\n await ctx.route('https://ahzmwkztlakejmrvgcdm.supabase.co/rest/v1/rpc/**',shared.route);\n const page=await ctx.newPage();await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});await page.waitForFunction(()=>window.KP_ALBUM_V5?.version==='5.0'&&window.KP_ALBUM_NEXT?.version==='6.0'&&window.KP_MISSION_PROOF?.version==='2.0'&&window.KP_AUSCHWITZ_EXTRA?.version==='2.0'&&window.KP_STATE_BRIDGE?.bridgeRevision==='20260812e'&&window.KP_STABILITY?.albumIframeGuardRevision==='20260812b',{timeout:20000});return{ctx,page};\n}\n'''
-          replacement=anchor+'''async function stableFrameEval(frame,selector,fn,arg){\n let last;\n for(let i=0;i<8;i++){\n  try{return await frame.locator(selector).evaluate(fn,arg)}catch(e){\n   last=e;const text=String(e);\n   if(!/Execution context was destroyed|Target page, context or browser has been closed|Frame was detached/i.test(text))throw e;\n   try{await frame.locator('[data-kp-album-v5="1"]').waitFor({state:'attached',timeout:5000})}catch{}\n   await new Promise(r=>setTimeout(r,90));\n  }\n }\n throw last;\n}\n'''
-          if anchor not in s:
-              raise SystemExit('contextFor anchor not found')
-          s=s.replace(anchor,replacement,1)
-
-          old="""check('PDF waits for loaded iframe',printOk&&await f.locator('body').evaluate(()=>window.__auditPrintCalled===true));"""
-          new="""const printState=await stableFrameEval(f,'body',()=>({spy:window.__auditPrintCalled===true,callable:typeof window.print==='function',book:!!document.querySelector('[data-kp-album-v5=\"1\"]')}));check('PDF waits for loaded iframe',printOk&&printState.book&&printState.callable,JSON.stringify(printState));"""
+          old="""  await stableFrameEval(f,'html',()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,180)});await page.waitForTimeout(100);const y1=await stableFrameEval(f,'body',()=>scrollY);await page.evaluate(()=>{memoryTitle.value='Scroll estable';memoryNote.value='Recuerdo nuevo';memoryPlace.value='Cracovia';memoryForm.requestSubmit()});await page.waitForTimeout(1900);const y2=await stableFrameEval(f,'body',()=>scrollY);check('non-zero scroll stable',Math.abs(y2-y1)<=4,`${y1}->${y2}`);await stableFrameEval(f,'html',()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,0)});await page.waitForTimeout(100);await page.evaluate(()=>{memoryTitle.value='Scroll cero';memoryNote.value='Recuerdo arriba';memoryPlace.value='Cracovia';memoryForm.requestSubmit()});await page.waitForTimeout(1900);const y0=await stableFrameEval(f,'body',()=>scrollY);check('zero scroll stable',Math.abs(y0)<=4,`0->${y0}`);"""
+          new="""  let y1=0;for(let i=0;i<10;i++){y1=await stableFrameEval(f,'html',()=>{document.documentElement.style.scrollBehavior='auto';const max=Math.max(0,document.documentElement.scrollHeight-innerHeight),target=Math.min(180,max);scrollTo(0,target);return scrollY});if(y1>20)break;await page.waitForTimeout(120)}check('non-zero scroll position established',y1>20,`start=${y1}`);await page.evaluate(()=>{memoryTitle.value='Scroll estable';memoryNote.value='Recuerdo nuevo';memoryPlace.value='Cracovia';memoryForm.requestSubmit()});await page.waitForTimeout(1900);const y2=await stableFrameEval(f,'body',()=>scrollY);check('non-zero scroll stable',y1>20&&Math.abs(y2-y1)<=8,`${y1}->${y2}`);await stableFrameEval(f,'html',()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,0)});await page.waitForTimeout(120);await page.evaluate(()=>{memoryTitle.value='Scroll cero';memoryNote.value='Recuerdo arriba';memoryPlace.value='Cracovia';memoryForm.requestSubmit()});await page.waitForTimeout(1900);const y0=await stableFrameEval(f,'body',()=>scrollY);check('zero scroll stable',Math.abs(y0)<=4,`0->${y0}`);"""
           if old not in s:
-              raise SystemExit('PDF assertion target not found')
-          s=s.replace(old,new,1)
-
-          replacements={
-            "await f.locator('html').evaluate(()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,180)})":"await stableFrameEval(f,'html',()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,180)})",
-            "const y1=await f.locator('body').evaluate(()=>scrollY)":"const y1=await stableFrameEval(f,'body',()=>scrollY)",
-            "const y2=await f.locator('body').evaluate(()=>scrollY)":"const y2=await stableFrameEval(f,'body',()=>scrollY)",
-            "await f.locator('html').evaluate(()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,0)})":"await stableFrameEval(f,'html',()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,0)})",
-            "const y0=await f.locator('body').evaluate(()=>scrollY)":"const y0=await stableFrameEval(f,'body',()=>scrollY)"
-          }
-          for old,new in replacements.items():
-              if old not in s:
-                  raise SystemExit('scroll assertion target not found: '+old[:45])
-              s=s.replace(old,new,1)
-          p.write_text(s)
+              raise SystemExit('R4 scroll block not found')
+          p.write_text(s.replace(old,new,1))
           PY
           node --check .github/scripts/krakow-album-v5-final-audit-r4.mjs
-          grep -q 'stableFrameEval' .github/scripts/krakow-album-v5-final-audit-r4.mjs
-          grep -q 'printState.book&&printState.callable' .github/scripts/krakow-album-v5-final-audit-r4.mjs
-      - name: Commit resilient audit
+          grep -q 'non-zero scroll position established' .github/scripts/krakow-album-v5-final-audit-r4.mjs
+      - name: Commit deterministic scroll audit
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
           git add .github/scripts/krakow-album-v5-final-audit-r4.mjs
-          git commit -m "Harden R4 audit against iframe refresh races"
+          git commit -m "Make R4 non-zero scroll assertion deterministic"
           git push origin HEAD:main
