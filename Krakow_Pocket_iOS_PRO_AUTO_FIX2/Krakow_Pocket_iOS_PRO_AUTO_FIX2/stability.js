@@ -40,7 +40,7 @@
   let albumScrollAnchor = null;
   let albumScrollBoundDocument = null;
   let albumRestoreEpoch = 0;
-  const albumNextOwnsScroll = () => window.KP_ALBUM_NEXT?.version === "6.0";
+  const albumNextOwnsScroll = () => /^6\./.test(String(window.KP_ALBUM_NEXT?.version||""));
   const albumAnchorFor = (frame, y) => {
     try {
       const doc = frame?.contentDocument, win = frame?.contentWindow;
@@ -202,7 +202,7 @@
   document.addEventListener("click", event => { if (!event.target.closest?.("#applyUpdate")) return; try { sessionStorage.setItem("kpApplyUpdate", "1"); } catch {} }, true);
 
   window.KP_STABILITY = {
-    version: "3.3",
+    version: "3.4",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
@@ -222,6 +222,7 @@
     albumNextOwnsScrollRestore: true,
     albumSemanticScrollAnchor: true,
     albumUserScrollCancelsRestore: true,
-    albumIframeGuardRevision: "20260812c"
+    albumController61Compatible: true,
+    albumIframeGuardRevision: "20260812d"
   };
 })();
