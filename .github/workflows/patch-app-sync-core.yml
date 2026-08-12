@@ -1,0 +1,56 @@
+name: Patch Krakow Pocket sync core
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/patch-app-sync-core.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  patch-sync-core:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Patch app state merge
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js')
+          s=p.read_text()
+          old='''function saveLocal({push=true,touch=true}={}){if(touch)state.updatedAt=nowIso();localStorage.setItem(STORAGE,JSON.stringify(state));renderAll();if(push)schedulePush()}'''
+          new='''function persistState(){localStorage.setItem(STORAGE,JSON.stringify(state));try{const saved=JSON.parse(localStorage.getItem(STORAGE)||"{}");if(saved&&typeof saved==="object")state=saved}catch{}}\nfunction saveLocal({push=true,touch=true}={}){if(touch)state.updatedAt=nowIso();persistState();renderAll();if(push)schedulePush()}'''
+          if old not in s:
+              raise SystemExit('saveLocal target not found')
+          s=s.replace(old,new,1)
+
+          old='''function mergeRecords(local=[],remote=[]){const m=new Map();[...remote,...local].forEach(item=>{if(!item||!item.id)return;const prev=m.get(item.id);if(!prev||new Date(item.updatedAt||item.ts||0)>=new Date(prev.updatedAt||prev.ts||0))m.set(item.id,item)});return[...m.values()]}\nfunction mergeState(remote){if(!remote||typeof remote!=="object")return state;const local=state,localNewer=new Date(local.updatedAt||0)>=new Date(remote.updatedAt||0);return{...remote,...local,visited:[...new Set([...(remote.visited||[]),...(local.visited||[])])],expenses:mergeRecords(local.expenses||[],remote.expenses||[]),memories:mergeRecords(local.memories||[],remote.memories||[]),config:localNewer?(local.config||{}):(remote.config||local.config||{}),updatedAt:localNewer?(local.updatedAt||nowIso()):(remote.updatedAt||local.updatedAt||nowIso())}}'''
+          new='''function recordTime(item){const n=new Date(item?.updatedAt||item?.deletedAt||item?.completedAt||item?.verifiedAt||item?.ts||0).getTime();return Number.isFinite(n)?n:0}\nfunction mergeRecords(local=[],remote=[]){const m=new Map();[...remote,...local].forEach(item=>{if(!item||!item.id)return;const prev=m.get(item.id);if(!prev||recordTime(item)>=recordTime(prev))m.set(item.id,item)});return[...m.values()]}\nfunction mergeObjectRecords(local={},remote={}){const out={};for(const src of [remote,local])for(const [id,item] of Object.entries(src||{})){if(!item||typeof item!=="object")continue;const prev=out[id];if(!prev||recordTime(item)>=recordTime(prev))out[id]=item}return out}\nfunction mergeState(remote){if(!remote||typeof remote!=="object")return state;const local=state,localNewer=new Date(local.updatedAt||0)>=new Date(remote.updatedAt||0);return{...remote,...local,visited:[...new Set([...(remote.visited||[]),...(local.visited||[])])],expenses:mergeRecords(local.expenses||[],remote.expenses||[]),memories:mergeRecords(local.memories||[],remote.memories||[]),albumPhotos:mergeRecords(local.albumPhotos||[],remote.albumPhotos||[]),missionEvidence:mergeObjectRecords(local.missionEvidence||{},remote.missionEvidence||{}),missionStatus:mergeObjectRecords(local.missionStatus||{},remote.missionStatus||{}),discoveryStatus:mergeObjectRecords(local.discoveryStatus||{},remote.discoveryStatus||{}),profilePhotos:mergeObjectRecords(local.profilePhotos||{},remote.profilePhotos||{}),config:localNewer?(local.config||{}):(remote.config||local.config||{}),updatedAt:localNewer?(local.updatedAt||nowIso()):(remote.updatedAt||local.updatedAt||nowIso())}}'''
+          if old not in s:
+              raise SystemExit('mergeState target not found')
+          s=s.replace(old,new,1)
+
+          old='''async function pullCloud(){if(syncing)return;syncing=true;syncUi("busy");try{const remote=await rpc("adventure_get",{p_code:CLOUD.code,p_secret:CLOUD.secret});state=mergeState(remote);localStorage.setItem(STORAGE,JSON.stringify(state));lastSyncAt=nowIso();syncUi("ok","Los cambios de ambos iPhone se actualizan automáticamente.");renderAll()}catch(e){console.error("Kraków Pocket sync pull",e);syncUi("error",`No se pudo sincronizar: ${e.message||e}`)}finally{syncing=false}}\nasync function pushCloud(){if(syncing)return;syncing=true;syncUi("busy");try{let remote=null;try{remote=await rpc("adventure_get",{p_code:CLOUD.code,p_secret:CLOUD.secret})}catch{}state=mergeState(remote);await rpc("adventure_put",{p_code:CLOUD.code,p_secret:CLOUD.secret,p_state:state});localStorage.setItem(STORAGE,JSON.stringify(state));lastSyncAt=nowIso();syncUi("ok","Aventura compartida sincronizada.");renderAll()}catch(e){console.error("Kraków Pocket sync push",e);syncUi("error",`No se pudo sincronizar: ${e.message||e}`)}finally{syncing=false}}'''
+          new='''async function pullCloud(){if(syncing)return;syncing=true;syncUi("busy");try{const remote=await rpc("adventure_get",{p_code:CLOUD.code,p_secret:CLOUD.secret});state=mergeState(remote);persistState();lastSyncAt=nowIso();syncUi("ok","Los cambios de ambos iPhone se actualizan automáticamente.");renderAll()}catch(e){console.error("Kraków Pocket sync pull",e);syncUi("error",`No se pudo sincronizar: ${e.message||e}`)}finally{syncing=false}}\nasync function pushCloud(){if(syncing)return;syncing=true;syncUi("busy");try{let remote=null;try{remote=await rpc("adventure_get",{p_code:CLOUD.code,p_secret:CLOUD.secret})}catch{}state=mergeState(remote);persistState();await rpc("adventure_put",{p_code:CLOUD.code,p_secret:CLOUD.secret,p_state:state});persistState();lastSyncAt=nowIso();syncUi("ok","Aventura compartida sincronizada.");renderAll()}catch(e){console.error("Kraków Pocket sync push",e);syncUi("error",`No se pudo sincronizar: ${e.message||e}`)}finally{syncing=false}}'''
+          if old not in s:
+              raise SystemExit('cloud sync target not found')
+          s=s.replace(old,new,1)
+          p.write_text(s)
+          PY
+          node --check Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js
+          grep -q 'missionEvidence:mergeObjectRecords' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js
+          grep -q 'albumPhotos:mergeRecords' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js
+          grep -q 'function persistState' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js
+      - name: Commit patched core
+        run: |
+          if git diff --quiet; then exit 0; fi
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js
+          git commit -m "Fix stale in-memory two-iPhone state merge"
+          git push origin HEAD:main
