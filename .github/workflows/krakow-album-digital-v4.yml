@@ -14,7 +14,7 @@ on:
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/ALBUM_DIGITAL_AUDIT_20260812.md'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/stability.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/sw.js'
-      - '.github/scripts/krakow-album-digital-v4.mjs'
+      - '.github/scripts/krakow-album-digital-v4-final.mjs'
       - '.github/scripts/krakow-album-ios-offline.mjs'
       - '.github/workflows/krakow-album-digital-v4.yml'
   workflow_dispatch:
@@ -36,7 +36,7 @@ jobs:
           node --check "$APP_DIR/album-digital-v4-runtime-fix.js"
           node --check "$APP_DIR/album-digital-v4-ambient-fix.js"
           node --check "$APP_DIR/album-photo-quality.js"
-          node --check .github/scripts/krakow-album-digital-v4.mjs
+          node --check .github/scripts/krakow-album-digital-v4-final.mjs
           node --check .github/scripts/krakow-album-ios-offline.mjs
           grep -q 'const VERSION = "4.0"' "$APP_DIR/album-digital-v4.js"
           grep -q 'immersiveSpreads: true' "$APP_DIR/album-digital-v4.js"
@@ -45,13 +45,13 @@ jobs:
           grep -q 'filmstrip: true' "$APP_DIR/album-digital-v4.js"
           grep -q 'noJsCompatible: true' "$APP_DIR/album-digital-v4.js"
           grep -q 'const VERSION="1.2"' "$APP_DIR/album-digital-v4-runtime-fix.js"
-          grep -q 'stableInit:true' "$APP_DIR/album-digital-v4-runtime-fix.js"
           grep -q 'directIframeMount:true' "$APP_DIR/album-digital-v4-runtime-fix.js"
           grep -q 'obsoleteRuntimeRemoved:true' "$APP_DIR/album-digital-v4-runtime-fix.js"
           grep -q 'headerCollisionGuard:true' "$APP_DIR/album-digital-v4-runtime-fix.js"
-          grep -q 'const VERSION="1.0"' "$APP_DIR/album-digital-v4-ambient-fix.js"
+          grep -q 'const VERSION="1.1"' "$APP_DIR/album-digital-v4-ambient-fix.js"
           grep -q 'ambientBackdropStable:true' "$APP_DIR/album-digital-v4-ambient-fix.js"
-          grep -q 'importantCustomProperty:true' "$APP_DIR/album-digital-v4-ambient-fix.js"
+          grep -q 'ambientBackdropWebKit:true' "$APP_DIR/album-digital-v4-ambient-fix.js"
+          grep -q 'directBackgroundImage:true' "$APP_DIR/album-digital-v4-ambient-fix.js"
           grep -q 'offlineExport:true' "$APP_DIR/album-digital-v4-ambient-fix.js"
           grep -q 'const TARGET_MAX = 1280' "$APP_DIR/album-photo-quality.js"
           grep -q 'const MAX_DATA_LENGTH = 300000' "$APP_DIR/album-photo-quality.js"
@@ -74,10 +74,10 @@ jobs:
           sleep 2
           curl -fsS http://127.0.0.1:4173/album-digital-v4.js | grep -q 'const VERSION = "4.0"'
           curl -fsS http://127.0.0.1:4173/album-digital-v4-runtime-fix.js | grep -q 'headerCollisionGuard:true'
-          curl -fsS http://127.0.0.1:4173/album-digital-v4-ambient-fix.js | grep -q 'ambientBackdropStable:true'
+          curl -fsS http://127.0.0.1:4173/album-digital-v4-ambient-fix.js | grep -q 'ambientBackdropWebKit:true'
           curl -fsS http://127.0.0.1:4173/album-photo-quality.js | grep -q 'TARGET_MAX = 1280'
       - name: Audit digital album locally
-        run: node .github/scripts/krakow-album-digital-v4.mjs
+        run: node .github/scripts/krakow-album-digital-v4-final.mjs
       - name: Audit downloaded album without JavaScript locally
         run: node .github/scripts/krakow-album-ios-offline.mjs
       - name: Wait for Cloudflare production
@@ -86,7 +86,7 @@ jobs:
             DIGITAL=0; RUNTIME=0; AMBIENT=0; QUALITY=0; CACHE=0; STABLE=0
             curl -fsS https://krakow-pocket.pages.dev/album-digital-v4.js | grep -q 'const VERSION = "4.0"' && DIGITAL=1 || true
             curl -fsS https://krakow-pocket.pages.dev/album-digital-v4-runtime-fix.js | grep -q 'headerCollisionGuard:true' && RUNTIME=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/album-digital-v4-ambient-fix.js | grep -q 'ambientBackdropStable:true' && AMBIENT=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/album-digital-v4-ambient-fix.js | grep -q 'ambientBackdropWebKit:true' && AMBIENT=1 || true
             curl -fsS https://krakow-pocket.pages.dev/album-photo-quality.js | grep -q 'TARGET_MAX = 1280' && QUALITY=1 || true
             curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v45-digital-album-ambient-20260812a' && CACHE=1 || true
             curl -fsS https://krakow-pocket.pages.dev/stability.js | grep -q 'digitalAlbumAmbientStable: true' && STABLE=1 || true
@@ -97,7 +97,7 @@ jobs:
       - name: Audit digital album on Cloudflare
         env:
           KP_AUDIT_URL: https://krakow-pocket.pages.dev/
-        run: node .github/scripts/krakow-album-digital-v4.mjs
+        run: node .github/scripts/krakow-album-digital-v4-final.mjs
       - name: Audit downloaded album without JavaScript on Cloudflare
         env:
           KP_AUDIT_URL: https://krakow-pocket.pages.dev/
@@ -107,6 +107,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: album-v4-digital-visual-audit
-          path: /tmp/album-v4-*.png
+          path: /tmp/album-v4-final-*.png
           if-no-files-found: ignore
           retention-days: 7
