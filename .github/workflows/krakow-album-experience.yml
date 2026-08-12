@@ -7,6 +7,8 @@ on:
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-experience.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-v3-polish.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-ios-compat.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-digital-v4.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-photo-quality.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/stability.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/sw.js'
       - '.github/scripts/krakow-album-v3-audit.mjs'
@@ -42,7 +44,7 @@ jobs:
           grep -q 'albumExperienceV3: true' "$APP_DIR/stability.js"
           grep -q 'albumVisualPolish: true' "$APP_DIR/stability.js"
           grep -q 'album-v3-polish.js' "$APP_DIR/sw.js"
-          grep -q 'krakow-pocket-v41-album-polish-20260812a' "$APP_DIR/sw.js"
+          grep -q 'krakow-pocket-v42-digital-album-20260812a' "$APP_DIR/sw.js"
       - name: Install browser tooling
         run: |
           npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
@@ -62,7 +64,7 @@ jobs:
             ALBUM=0; POLISH=0; CACHE=0; LOADER=0
             curl -fsS https://krakow-pocket.pages.dev/album-experience.js | grep -q 'const VERSION = "3.0"' && ALBUM=1 || true
             curl -fsS https://krakow-pocket.pages.dev/album-v3-polish.js | grep -q 'mobileToolbarFits:true' && POLISH=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v41-album-polish-20260812a' && CACHE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v42-digital-album-20260812a' && CACHE=1 || true
             curl -fsS https://krakow-pocket.pages.dev/stability.js | grep -q 'albumVisualPolish: true' && LOADER=1 || true
             if [ "$ALBUM" = 1 ] && [ "$POLISH" = 1 ] && [ "$CACHE" = 1 ] && [ "$LOADER" = 1 ]; then exit 0; fi
             sleep 4
