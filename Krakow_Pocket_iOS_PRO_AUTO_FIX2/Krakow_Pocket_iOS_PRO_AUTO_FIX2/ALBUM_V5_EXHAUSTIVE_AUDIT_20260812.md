@@ -4,7 +4,9 @@ Fecha: 12/08/2026
 
 ## Estado
 
-Auditoría final en ejecución sobre la arquitectura **V5 unificada**. Este informe sustituye las conclusiones de V3/V4 y solo se considerará cerrado cuando la misma batería pase en Chromium y WebKit/Safari, primero sobre el código local exacto y después sobre Cloudflare production.
+Auditoría final **R4** en ejecución sobre la arquitectura V5 unificada. Este informe sustituye las conclusiones de V3/V4 y solo se considerará cerrado cuando la misma batería pase en Chromium y WebKit/Safari, primero sobre el código local exacto y después sobre Cloudflare production.
+
+La R4 añade una prueba de sincronización con **dos iPhone simulados independientes** compartiendo la misma nube, en vez de representar el segundo dispositivo como un cambio efímero únicamente en servidor.
 
 ## Alcance
 
@@ -80,7 +82,7 @@ Supabase guarda el estado de la partida como un JSON completo: `adventure_put` s
 10. guardado de recuerdos mientras Historia está abierta;
 11. actualización diferida al cerrar overlays;
 12. conservación de scroll > 0 y scroll = 0;
-13. sincronización de una evidencia más nueva desde el segundo iPhone durante varios ciclos;
+13. sincronización realista entre dos iPhone simulados durante varios ciclos;
 14. HTML descargado con los datos actuales;
 15. Quick Look/no-JS;
 16. responsive 320/390/430/768 px;
@@ -91,4 +93,4 @@ Supabase guarda el estado de la partida como un JSON completo: `adventure_put` s
 
 ## Cierre pendiente
 
-La auditoría se marcará como aprobada únicamente después de que la pasada R3 valide este mismo estado tanto localmente como en `https://krakow-pocket.pages.dev/`. Hasta entonces no se declara el álbum como cerrado.
+La auditoría se marcará como aprobada únicamente después de que la pasada R4 valide este mismo estado tanto localmente como en `https://krakow-pocket.pages.dev/`. Hasta entonces no se declara el álbum como cerrado.
