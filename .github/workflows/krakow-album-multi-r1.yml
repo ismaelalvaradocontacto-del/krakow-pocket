@@ -5,6 +5,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: krakow-album-multi-r1-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   album-multi-r1:
     runs-on: ubuntu-latest
