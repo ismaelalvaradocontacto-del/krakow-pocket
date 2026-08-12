@@ -15,7 +15,7 @@ for(const [name,engine] of engines){
   const errors=[];page.on('pageerror',e=>errors.push(String(e)));page.on('console',m=>{if(m.type()==='error'&&!/Service Worker registration blocked|Failed to fetch|access control checks/i.test(m.text()))errors.push(m.text())});
   try{
     await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});
-    await page.waitForFunction(()=>window.KP_ALBUM_EXPERIENCE?.version==='3.0',{timeout:18000});
+    await page.waitForFunction(()=>window.KP_ALBUM_EXPERIENCE?.version==='3.0'&&window.KP_ALBUM_V3_POLISH?.version==='1.0'&&window.KP_ALBUM_EXPERIENCE?.mobileToolbarFits===true,{timeout:18000});
     await page.evaluate(()=>document.querySelector('.tab[data-panel="diary"]')?.click());
     await page.waitForTimeout(300);
     await page.waitForSelector('#kpAlbumExperienceCard',{state:'visible',timeout:8000});
@@ -24,7 +24,8 @@ for(const [name,engine] of engines){
     await page.waitForSelector('#kpAlbumExperienceDialog[open]',{timeout:8000});
     const iframe=page.frameLocator('#kpAlbumExperienceFrame');
     await iframe.locator('.cover h1').waitFor({state:'visible',timeout:8000});
-    const inside={title:await iframe.locator('.cover h1').textContent(),photos:await iframe.locator('.photo-card').count(),respect:await iframe.locator('.respect-badge').count(),memories:await iframe.locator('.memory-grid article').count(),stats:await iframe.locator('.stat').count(),toc:await iframe.locator('.toc-grid a').count(),print:await iframe.locator('#printAlbum').count(),lightbox:await iframe.locator('#lightbox').count(),story:await iframe.locator('#storyAlbum').count(),pdfHelp:await iframe.locator('#pdfHelp').count()};
+    await page.waitForTimeout(700);
+    const inside={title:await iframe.locator('.cover h1').textContent(),photos:await iframe.locator('.photo-card').count(),respect:await iframe.locator('.respect-badge').count(),memories:await iframe.locator('.memory-grid article').count(),stats:await iframe.locator('.stat').count(),toc:await iframe.locator('.toc-grid a').count(),print:await iframe.locator('#printAlbum').count(),lightbox:await iframe.locator('#lightbox').count(),story:await iframe.locator('#storyAlbum').count(),pdfHelp:await iframe.locator('#pdfHelp').count(),polish:await iframe.locator('style[data-kp-v3-polish="1"]').count(),dateTransform:await iframe.locator('.chapter-date').first().evaluate(el=>getComputedStyle(el).textTransform)};
     await iframe.locator('.photo-button').first().click();
     const firstSrc=await iframe.locator('#lightbox img').getAttribute('src');
     await iframe.locator('.lightbox-next').click();
@@ -42,18 +43,20 @@ for(const [name,engine] of engines){
     for(const width of [320,390,430,768]){
       await page.setViewportSize({width,height:844});
       const frame=page.frames().find(f=>f!==page.mainFrame()&&f.url()==='about:srcdoc');
-      const overflow=await frame.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);
-      const toolbarMin=await frame.evaluate(()=>Math.min(...[...document.querySelectorAll('.toolbar a,.toolbar button')].filter(x=>getComputedStyle(x).display!=='none').map(x=>x.getBoundingClientRect().height)));
-      mobileChecks.push({width,overflow,toolbarMin});
+      const measure=await frame.evaluate(()=>({overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,toolbarOverflow:document.querySelector('.toolbar').scrollWidth-document.querySelector('.toolbar').clientWidth,toolbarMin:Math.min(...[...document.querySelectorAll('.toolbar a,.toolbar button')].filter(x=>getComputedStyle(x).display!=='none').map(x=>x.getBoundingClientRect().height))}));
+      mobileChecks.push({width,...measure});
     }
     await page.setViewportSize({width:390,height:844});
     const html=await page.evaluate(()=>window.KP_ALBUM_EXPERIENCE.html());
-    const exportOk=html.includes('data-kp-offline-compat="1"')&&html.includes('id="albumTop"')&&html.includes('id="albumIndex"')&&html.includes('story-mode')&&html.includes('@media print')&&html.includes('@media(prefers-reduced-motion:reduce)')&&html.includes('Auschwitz-Birkenau')&&html.includes('id="pdfHelp"');
-    const api=await page.evaluate(()=>({interactive:KP_ALBUM_EXPERIENCE.interactive,offlineHtml:KP_ALBUM_EXPERIENCE.offlineHtml,pdfViaPrint:KP_ALBUM_EXPERIENCE.pdfViaPrint,lightbox:KP_ALBUM_EXPERIENCE.lightbox,storyMode:KP_ALBUM_EXPERIENCE.storyMode,noJsReady:KP_ALBUM_EXPERIENCE.noJsReady,accessible:KP_ALBUM_EXPERIENCE.accessible,responsive:KP_ALBUM_EXPERIENCE.responsive,printReady:KP_ALBUM_EXPERIENCE.printReady,animations:KP_ALBUM_EXPERIENCE.animations}));
+    const exportOk=html.includes('data-kp-offline-compat="1"')&&html.includes('data-kp-v3-polish="1"')&&html.includes('id="albumTop"')&&html.includes('id="albumIndex"')&&html.includes('story-mode')&&html.includes('@media print')&&html.includes('@media(prefers-reduced-motion:reduce)')&&html.includes('Auschwitz-Birkenau')&&html.includes('id="pdfHelp"');
+    const api=await page.evaluate(()=>({interactive:KP_ALBUM_EXPERIENCE.interactive,offlineHtml:KP_ALBUM_EXPERIENCE.offlineHtml,pdfViaPrint:KP_ALBUM_EXPERIENCE.pdfViaPrint,lightbox:KP_ALBUM_EXPERIENCE.lightbox,storyMode:KP_ALBUM_EXPERIENCE.storyMode,noJsReady:KP_ALBUM_EXPERIENCE.noJsReady,accessible:KP_ALBUM_EXPERIENCE.accessible,responsive:KP_ALBUM_EXPERIENCE.responsive,printReady:KP_ALBUM_EXPERIENCE.printReady,animations:KP_ALBUM_EXPERIENCE.animations,mobileToolbarFits:KP_ALBUM_EXPERIENCE.mobileToolbarFits,spanishDateCase:KP_ALBUM_EXPERIENCE.spanishDateCase,visualPolish:KP_ALBUM_EXPERIENCE.visualPolish}));
+    const frame=page.frames().find(f=>f!==page.mainFrame()&&f.url()==='about:srcdoc');
+    await frame.evaluate(()=>scrollTo(0,0));
+    await page.waitForTimeout(100);
     const screenshot=process.env.KP_AUDIT_URL?`/tmp/album-v3-${name}-cloudflare.png`:`/tmp/album-v3-${name}-local.png`;
     await page.locator('#kpAlbumExperienceFrame').screenshot({path:screenshot});
-    const mobileOk=mobileChecks.every(x=>x.overflow<=1&&x.toolbarMin>=40);
-    const ok=card.preview===3&&card.open&&card.share&&card.progress&&inside.photos===3&&inside.respect===1&&inside.memories===1&&inside.stats===4&&inside.toc===2&&inside.print===1&&inside.lightbox===1&&inside.story===1&&inside.pdfHelp===1&&lightboxOk&&storyOk&&mobileOk&&exportOk&&Object.values(api).every(Boolean)&&errors.length===0;
+    const mobileOk=mobileChecks.every(x=>x.overflow<=1&&x.toolbarOverflow<=1&&x.toolbarMin>=40);
+    const ok=card.preview===3&&card.open&&card.share&&card.progress&&inside.photos===3&&inside.respect===1&&inside.memories===1&&inside.stats===4&&inside.toc===2&&inside.print===1&&inside.lightbox===1&&inside.story===1&&inside.pdfHelp===1&&inside.polish===1&&inside.dateTransform==='none'&&lightboxOk&&storyOk&&mobileOk&&exportOk&&Object.values(api).every(Boolean)&&errors.length===0;
     console.log(JSON.stringify({engine:name,base,ok,card,inside,lightboxOk,storyOk,mobileChecks,exportOk,api,errors,screenshot},null,2));
     if(!ok)failed=true;
   }catch(e){failed=true;console.error(`${name}: ${e.stack||e}`)}
