@@ -63,6 +63,24 @@
     document.head.appendChild(albumCompat);
   }
 
+  if (!window.__kpAlbumPhotoQualityLoader && !document.querySelector('script[data-kp-album-photo-quality]')) {
+    window.__kpAlbumPhotoQualityLoader = true;
+    const quality = document.createElement("script");
+    quality.src = "./album-photo-quality.js?v=20260812a";
+    quality.async = false;
+    quality.dataset.kpAlbumPhotoQuality = "1";
+    document.head.appendChild(quality);
+  }
+
+  if (!window.__kpAlbumDigitalV4Loader && !document.querySelector('script[data-kp-album-digital-v4]')) {
+    window.__kpAlbumDigitalV4Loader = true;
+    const digital = document.createElement("script");
+    digital.src = "./album-digital-v4.js?v=20260812a";
+    digital.async = false;
+    digital.dataset.kpAlbumDigitalV4 = "1";
+    document.head.appendChild(digital);
+  }
+
   try { sessionStorage.setItem("kpMissionMutation", "1"); } catch {}
 
   const nativeTimeout = window.setTimeout.bind(window);
@@ -100,7 +118,7 @@
   }, true);
 
   window.KP_STABILITY = {
-    version: "1.9",
+    version: "2.0",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
@@ -111,6 +129,8 @@
     interactiveAlbum: true,
     albumExperienceV3: true,
     albumVisualPolish: true,
-    albumOfflineCompat: true
+    albumOfflineCompat: true,
+    digitalAlbumV4: true,
+    albumPhotoQuality: true
   };
 })();
