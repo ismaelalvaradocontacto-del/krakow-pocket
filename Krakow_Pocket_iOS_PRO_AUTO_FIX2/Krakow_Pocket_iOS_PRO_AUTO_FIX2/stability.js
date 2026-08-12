@@ -19,8 +19,6 @@
 
   // Album V5 intentionally replaces the previous stack of album-experience + V3/V4
   // patches. One module owns the card, viewer, HTML export, share and print paths.
-  // This prevents duplicated dialogs/IDs and guarantees that what is viewed is what
-  // is downloaded/shared. Photo-quality remains a separate capture concern.
   if (!window.__kpAlbumPhotoQualityLoader && !document.querySelector('script[data-kp-album-photo-quality]')) {
     window.__kpAlbumPhotoQualityLoader = true;
     const quality = document.createElement("script");
@@ -37,6 +35,46 @@
     album.dataset.kpAlbumV5 = "1";
     document.head.appendChild(album);
   }
+
+  // WebKit can restore an iframe's previous internal scroll after srcdoc reloads,
+  // overriding the position V5 just restored. Keep the user's real reading position
+  // outside the iframe and re-apply it after Safari has finished its own restoration.
+  let albumFrame = null;
+  let albumScrollY = 0;
+  let albumScrollBoundWindow = null;
+  const restoreAlbumScroll = frame => {
+    const win = frame?.contentWindow, doc = frame?.contentDocument;
+    if (!win || !doc?.documentElement) return;
+    const target = Math.max(0, Number(albumScrollY) || 0);
+    const root = doc.documentElement;
+    const previousInline = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    const restore = () => { try { win.scrollTo(0, target); } catch {} };
+    restore();
+    try { win.requestAnimationFrame(() => { restore(); win.requestAnimationFrame(restore); }); } catch {}
+    [60, 140, 280].forEach(delay => setTimeout(restore, delay));
+    setTimeout(() => { try { root.style.scrollBehavior = previousInline; } catch {} }, 340);
+    if (albumScrollBoundWindow !== win) {
+      albumScrollBoundWindow = win;
+      win.addEventListener("scroll", () => { albumScrollY = Math.max(0, win.scrollY || 0); }, { passive:true });
+    }
+  };
+  const bindAlbumFrame = () => {
+    const frame = document.getElementById("kpAlbumV5Frame");
+    if (!frame || frame === albumFrame) return;
+    albumFrame = frame;
+    frame.addEventListener("load", () => restoreAlbumScroll(frame));
+    const dialog = document.getElementById("kpAlbumV5Dialog");
+    dialog?.addEventListener("close", () => { albumScrollY = 0; albumScrollBoundWindow = null; });
+    restoreAlbumScroll(frame);
+  };
+  const albumObserver = new MutationObserver(bindAlbumFrame);
+  albumObserver.observe(document.documentElement, { childList:true, subtree:true });
+  document.addEventListener("click", event => {
+    if (event.target.closest?.("#kpAlbumV5Open")) albumScrollY = 0;
+    if (event.target.closest?.("#kpAlbumV5Close")) albumScrollY = 0;
+  }, true);
+  bindAlbumFrame();
 
   try { sessionStorage.setItem("kpMissionMutation", "1"); } catch {}
 
@@ -64,7 +102,7 @@
   document.addEventListener("click", event => { if (!event.target.closest?.("#applyUpdate")) return; try { sessionStorage.setItem("kpApplyUpdate", "1"); } catch {} }, true);
 
   window.KP_STABILITY = {
-    version: "3.0",
+    version: "3.1",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
@@ -76,6 +114,7 @@
     albumV5Unified: true,
     singleSourceAlbum: true,
     legacyAlbumLayersDisabled: true,
-    albumPhotoQuality: true
+    albumPhotoQuality: true,
+    albumSafariIframeScrollGuard: true
   };
 })();
