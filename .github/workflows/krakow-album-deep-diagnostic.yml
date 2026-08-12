@@ -23,8 +23,9 @@ jobs:
           node --check "$APP_DIR/mission-proof.js"
           node --check "$APP_DIR/auschwitz-extra.js"
           node --check "$APP_DIR/state-bridge.js"
+          node --check "$APP_DIR/stability.js"
           node --check "$APP_DIR/album-photo-quality.js"
-          node --check .github/scripts/krakow-album-v5-final-audit.mjs
+          node --check .github/scripts/krakow-album-v5-final-audit-r2.mjs
           grep -q 'const VERSION="2.0"' "$APP_DIR/mission-proof.js"
           grep -q 'legacyAlbumUi:false' "$APP_DIR/mission-proof.js"
           grep -q 'legacyAlbumExporter:false' "$APP_DIR/mission-proof.js"
@@ -33,6 +34,8 @@ jobs:
           grep -q 'version: "1.7"' "$APP_DIR/state-bridge.js"
           grep -q 'remoteEvidenceAbsorbedBeforeAppMerge: true' "$APP_DIR/state-bridge.js"
           grep -q 'outgoingEvidenceTimestampGuard: true' "$APP_DIR/state-bridge.js"
+          grep -q 'version: "3.1"' "$APP_DIR/stability.js"
+          grep -q 'albumSafariIframeScrollGuard: true' "$APP_DIR/stability.js"
           grep -q 'pdfWaitsForFrame:true' "$APP_DIR/album-v5.js"
           grep -q 'safariScrollRestore:true' "$APP_DIR/album-v5.js"
           grep -q 'krakow-pocket-v48-album-v5-audit-clean-20260812a' "$APP_DIR/sw.js"
@@ -49,18 +52,19 @@ jobs:
           sleep 2
 
       - name: Exhaustive Album V5 audit locally
-        run: node .github/scripts/krakow-album-v5-final-audit.mjs
+        run: node .github/scripts/krakow-album-v5-final-audit-r2.mjs
 
       - name: Wait for exact Cloudflare deployment
         run: |
           for i in {1..60}; do
-            V5=0; PROOF=0; AUS=0; BRIDGE=0; CACHE=0
+            V5=0; PROOF=0; AUS=0; BRIDGE=0; STABLE=0; CACHE=0
             curl -fsS https://krakow-pocket.pages.dev/album-v5.js | grep -q 'pdfWaitsForFrame:true' && V5=1 || true
             curl -fsS https://krakow-pocket.pages.dev/mission-proof.js | grep -q 'const VERSION="2.0"' && PROOF=1 || true
             curl -fsS https://krakow-pocket.pages.dev/auschwitz-extra.js | grep -q 'const VERSION="2.0"' && AUS=1 || true
             curl -fsS https://krakow-pocket.pages.dev/state-bridge.js | grep -q 'version: "1.7"' && BRIDGE=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/stability.js | grep -q 'version: "3.1"' && STABLE=1 || true
             curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v48-album-v5-audit-clean-20260812a' && CACHE=1 || true
-            if [ "$V5" = 1 ] && [ "$PROOF" = 1 ] && [ "$AUS" = 1 ] && [ "$BRIDGE" = 1 ] && [ "$CACHE" = 1 ]; then exit 0; fi
+            if [ "$V5" = 1 ] && [ "$PROOF" = 1 ] && [ "$AUS" = 1 ] && [ "$BRIDGE" = 1 ] && [ "$STABLE" = 1 ] && [ "$CACHE" = 1 ]; then exit 0; fi
             sleep 4
           done
           exit 1
@@ -68,12 +72,12 @@ jobs:
       - name: Exhaustive Album V5 audit on Cloudflare
         env:
           KP_AUDIT_URL: https://krakow-pocket.pages.dev/
-        run: node .github/scripts/krakow-album-v5-final-audit.mjs
+        run: node .github/scripts/krakow-album-v5-final-audit-r2.mjs
 
       - name: Upload final diagnostic report
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: album-v5-final-audit
-          path: /tmp/album-v5-final-audit.json
+          name: album-v5-final-audit-r2
+          path: /tmp/album-v5-final-audit-r2.json
           if-no-files-found: ignore
