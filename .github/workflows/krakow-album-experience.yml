@@ -9,7 +9,7 @@ on:
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-ios-compat.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/stability.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/sw.js'
-      - '.github/scripts/krakow-album-experience.mjs'
+      - '.github/scripts/krakow-album-v3-audit.mjs'
       - '.github/workflows/krakow-album-experience.yml'
   workflow_dispatch:
 
@@ -29,7 +29,7 @@ jobs:
           node --check "$APP_DIR/album-experience.js"
           node --check "$APP_DIR/album-v3-polish.js"
           node --check "$APP_DIR/album-ios-compat.js"
-          node --check .github/scripts/krakow-album-experience.mjs
+          node --check .github/scripts/krakow-album-v3-audit.mjs
           grep -q 'const VERSION = "3.0"' "$APP_DIR/album-experience.js"
           grep -q 'const VERSION="1.0"' "$APP_DIR/album-v3-polish.js"
           grep -q 'storyMode:true' "$APP_DIR/album-experience.js"
@@ -55,7 +55,7 @@ jobs:
           curl -fsS http://127.0.0.1:4173/album-experience.js | grep -q 'const VERSION = "3.0"'
           curl -fsS http://127.0.0.1:4173/album-v3-polish.js | grep -q 'mobileToolbarFits:true'
       - name: Verify album locally
-        run: node .github/scripts/krakow-album-experience.mjs
+        run: node .github/scripts/krakow-album-v3-audit.mjs
       - name: Wait for Cloudflare build
         run: |
           for i in {1..45}; do
@@ -71,7 +71,7 @@ jobs:
       - name: Verify album on Cloudflare
         env:
           KP_AUDIT_URL: https://krakow-pocket.pages.dev/
-        run: node .github/scripts/krakow-album-experience.mjs
+        run: node .github/scripts/krakow-album-v3-audit.mjs
       - name: Upload visual audit screenshots
         if: always()
         uses: actions/upload-artifact@v4
