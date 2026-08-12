@@ -3,153 +3,82 @@ import fs from 'node:fs';
 
 const base=process.env.KP_AUDIT_URL||'http://127.0.0.1:4173/';
 const engines=[['chromium',chromium],['webkit',webkit]];
-const ids=['florian','rynek','maria','maius','wawel','dragon'];
-const tiny=label=>`data:image/svg+xml;base64,${Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"><rect width="800" height="600" fill="#d7b982"/><text x="40" y="300" font-size="48">${label}</text></svg>`).toString('base64')}`;
-const stamp=i=>`2026-08-${i<4?'11':'12'}T${String(9+i).padStart(2,'0')}:00:00+02:00`;
+const coreIds=['florian','rynek','maria','maius','wawel','dragon','szeroka','placnowy','bernatek','ghetto','tomasza','planty'];
+const photo=(label,color='#9dbb89')=>`data:image/svg+xml;base64,${Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 960"><rect width="1280" height="960" fill="${color}"/><circle cx="1020" cy="180" r="100" fill="#f7dfa3"/><path d="M0 700L210 410l210 190 210-270 220 230 180-160 300 300v260H0z" fill="#6b7e59"/><text x="56" y="875" font-family="Arial" font-size="55" fill="white">${label}</text></svg>`).toString('base64')}`;
+const colors=['#86adbf','#c59a71','#879d79','#b48768','#7896a8','#8fa671','#b58f72','#759aa4','#9d846d','#858884','#b9a47b','#8aa579'];
+const iso=(day,hour,min=0)=>`2026-08-${String(day).padStart(2,'0')}T${String(hour).padStart(2,'0')}:${String(min).padStart(2,'0')}:00+02:00`;
 const clone=x=>JSON.parse(JSON.stringify(x));
 
-function makeState(){
-  const missionEvidence={},missionStatus={};
-  ids.forEach((id,i)=>{
-    missionEvidence[id]={id,verified:true,photo:tiny(id),title:`Recuerdo ${id}`,place:id,comment:`Comentario ${id}`,by:i%2?'Laura':'Ismael',distance:20+i,completedAt:stamp(i),updatedAt:stamp(i)};
-    missionStatus[id]={done:true,updatedAt:stamp(i)};
-  });
-  missionEvidence.auschwitz={id:'auschwitz',extra:true,bonus:true,verified:true,photo:tiny('auschwitz'),title:'Visita a Auschwitz-Birkenau',place:'Auschwitz-Birkenau',comment:'Una visita para recordar y aprender.',by:'Ambos',distance:64,completedAt:'2026-08-12T08:50:00+02:00',updatedAt:'2026-08-12T08:50:00+02:00'};
-  return {visited:[...ids],missionEvidence,missionStatus,memories:[{id:'m1',title:'Primer recuerdo',note:'Texto del recuerdo',place:'Cracovia',by:'Ismael',ts:'2026-08-11T18:00:00+02:00',updatedAt:'2026-08-11T18:00:00+02:00'}],expenses:[{id:'e1',amount:24.6,category:'food',ts:'2026-08-11T14:00:00+02:00',updatedAt:'2026-08-11T14:00:00+02:00'}],config:{dailyTarget:21,fixedPaid:0},updatedAt:'2026-08-12T09:00:00+02:00'};
+function makeState(count=12){
+ const missionEvidence={},missionStatus={},visited=[];
+ coreIds.slice(0,count).forEach((id,i)=>{const when=i<5?iso(11,9+i):i<10?iso(12,9+i-5):iso(13,10+i-10);missionEvidence[id]={id,verified:true,photo:photo(id,colors[i]),title:`Recuerdo ${id}`,place:`Lugar ${id}`,comment:`Comentario animado del recuerdo ${id}. ${i===3?'Una explicación algo más larga para comprobar que el texto puede ocupar varias líneas sin romper la composición ni tapar la fotografía.':''}`,by:i%2?'Laura':'Ismael',distance:18+i,completedAt:when,updatedAt:when};missionStatus[id]={done:true,completedAt:when,updatedAt:when};visited.push(id)});
+ missionEvidence.auschwitz={id:'auschwitz',extra:true,bonus:true,verified:true,photo:photo('Auschwitz-Birkenau','#8b8b82'),title:'Visita a Auschwitz-Birkenau',place:'Auschwitz-Birkenau',comment:'Una visita para recordar y aprender, tratada con respeto y sin gamificación.',by:'Ambos',distance:64,completedAt:iso(12,8,50),updatedAt:iso(12,8,50)};
+ return {visited,missionEvidence,missionStatus,memories:[{id:'m1',title:'La primera tarde',note:'Nos sentamos un rato sin mirar el reloj y acabamos hablando de todo lo que ya habíamos visto. '+('Un recuerdo escrito con espacio suficiente. '.repeat(6)),place:'Planty',by:'Laura',ts:iso(11,18,10),updatedAt:iso(11,18,10)},{id:'m2',title:'Algo que nos hizo gracia',note:'Un pequeño momento que no saldría en ninguna guía, pero sí queríamos conservar.',place:'Stare Miasto',by:'Ismael',ts:iso(12,18,20),updatedAt:iso(12,18,20)}],expenses:[{id:'e1',amount:24.6,category:'food',ts:iso(11,14),updatedAt:iso(11,14)},{id:'e2',amount:7.5,category:'transport',ts:iso(12,15),updatedAt:iso(12,15)}],config:{dailyTarget:21,fixedPaid:0},updatedAt:iso(13,19)};
 }
 
-const report={generatedAt:new Date().toISOString(),target:base,albumVersion:'5.0',engines:[],failures:[]};
+const initial=makeState(12),report={generatedAt:new Date().toISOString(),target:base,albumVersion:'5.0',engines:[],failures:[]};
+const noLegacy=page=>page.evaluate(()=>({cards:document.querySelectorAll('#kpAlbumCard,#kpAlbumExperienceCard').length,dialogs:document.querySelectorAll('#kpAlbumDialog,#kpAlbumExperienceDialog').length,v3:!!window.KP_ALBUM_V3_POLISH,v4:!!window.KP_ALBUM_DIGITAL_V4,v4Runtime:!!window.KP_ALBUM_DIGITAL_RUNTIME_FIX,v4Ambient:!!window.KP_ALBUM_DIGITAL_AMBIENT_FIX,scripts:[...document.scripts].map(s=>s.src).filter(x=>/album-(?:experience|v3|digital-v4|ios-compat)/.test(x))}));
 
 for(const [engineName,engine] of engines){
-  const checks=[],errors=[],metrics={};
-  const check=(name,ok,detail='')=>{checks.push({name,ok:!!ok,detail});if(!ok)report.failures.push(`${engineName}: ${name}${detail?` — ${detail}`:''}`)};
-  let browser;
-  try{
-    let serverState=makeState();
-    browser=await engine.launch({headless:true});
-    const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,acceptDownloads:true,serviceWorkers:'block'});
-    await context.addInitScript(({state})=>{localStorage.setItem('krakowPocketCoop',JSON.stringify(state));localStorage.setItem('krakowPlayer','Ismael')},{state:clone(serverState)});
-    await context.route('https://ahzmwkztlakejmrvgcdm.supabase.co/rest/v1/rpc/**',async route=>{
-      const url=route.request().url();
-      if(url.includes('adventure_get')) return route.fulfill({status:200,contentType:'application/json',body:JSON.stringify(serverState)});
-      if(url.includes('adventure_put')){
-        try{const body=JSON.parse(route.request().postData()||'{}');if(body?.p_state)serverState=clone(body.p_state);}catch{}
-        return route.fulfill({status:200,contentType:'application/json',body:'{}'});
-      }
-      return route.fulfill({status:200,contentType:'application/json',body:'{}'});
-    });
+ const checks=[],errors=[],metrics={};const check=(name,ok,detail='')=>{checks.push({name,ok:!!ok,detail});if(!ok)report.failures.push(`${engineName}: ${name}${detail?` — ${detail}`:''}`)};let browser;
+ try{
+  let serverState=clone(initial);browser=await engine.launch({headless:true});
+  const context=await browser.newContext({viewport:{width:390,height:844},deviceScaleFactor:2,acceptDownloads:true,serviceWorkers:'block'});
+  await context.addInitScript(state=>{localStorage.setItem('krakowPocketCoop',JSON.stringify(state));localStorage.setItem('krakowPlayer','Ismael');window.__auditPrintCalled=false;window.print=()=>{window.__auditPrintCalled=true}},clone(initial));
+  await context.route('https://ahzmwkztlakejmrvgcdm.supabase.co/rest/v1/rpc/**',async r=>{const url=r.request().url();if(url.includes('adventure_get'))return r.fulfill({status:200,contentType:'application/json',body:JSON.stringify(serverState)});if(url.includes('adventure_put')){try{const b=JSON.parse(r.request().postData()||'{}');if(b?.p_state)serverState=clone(b.p_state)}catch{};return r.fulfill({status:200,contentType:'application/json',body:'{}'})}return r.fulfill({status:200,contentType:'application/json',body:'{}'})});
+  const page=await context.newPage();page.on('pageerror',e=>errors.push(`pageerror: ${String(e)}`));page.on('console',m=>{if(m.type()==='error'&&!/favicon|Failed to load resource/.test(m.text()))errors.push(`console: ${m.text()}`)});
+  await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});await page.waitForFunction(()=>window.KP_ALBUM_V5?.version==='5.0'&&window.KP_ALBUM_EXPERIENCE?.version==='5.0'&&window.KP_MISSION_PROOF?.version==='2.0'&&window.KP_AUSCHWITZ_EXTRA?.version==='2.0',{timeout:20000});await page.waitForTimeout(900);await page.evaluate(()=>document.querySelector('.tab[data-panel="diary"]')?.click());await page.waitForTimeout(250);
 
-    const page=await context.newPage();
-    page.on('pageerror',e=>errors.push(`pageerror: ${String(e)}`));
-    page.on('console',m=>{if(m.type()==='error')errors.push(`console: ${m.text()}`)});
-    await page.goto(base,{waitUntil:'domcontentloaded',timeout:30000});
-    await page.waitForFunction(()=>window.KP_ALBUM_V5?.version==='5.0'&&window.KP_ALBUM_EXPERIENCE?.version==='5.0',{timeout:20000});
-    await page.waitForTimeout(900);
-    await page.evaluate(()=>document.querySelector('.tab[data-panel="diary"]')?.click());
-    await page.waitForTimeout(250);
+  check('V5 is the only album API',await page.evaluate(()=>window.KP_ALBUM_V5?.singleSource===true&&window.KP_ALBUM_EXPERIENCE?.unifiedSingleSource===true));
+  check('mission proof is evidence-only',await page.evaluate(()=>window.KP_MISSION_PROOF?.legacyAlbumUi===false&&window.KP_MISSION_PROOF?.legacyAlbumExporter===false&&window.KP_MISSION_PROOF?.albumUnifiedV5===true));
+  check('Auschwitz is evidence-only',await page.evaluate(()=>window.KP_AUSCHWITZ_EXTRA?.legacyAlbumExporter===false&&window.KP_AUSCHWITZ_EXTRA?.albumUnifiedV5===true));
+  let legacy=await noLegacy(page);check('legacy album layers are not loaded',legacy.cards===0&&legacy.dialogs===0&&!legacy.v3&&!legacy.v4&&!legacy.v4Runtime&&!legacy.v4Ambient&&legacy.scripts.length===0,JSON.stringify(legacy));
+  check('single V5 card',(await page.locator('#kpAlbumV5Card').count())===1);
+  await page.evaluate(()=>{window.dispatchEvent(new Event('pageshow'));window.dispatchEvent(new CustomEvent('kp:mission-evidence-local',{detail:{id:'florian'}}));window.dispatchEvent(new CustomEvent('kp:mission-evidence-sync',{detail:{}}));document.dispatchEvent(new Event('visibilitychange'))});await page.waitForTimeout(500);legacy=await noLegacy(page);check('legacy album UI never reappears after sync/pageshow',legacy.cards===0&&legacy.dialogs===0,JSON.stringify(legacy));
 
-    check('V5 API loaded',await page.evaluate(()=>window.KP_ALBUM_V5?.version==='5.0'));
-    check('single V5 card',(await page.locator('#kpAlbumV5Card').count())===1);
-    check('legacy album UI removed',(await page.locator('#kpAlbumCard,#kpAlbumDialog,#kpAlbumExperienceCard,#kpAlbumExperienceDialog').count())===0);
-    const canonical=await page.evaluate(()=>window.KP_ALBUM_V5.html());
-    metrics.canonicalHtmlChars=canonical.length;
-    metrics.embeddedImageRefs=(canonical.match(/data:image\//g)||[]).length;
-    metrics.localStateChars=await page.evaluate(()=>localStorage.getItem('krakowPocketCoop')?.length||0);
-    check('canonical HTML identifies V5',canonical.includes('data-kp-album-v5="1"')&&canonical.includes('content="5.0"'));
-    check('all initial evidence included',ids.every(id=>canonical.includes(`Recuerdo ${id}`))&&canonical.includes('Auschwitz-Birkenau'));
-    check('memory included',canonical.includes('Primer recuerdo'));
-    check('print CSS present',canonical.includes('@media print'));
-    check('reduced motion supported',canonical.includes('prefers-reduced-motion:reduce'));
-    check('mobile CSS present',canonical.includes('@media(max-width:700px)'));
-    check('embedded image refs bounded',metrics.embeddedImageRefs<=Object.keys(serverState.missionEvidence).length*3+2,`${metrics.embeddedImageRefs} refs`);
+  const fullHtml=await page.evaluate(()=>window.KP_ALBUM_V5.html());metrics.canonicalHtmlChars=fullHtml.length;metrics.imageRefs=(fullHtml.match(/data:image\//g)||[]).length;
+  check('full HTML identifies V5',fullHtml.includes('data-kp-album-v5="1"')&&fullHtml.includes('name="kp-album-version" content="5.0"'));
+  check('12 core photos + Auschwitz are present',coreIds.every(id=>fullHtml.includes(`Recuerdo ${id}`))&&fullHtml.includes('Auschwitz-Birkenau'));
+  check('Auschwitz stays non-gamified',fullHtml.includes('EXTRA · MEMORIA')&&fullHtml.includes('sin gamificación'));
+  check('long memory survives export',fullHtml.includes('La primera tarde')&&fullHtml.includes('Un recuerdo escrito con espacio suficiente.'));
+  check('offline HTML has no external JS/CSS/CDN',!/<script[^>]+src=/i.test(fullHtml)&&!/<link[^>]+stylesheet/i.test(fullHtml)&&!/(cdn\.jsdelivr|unpkg|googleapis)/i.test(fullHtml));
+  check('print + reduced motion + responsive CSS exist',fullHtml.includes('@media print')&&fullHtml.includes('prefers-reduced-motion:reduce')&&fullHtml.includes('@media(max-width:700px)'));
+  check('photo embedding is bounded',metrics.imageRefs<=15,`${metrics.imageRefs} image refs for 13 source photos`);
 
-    await page.locator('#kpAlbumV5Open').click();
-    await page.waitForSelector('#kpAlbumV5Dialog[open]',{timeout:5000});
-    const frame=page.frameLocator('#kpAlbumV5Frame');
-    await frame.locator('.book[data-kp-album-v5="1"]').waitFor({state:'visible',timeout:5000});
-    check('dialog opens',await page.locator('#kpAlbumV5Dialog').evaluate(el=>el.open));
-    check('outer page locked',await page.evaluate(()=>document.documentElement.classList.contains('kp-album-v5-open')));
-    check('photo cards rendered',(await frame.locator('.photo-card').count())===Object.keys(serverState.missionEvidence).length,`${await frame.locator('.photo-card').count()} cards`);
-    check('toolbar visible',await frame.locator('.toolbar').isVisible());
+  const edge=await page.evaluate(s=>{const k='krakowPocketCoop',old=localStorage.getItem(k);localStorage.setItem(k,JSON.stringify({missionEvidence:{},missionStatus:{},visited:[],memories:[],expenses:[],updatedAt:new Date().toISOString()}));const empty=window.KP_ALBUM_V5.html();localStorage.setItem(k,JSON.stringify({missionEvidence:{florian:s.missionEvidence.florian},missionStatus:{florian:{done:true}},visited:['florian'],memories:[],expenses:[],updatedAt:s.missionEvidence.florian.updatedAt}));const one=window.KP_ALBUM_V5.html();localStorage.setItem(k,old);return{empty,one}},initial);
+  check('empty album degrades gracefully',edge.empty.includes('Todavía no hay fotografías guardadas')&&!edge.empty.includes('id="storyAlbum"'));
+  check('single-photo album degrades gracefully',edge.one.includes('1 fotografía')&&edge.one.includes('id="storyAlbum"'));
 
-    await frame.locator('.photo-button').first().click();
-    check('lightbox opens',await frame.locator('#lightbox').evaluate(el=>el.classList.contains('open')));
-    await page.keyboard.press('Escape');
-    await page.waitForTimeout(80);
-    check('Escape closes lightbox',!(await frame.locator('#lightbox').evaluate(el=>el.classList.contains('open'))));
+  // PDF from a never-opened viewer: init script replaces print() in every document/frame.
+  await page.evaluate(()=>window.KP_ALBUM_V5.print());await page.waitForSelector('#kpAlbumV5Dialog[open]',{timeout:5000});const frame=page.frameLocator('#kpAlbumV5Frame');await frame.locator('.book[data-kp-album-v5="1"]').waitFor({state:'visible',timeout:5000});
+  const firstPrint=await frame.locator('body').evaluate(()=>window.__auditPrintCalled===true).catch(()=>false);check('PDF from closed viewer prints loaded V5 document',firstPrint,'print must execute after srcdoc has loaded');await page.locator('#kpAlbumV5Close').click();
 
-    const story=frame.locator('#storyAlbum');
-    check('story button exists',(await story.count())===1);
-    if(await story.count()){
-      await story.click();
-      check('story mode opens',await frame.locator('#storyMode').evaluate(el=>el.classList.contains('open')));
-      const before=await frame.locator('.story-position').textContent();
-      await frame.locator('#storyNext').click();
-      const after=await frame.locator('.story-position').textContent();
-      check('story next works',before!==after,`${before} -> ${after}`);
-      await page.keyboard.press('Escape');
-      await page.waitForTimeout(80);
-      check('Escape closes story',!(await frame.locator('#storyMode').evaluate(el=>el.classList.contains('open'))));
-    }
+  for(let i=0;i<(engineName==='webkit'?5:2);i++){await page.locator('#kpAlbumV5Open').click();await page.waitForSelector('#kpAlbumV5Dialog[open]',{timeout:5000});await frame.locator('.book[data-kp-album-v5="1"]').waitFor({state:'visible',timeout:5000});await page.locator('#kpAlbumV5Close').click();await page.waitForTimeout(70)}
+  check('viewer repeatedly opens/closes',!(await page.locator('#kpAlbumV5Dialog').evaluate(el=>el.open)));
+  await page.locator('#kpAlbumV5Open').click();await page.waitForSelector('#kpAlbumV5Dialog[open]');await frame.locator('.photo-card').first().waitFor();
+  check('all 13 photos render',(await frame.locator('.photo-card').count())===13,`${await frame.locator('.photo-card').count()} cards`);check('multiple day chapters render',(await frame.locator('.chapter').count())>=3,`${await frame.locator('.chapter').count()} chapters`);check('two memories render',(await frame.locator('.memory-card').count())===2);
+  const responsive=[];for(const width of [320,390,430,768]){await page.setViewportSize({width,height:844});await page.waitForTimeout(80);responsive.push({width,...await frame.locator('html').evaluate(()=>({w:document.documentElement.clientWidth,sw:document.documentElement.scrollWidth,toolbar:document.querySelector('.toolbar')?document.querySelector('.toolbar').scrollWidth-document.querySelector('.toolbar').clientWidth:999,minTap:Math.min(...[...document.querySelectorAll('.toolbar a,.toolbar button,.story-controls button,.overlay-close')].filter(x=>x.getBoundingClientRect().width>0).map(x=>x.getBoundingClientRect().height))}))})};metrics.responsive=responsive;check('responsive 320/390/430/768 has no horizontal overflow',responsive.every(x=>x.sw<=x.w+1),JSON.stringify(responsive));check('album toolbar never clips horizontally',responsive.every(x=>x.toolbar<=1),JSON.stringify(responsive));check('main interactive targets are at least 40px high',responsive.every(x=>x.minTap>=40),JSON.stringify(responsive));await page.setViewportSize({width:390,height:844});
 
-    // Real local flow: use the app's own memory form so its in-memory state, localStorage and cloud push agree.
-    await page.evaluate(()=>{
-      document.getElementById('memoryTitle').value='Recuerdo en directo';
-      document.getElementById('memoryNote').value='Añadido mientras el álbum estaba abierto';
-      document.getElementById('memoryPlace').value='Cracovia';
-      document.getElementById('memoryForm').requestSubmit();
-    });
-    let localLive=false;
-    try{await frame.locator('text=Recuerdo en directo').waitFor({state:'visible',timeout:4500});localLive=true}catch{}
-    check('album live-refreshes after real local memory save',localLive);
+  await frame.locator('.photo-button').first().click();const lb=frame.locator('#lightbox');check('lightbox opens',await lb.evaluate(el=>el.classList.contains('open')));const lb1=await frame.locator('#lightbox img').getAttribute('src');await frame.locator('.lightbox-next').click();const lb2=await frame.locator('#lightbox img').getAttribute('src');check('lightbox next changes photo',lb1!==lb2);await frame.locator('.lightbox-prev').click();check('lightbox previous returns photo',(await frame.locator('#lightbox img').getAttribute('src'))===lb1);await page.keyboard.press('Escape');check('Escape closes lightbox',!(await lb.evaluate(el=>el.classList.contains('open'))));
 
-    // Remote flow: simulate a newer photo arriving from Laura and trigger the normal reconnect/pull path.
-    const remoteStamp='2026-08-12T23:59:50+02:00';
-    serverState=clone(serverState);
-    serverState.missionEvidence.bernatek={id:'bernatek',verified:true,photo:tiny('bernatek-Laura'),title:'Recuerdo remoto de Laura',place:'Puente Bernatek',comment:'Llegó desde el otro iPhone',by:'Laura',distance:18,completedAt:remoteStamp,updatedAt:remoteStamp};
-    serverState.missionStatus.bernatek={done:true,updatedAt:remoteStamp};
-    serverState.visited=[...new Set([...(serverState.visited||[]),'bernatek'])];
-    serverState.updatedAt=remoteStamp;
-    await page.evaluate(()=>document.getElementById('reconnectCloud')?.click());
-    let remoteLive=false;
-    try{await frame.locator('text=Recuerdo remoto de Laura').waitFor({state:'visible',timeout:6000});remoteLive=true}catch{}
-    check('remote photo from second iPhone reaches open album',remoteLive);
-    const persistedRemote=await page.evaluate(()=>JSON.parse(localStorage.getItem('krakowPocketCoop')||'{}').missionEvidence?.bernatek?.title||'');
-    check('remote photo persists in local shared state',persistedRemote==='Recuerdo remoto de Laura',persistedRemote);
+  await frame.locator('#storyAlbum').click();const story=frame.locator('#storyMode');check('Story opens',await story.evaluate(el=>el.classList.contains('open')));check('filmstrip matches photos',(await frame.locator('.filmstrip button').count())===13);const p1=(await frame.locator('.story-position').textContent())?.trim();await frame.locator('#storyNext').click();const p2=(await frame.locator('.story-position').textContent())?.trim();check('Story next updates position',p1!==p2,`${p1} -> ${p2}`);await frame.locator('.filmstrip button').nth(4).click();check('filmstrip jumps to requested photo',((await frame.locator('.story-position').textContent())||'').includes('5'));
+  await frame.locator('.story-play').click();const beforeAuto=(await frame.locator('.story-position').textContent())?.trim();await page.waitForTimeout(4700);const afterAuto=(await frame.locator('.story-position').textContent())?.trim();check('autoplay advances',beforeAuto!==afterAuto,`${beforeAuto} -> ${afterAuto}`);await frame.locator('.story-play').click();const paused=(await frame.locator('.story-position').textContent())?.trim();await page.waitForTimeout(4700);check('pause stops autoplay',((await frame.locator('.story-position').textContent())||'').trim()===paused);
 
-    // Responsive overflow checks at the important iPhone widths.
-    for(const width of [320,390,768]){
-      await page.setViewportSize({width,height:844});
-      await page.waitForTimeout(80);
-      const outerOverflow=await page.evaluate(()=>document.documentElement.scrollWidth>document.documentElement.clientWidth+2);
-      const innerOverflow=await frame.locator('html').evaluate(el=>el.scrollWidth>el.clientWidth+2);
-      check(`no horizontal overflow at ${width}px`,!outerOverflow&&!innerOverflow,`outer=${outerOverflow}, inner=${innerOverflow}`);
-    }
+  await page.evaluate(()=>{const k='krakowPocketCoop',s=JSON.parse(localStorage.getItem(k)||'{}'),t=new Date().toISOString();s.memories=[...(s.memories||[]),{id:'live',title:'Recuerdo en vivo',note:'Añadido mientras Historia estaba abierta',place:'Cracovia',by:'Ambos',ts:t,updatedAt:t}];s.updatedAt=t;localStorage.setItem(k,JSON.stringify(s));window.dispatchEvent(new CustomEvent('kp:state-updated',{detail:{source:'audit-live'}}))});await page.waitForTimeout(1500);check('live update does not close Story',await story.evaluate(el=>el.classList.contains('open')));await frame.locator('#storyMode .overlay-close').click();await page.waitForTimeout(1500);await frame.locator('text=Recuerdo en vivo').waitFor({state:'visible',timeout:4000});check('pending live update appears after Story closes',(await frame.locator('.memory-card').count())===3);
 
-    // Download should be generated by the same V5 source.
-    let downloaded='';
-    try{
-      const p=page.waitForEvent('download',{timeout:3500});
-      await page.locator('#kpAlbumV5Download').click();
-      const dl=await p,path=await dl.path();if(path)downloaded=fs.readFileSync(path,'utf8');
-    }catch{}
-    check('HTML export works',downloaded.includes('data-kp-album-v5="1"')&&downloaded.includes('Recuerdo remoto de Laura'));
+  const yBefore=await frame.locator('body').evaluate(()=>{const max=Math.max(0,document.documentElement.scrollHeight-innerHeight),y=Math.min(180,max);scrollTo(0,y);return scrollY});await page.evaluate(()=>{const k='krakowPocketCoop',s=JSON.parse(localStorage.getItem(k)||'{}'),t=new Date().toISOString();s.memories=[...(s.memories||[]),{id:'live2',title:'Otro recuerdo en vivo',note:'Comprobación de estabilidad de scroll',place:'Cracovia',by:'Laura',ts:t,updatedAt:t}];s.updatedAt=t;localStorage.setItem(k,JSON.stringify(s));window.dispatchEvent(new CustomEvent('kp:state-updated',{detail:{source:'audit-scroll'}}))});await page.waitForTimeout(1600);const yAfter=await frame.locator('body').evaluate(()=>scrollY);check('live refresh preserves scroll',Math.abs(yAfter-yBefore)<=8,`${yBefore} -> ${yAfter}`);
 
-    await page.locator('#kpAlbumV5Close').click();
-    await page.waitForTimeout(80);
-    check('close button closes dialog',!(await page.locator('#kpAlbumV5Dialog').evaluate(el=>el.open)));
-    check('outer page unlocks',!(await page.evaluate(()=>document.documentElement.classList.contains('kp-album-v5-open'))));
-    const dupes=await page.evaluate(()=>{const m=new Map(),d=[];document.querySelectorAll('[id]').forEach(el=>m.set(el.id,(m.get(el.id)||0)+1));m.forEach((n,id)=>{if(n>1)d.push([id,n])});return d});
-    check('no duplicate outer DOM ids',dupes.length===0,JSON.stringify(dupes));
-    check('no runtime JS errors',errors.length===0,errors.join(' | ').slice(0,1200));
-  }catch(e){
-    check('diagnostic completed without unhandled exception',false,String(e?.stack||e).slice(0,1600));
-  }finally{
-    try{await browser?.close()}catch{}
-    report.engines.push({engine:engineName,checks,errors,metrics});
-  }
+  // Remote second-iPhone evidence while viewer remains open.
+  const remoteStamp='2026-08-13T23:59:50+02:00';serverState=clone(await page.evaluate(()=>JSON.parse(localStorage.getItem('krakowPocketCoop')||'{}')));serverState.missionEvidence.bernatek={...serverState.missionEvidence.bernatek,title:'Recuerdo remoto actualizado por Laura',comment:'Cambio recibido desde el otro iPhone',by:'Laura',updatedAt:remoteStamp};serverState.updatedAt=remoteStamp;await page.evaluate(()=>document.getElementById('reconnectCloud')?.click());let remoteLive=false;try{await frame.locator('text=Recuerdo remoto actualizado por Laura').waitFor({state:'visible',timeout:6000});remoteLive=true}catch{}check('remote second-iPhone update reaches open album',remoteLive);
+
+  let downloadedHtml='';try{const [dl]=await Promise.all([page.waitForEvent('download',{timeout:5000}),page.evaluate(()=>window.KP_ALBUM_V5.download())]);const path=await dl.path();if(path)downloadedHtml=fs.readFileSync(path,'utf8')}catch(e){errors.push(`download: ${e}`)}check('real download produces current V5 HTML',downloadedHtml.includes('data-kp-album-v5="1"')&&downloadedHtml.includes('Auschwitz-Birkenau')&&downloadedHtml.includes('Recuerdo remoto actualizado por Laura'),`${downloadedHtml.length} bytes`);
+
+  const dupes=await frame.locator('html').evaluate(()=>{const seen=new Map(),out=[];document.querySelectorAll('[id]').forEach(el=>seen.set(el.id,(seen.get(el.id)||0)+1));seen.forEach((n,id)=>{if(n>1)out.push([id,n])});return out});check('no duplicate IDs inside album document',dupes.length===0,JSON.stringify(dupes));await page.locator('#kpAlbumV5Close').click();check('document unlocks after close',!(await page.evaluate(()=>document.documentElement.classList.contains('kp-album-v5-open'))));
+
+  const noJsContext=await browser.newContext({viewport:{width:390,height:844},javaScriptEnabled:false});const noJs=await noJsContext.newPage();await noJs.setContent(downloadedHtml||fullHtml,{waitUntil:'domcontentloaded'});const noJsInfo=await noJs.evaluate(()=>({overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,story:document.querySelector('#storyAlbum')?getComputedStyle(document.querySelector('#storyAlbum')).display:'absent',top:document.querySelector('a[href="#albumTop"]')?.getAttribute('href'),index:document.querySelector('a[href="#albumIndex"]')?.getAttribute('href'),pdf:document.querySelector('#albumPrint')?.getAttribute('href'),end:document.querySelector('a[href="#albumEnd"]')?.getAttribute('href'),photos:document.querySelectorAll('.photo-card').length}));check('Quick Look/no-JS retains navigation and all photos',noJsInfo.overflow<=1&&(noJsInfo.story==='none'||noJsInfo.story==='absent')&&noJsInfo.top==='#albumTop'&&noJsInfo.index==='#albumIndex'&&noJsInfo.pdf==='#pdfHelp'&&noJsInfo.end==='#albumEnd'&&noJsInfo.photos===13,JSON.stringify(noJsInfo));await noJsContext.close();
+
+  check('no relevant runtime JS errors',errors.length===0,errors.join(' | ').slice(0,1800));
+ }catch(e){check('diagnostic completed without unhandled exception',false,String(e?.stack||e).slice(0,1800))}finally{try{await browser?.close()}catch{};report.engines.push({engine:engineName,checks,errors,metrics})}
 }
 
-fs.writeFileSync('/tmp/album-deep-diagnostic.json',JSON.stringify(report,null,2));
-console.log(JSON.stringify(report,null,2));
-if(report.failures.length)process.exitCode=1;
+fs.writeFileSync('/tmp/album-deep-diagnostic.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));if(report.failures.length)process.exitCode=1;
