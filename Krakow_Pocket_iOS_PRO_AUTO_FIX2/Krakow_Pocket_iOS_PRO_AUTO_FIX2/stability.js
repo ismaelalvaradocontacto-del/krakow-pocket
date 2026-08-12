@@ -45,6 +45,15 @@
     document.head.appendChild(album);
   }
 
+  if (!window.__kpAlbumV3PolishLoader && !document.querySelector('script[data-kp-album-v3-polish]')) {
+    window.__kpAlbumV3PolishLoader = true;
+    const polish = document.createElement("script");
+    polish.src = "./album-v3-polish.js?v=20260812a";
+    polish.async = false;
+    polish.dataset.kpAlbumV3Polish = "1";
+    document.head.appendChild(polish);
+  }
+
   if (!window.__kpAlbumIosCompatLoader && !document.querySelector('script[data-kp-album-ios-compat]')) {
     window.__kpAlbumIosCompatLoader = true;
     const albumCompat = document.createElement("script");
@@ -58,17 +67,9 @@
 
   const nativeTimeout = window.setTimeout.bind(window);
   const nativeInterval = window.setInterval.bind(window);
-  const isLegacyMissionPull = (fn, delay) =>
-    typeof fn === "function" && fn.name === "pullMissionStatus" && Number(delay) <= 5000;
-
-  window.setTimeout = function(fn, delay, ...args) {
-    if (isLegacyMissionPull(fn, delay)) return 0;
-    return nativeTimeout(fn, delay, ...args);
-  };
-  window.setInterval = function(fn, delay, ...args) {
-    if (isLegacyMissionPull(fn, delay)) return 0;
-    return nativeInterval(fn, delay, ...args);
-  };
+  const isLegacyMissionPull = (fn, delay) => typeof fn === "function" && fn.name === "pullMissionStatus" && Number(delay) <= 5000;
+  window.setTimeout = function(fn, delay, ...args) { if (isLegacyMissionPull(fn, delay)) return 0; return nativeTimeout(fn, delay, ...args); };
+  window.setInterval = function(fn, delay, ...args) { if (isLegacyMissionPull(fn, delay)) return 0; return nativeInterval(fn, delay, ...args); };
 
   if ("serviceWorker" in navigator) {
     try {
@@ -90,9 +91,7 @@
           return nativeAdd.call(this, type, listener, options);
         };
       }
-    } catch (err) {
-      console.warn("Kraków Pocket update guard", err);
-    }
+    } catch (err) { console.warn("Kraków Pocket update guard", err); }
   }
 
   document.addEventListener("click", event => {
@@ -101,7 +100,7 @@
   }, true);
 
   window.KP_STABILITY = {
-    version: "1.8",
+    version: "1.9",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
@@ -111,6 +110,7 @@
     inlineLandmarks: true,
     interactiveAlbum: true,
     albumExperienceV3: true,
+    albumVisualPolish: true,
     albumOfflineCompat: true
   };
 })();
