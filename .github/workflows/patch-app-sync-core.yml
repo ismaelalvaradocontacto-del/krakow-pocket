@@ -1,4 +1,4 @@
-name: Patch Krakow Pocket R4 scroll assertion
+name: Patch Krakow Pocket Safari album refresh
 
 on:
   push:
@@ -11,31 +11,54 @@ permissions:
   contents: write
 
 jobs:
-  patch-r4-scroll:
+  patch-album-refresh:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - name: Patch non-zero scroll setup
+      - name: Canonicalize signatures and deferred refresh
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('.github/scripts/krakow-album-v5-final-audit-r4.mjs')
+          p=Path('Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js')
           s=p.read_text()
-          old="""  await stableFrameEval(f,'html',()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,180)});await page.waitForTimeout(100);const y1=await stableFrameEval(f,'body',()=>scrollY);await page.evaluate(()=>{memoryTitle.value='Scroll estable';memoryNote.value='Recuerdo nuevo';memoryPlace.value='Cracovia';memoryForm.requestSubmit()});await page.waitForTimeout(1900);const y2=await stableFrameEval(f,'body',()=>scrollY);check('non-zero scroll stable',Math.abs(y2-y1)<=4,`${y1}->${y2}`);await stableFrameEval(f,'html',()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,0)});await page.waitForTimeout(100);await page.evaluate(()=>{memoryTitle.value='Scroll cero';memoryNote.value='Recuerdo arriba';memoryPlace.value='Cracovia';memoryForm.requestSubmit()});await page.waitForTimeout(1900);const y0=await stableFrameEval(f,'body',()=>scrollY);check('zero scroll stable',Math.abs(y0)<=4,`0->${y0}`);"""
-          new="""  let y1=0;for(let i=0;i<10;i++){y1=await stableFrameEval(f,'html',()=>{document.documentElement.style.scrollBehavior='auto';const max=Math.max(0,document.documentElement.scrollHeight-innerHeight),target=Math.min(180,max);scrollTo(0,target);return scrollY});if(y1>20)break;await page.waitForTimeout(120)}check('non-zero scroll position established',y1>20,`start=${y1}`);await page.evaluate(()=>{memoryTitle.value='Scroll estable';memoryNote.value='Recuerdo nuevo';memoryPlace.value='Cracovia';memoryForm.requestSubmit()});await page.waitForTimeout(1900);const y2=await stableFrameEval(f,'body',()=>scrollY);check('non-zero scroll stable',y1>20&&Math.abs(y2-y1)<=8,`${y1}->${y2}`);await stableFrameEval(f,'html',()=>{document.documentElement.style.scrollBehavior='auto';scrollTo(0,0)});await page.waitForTimeout(120);await page.evaluate(()=>{memoryTitle.value='Scroll cero';memoryNote.value='Recuerdo arriba';memoryPlace.value='Cracovia';memoryForm.requestSubmit()});await page.waitForTimeout(1900);const y0=await stableFrameEval(f,'body',()=>scrollY);check('zero scroll stable',Math.abs(y0)<=4,`0->${y0}`);"""
+
+          old='''function sig(){const s=projected();return JSON.stringify({e:Object.entries(s.missionEvidence||{}).map(([id,x])=>[id,x?.updatedAt,x?.photo?.length,x?.title]),a:active(s.albumPhotos).map(x=>[x.id,x.updatedAt,x.photo?.length,x.title,x.deletedAt]),m:active(s.memories).map(x=>[x.id,x.updatedAt||x.ts,x.title,x.note])})}'''
+          new='''const canonId=x=>String(x?.id||"");\nfunction sig(){const s=projected(),e=Object.entries(s.missionEvidence||{}).sort(([a],[b])=>String(a).localeCompare(String(b))).map(([id,x])=>[id,x?.updatedAt,x?.photo?.length,x?.title]),a=active(s.albumPhotos).slice().sort((x,y)=>canonId(x).localeCompare(canonId(y))).map(x=>[x.id,x.updatedAt,x.photo?.length,x.title,x.deletedAt]),m=active(s.memories).slice().sort((x,y)=>canonId(x).localeCompare(canonId(y))).map(x=>[x.id,x.updatedAt||x.ts,x.title,x.note]);return JSON.stringify({e,a,m})}'''
           if old not in s:
-              raise SystemExit('R4 scroll block not found')
-          p.write_text(s.replace(old,new,1))
+              raise SystemExit('signature target not found')
+          s=s.replace(old,new,1)
+
+          old='''function monitorViewer(){clearInterval(monitor);monitor=setInterval(()=>{if(!dialog?.open){clearInterval(monitor);monitor=0;return}const s=sig();if(s!==lastSig)scheduleRefresh(90)},1200)}'''
+          new='''function monitorViewer(){clearInterval(monitor);monitor=setInterval(()=>{if(!dialog?.open){clearInterval(monitor);monitor=0;return}const doc=frame?.contentDocument;if(pendingRefresh&&!doc?.querySelector("#storyMode.open,#lightbox.open")){scheduleRefresh(40);return}const s=sig();if(s!==lastSig)scheduleRefresh(180)},700)}'''
+          if old not in s:
+              raise SystemExit('monitor target not found')
+          s=s.replace(old,new,1)
+
+          old='''function handleState(){archiveReplacedEvidence();patch();if(dialog?.open)scheduleRefresh(120)}'''
+          new='''function handleState(){archiveReplacedEvidence();patch();if(dialog?.open)scheduleRefresh(280)}'''
+          if old not in s:
+              raise SystemExit('handleState target not found')
+          s=s.replace(old,new,1)
+
+          old='''window.KP_ALBUM_NEXT={version:VERSION,multiPhoto:true,open,add:openAdd,html,download,print,share,photoCount:count,archiveReplacedEvidence,eventDrivenRefresh:true,serializedRefresh:true,printRefreshLock:true,protectedEvidenceProjection:true,scrollIntentProtocol:true}}'''
+          new='''window.KP_ALBUM_NEXT={version:VERSION,multiPhoto:true,open,add:openAdd,html,download,print,share,photoCount:count,archiveReplacedEvidence,eventDrivenRefresh:true,serializedRefresh:true,printRefreshLock:true,protectedEvidenceProjection:true,scrollIntentProtocol:true,canonicalStateSignature:true,deferredOverlayRefresh:true}}'''
+          if old not in s:
+              raise SystemExit('flags target not found')
+          s=s.replace(old,new,1)
+
+          p.write_text(s)
           PY
-          node --check .github/scripts/krakow-album-v5-final-audit-r4.mjs
-          grep -q 'non-zero scroll position established' .github/scripts/krakow-album-v5-final-audit-r4.mjs
-      - name: Commit deterministic scroll audit
+          node --check Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js
+          grep -q 'canonicalStateSignature:true' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js
+          grep -q 'deferredOverlayRefresh:true' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js
+          grep -q 'sort((x,y)=>canonId' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js
+      - name: Commit refresh fix
         run: |
           if git diff --quiet; then exit 0; fi
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add .github/scripts/krakow-album-v5-final-audit-r4.mjs
-          git commit -m "Make R4 non-zero scroll assertion deterministic"
+          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js
+          git commit -m "Deduplicate Safari album refresh lifecycle"
           git push origin HEAD:main
