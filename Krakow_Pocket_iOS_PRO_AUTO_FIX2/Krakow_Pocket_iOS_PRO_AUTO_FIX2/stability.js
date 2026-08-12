@@ -81,6 +81,15 @@
     document.head.appendChild(digital);
   }
 
+  if (!window.__kpAlbumDigitalRuntimeFixLoader && !document.querySelector('script[data-kp-album-digital-runtime-fix]')) {
+    window.__kpAlbumDigitalRuntimeFixLoader = true;
+    const runtimeFix = document.createElement("script");
+    runtimeFix.src = "./album-digital-v4-runtime-fix.js?v=20260812a";
+    runtimeFix.async = false;
+    runtimeFix.dataset.kpAlbumDigitalRuntimeFix = "1";
+    document.head.appendChild(runtimeFix);
+  }
+
   try { sessionStorage.setItem("kpMissionMutation", "1"); } catch {}
 
   const nativeTimeout = window.setTimeout.bind(window);
@@ -118,7 +127,7 @@
   }, true);
 
   window.KP_STABILITY = {
-    version: "2.0",
+    version: "2.1",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
@@ -131,6 +140,7 @@
     albumVisualPolish: true,
     albumOfflineCompat: true,
     digitalAlbumV4: true,
-    albumPhotoQuality: true
+    albumPhotoQuality: true,
+    digitalAlbumRuntimeStable: true
   };
 })();
