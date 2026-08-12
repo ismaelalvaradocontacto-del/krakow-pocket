@@ -6,7 +6,7 @@ on:
 jobs:
   trace:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -14,7 +14,7 @@ jobs:
           node-version: 22
       - run: |
           npm install --no-save playwright@1.55.0 >/tmp/npm.log 2>&1
-          npx playwright install --with-deps chromium >/tmp/pw.log 2>&1
+          npx playwright install --with-deps chromium webkit >/tmp/pw.log 2>&1
       - run: |
           APP_DIR="Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2"
           python3 -m http.server 4173 --bind 127.0.0.1 --directory "$APP_DIR" >/tmp/http.log 2>&1 &
