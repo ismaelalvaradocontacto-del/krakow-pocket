@@ -39,6 +39,7 @@
   let albumScrollIntent = null;
   let albumScrollAnchor = null;
   let albumScrollBoundDocument = null;
+  let albumRestoreEpoch = 0;
   const albumNextOwnsScroll = () => window.KP_ALBUM_NEXT?.version === "6.0";
   const albumAnchorFor = (frame, y) => {
     try {
@@ -88,25 +89,40 @@
     } catch {}
     return albumScrollY;
   };
+  const cancelAlbumRestore = frame => {
+    albumRestoreEpoch += 1;
+    albumScrollIntent = null;
+    albumScrollAnchor = null;
+    try { albumScrollY = Math.max(0, Number(frame?.contentWindow?.scrollY) || 0); } catch {}
+  };
   const bindAlbumInnerDocument = frame => {
     const win = frame?.contentWindow, doc = frame?.contentDocument;
     if (!win || !doc || albumScrollBoundDocument === doc) return;
     albumScrollBoundDocument = doc;
     const capture = () => captureAlbumScroll(frame);
+    const userCancel = () => cancelAlbumRestore(frame);
     win.addEventListener("scroll", capture, { passive:true });
     win.addEventListener("pagehide", capture, { passive:true });
     win.addEventListener("beforeunload", capture);
+    win.addEventListener("wheel", userCancel, { passive:true, capture:true });
+    win.addEventListener("touchstart", userCancel, { passive:true, capture:true });
+    win.addEventListener("pointerdown", userCancel, { passive:true, capture:true });
+    win.addEventListener("keydown", event => {
+      if (["ArrowUp","ArrowDown","PageUp","PageDown","Home","End"," "].includes(event.key)) userCancel();
+    }, true);
     doc.addEventListener("visibilitychange", () => { if (doc.visibilityState === "hidden") capture(); }, { passive:true });
   };
   const restoreAlbumScroll = frame => {
     const win = frame?.contentWindow, doc = frame?.contentDocument;
     if (!win || !doc?.documentElement) return;
+    const epoch = ++albumRestoreEpoch;
     const intended = Math.max(0, Number(albumScrollIntent != null ? albumScrollIntent : albumScrollY) || 0);
     const anchor = albumScrollAnchor;
     const root = doc.documentElement;
     const previousInline = root.style.scrollBehavior;
     root.style.scrollBehavior = "auto";
     const restore = () => {
+      if (epoch !== albumRestoreEpoch) return;
       try {
         const target = albumTargetFor(frame, anchor, intended);
         win.scrollTo(0, target);
@@ -117,7 +133,13 @@
     try { win.requestAnimationFrame(() => { restore(); win.requestAnimationFrame(restore); }); } catch {}
     const delays = albumNextOwnsScroll() ? [70, 160, 300, 480] : [50, 120, 240, 420];
     delays.forEach(delay => setTimeout(restore, delay));
-    setTimeout(() => { try { root.style.scrollBehavior = previousInline; } catch {} }, Math.max(...delays)+40);
+    setTimeout(() => {
+      if (epoch === albumRestoreEpoch) {
+        albumScrollIntent = null;
+        albumScrollAnchor = null;
+      }
+      try { root.style.scrollBehavior = previousInline; } catch {}
+    }, Math.max(...delays)+40);
     bindAlbumInnerDocument(frame);
   };
   const bindAlbumFrame = () => {
@@ -127,10 +149,10 @@
     frame.addEventListener("load", () => {
       albumScrollBoundDocument = null;
       restoreAlbumScroll(frame);
-      setTimeout(() => { albumScrollIntent = null; albumScrollAnchor = null; }, 560);
     });
     const dialog = document.getElementById("kpAlbumV5Dialog");
     dialog?.addEventListener("close", () => {
+      albumRestoreEpoch += 1;
       albumScrollY = 0;
       albumScrollIntent = null;
       albumScrollAnchor = null;
@@ -143,13 +165,14 @@
   albumObserver.observe(document.documentElement, { childList:true, subtree:true });
   window.addEventListener("kp:album-scroll-intent", event => {
     const y = Math.max(0, Number(event?.detail?.y) || 0);
+    albumRestoreEpoch += 1;
     albumScrollAnchor = albumAnchorFor(albumFrame, y);
     albumScrollY = y;
     albumScrollIntent = y;
   });
   document.addEventListener("click", event => {
-    if (event.target.closest?.("#kpAlbumV5Open")) { albumScrollY = 0; albumScrollIntent = 0; albumScrollAnchor = {kind:"top",offset:0,fallback:0}; }
-    if (event.target.closest?.("#kpAlbumV5Close")) { albumScrollY = 0; albumScrollIntent = null; albumScrollAnchor = null; }
+    if (event.target.closest?.("#kpAlbumV5Open")) { albumRestoreEpoch += 1; albumScrollY = 0; albumScrollIntent = 0; albumScrollAnchor = {kind:"top",offset:0,fallback:0}; }
+    if (event.target.closest?.("#kpAlbumV5Close")) { albumRestoreEpoch += 1; albumScrollY = 0; albumScrollIntent = null; albumScrollAnchor = null; }
   }, true);
   bindAlbumFrame();
 
@@ -179,7 +202,7 @@
   document.addEventListener("click", event => { if (!event.target.closest?.("#applyUpdate")) return; try { sessionStorage.setItem("kpApplyUpdate", "1"); } catch {} }, true);
 
   window.KP_STABILITY = {
-    version: "3.2",
+    version: "3.3",
     automaticReloadsBlocked: true,
     storybookSkin: true,
     passiveToasts: true,
@@ -198,6 +221,7 @@
     albumScrollIntentProtocol: true,
     albumNextOwnsScrollRestore: true,
     albumSemanticScrollAnchor: true,
-    albumIframeGuardRevision: "20260812b"
+    albumUserScrollCancelsRestore: true,
+    albumIframeGuardRevision: "20260812c"
   };
 })();
