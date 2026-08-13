@@ -1,4 +1,4 @@
-name: Enable Krakow Pocket completed mission photo replacement
+name: Finish Krakow Pocket completed mission photo replacement
 on:
   push:
     branches: [main]
@@ -12,89 +12,64 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
-      - name: Add safe completed mission photo replacement
+      - name: Fix replacement labels and archive race
         run: |
           python3 - <<'PY'
           from pathlib import Path
           root=Path('Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2')
 
-          p=root/'mission-proof.js'
-          s=p.read_text()
-          s=s.replace('const VERSION="2.1";','const VERSION="2.2";',1)
-          s=s.replace('let activePoi=null,activePosition=null,allowId=null,proofDialog=null,pendingPhotoFile=null;','let activePoi=null,activePosition=null,allowId=null,proofDialog=null,pendingPhotoFile=null,replaceMode=false,previousEvidence=null;',1)
-          old='''function setStateEvidence(id,entry){\n  const s=read();\n  s.missionEvidence={...(s.missionEvidence||{}),[id]:entry};\n  s.updatedAt=now();\n  localStorage.setItem(STORAGE,JSON.stringify(s));\n  try{window.dispatchEvent(new CustomEvent("kp:mission-evidence-local",{detail:{id,entry}}))}catch{}\n  try{window.dispatchEvent(new CustomEvent("kp:statechange",{detail:{source:"mission-proof",id}}))}catch{}\n}'''
-          new='''function setStateEvidence(id,entry,extra={}){\n  const s=read();\n  s.missionEvidence={...(s.missionEvidence||{}),[id]:entry};\n  s.updatedAt=now();\n  localStorage.setItem(STORAGE,JSON.stringify(s));\n  try{window.dispatchEvent(new CustomEvent("kp:mission-evidence-local",{detail:{id,entry,...extra}}))}catch{}\n  try{window.dispatchEvent(new CustomEvent("kp:statechange",{detail:{source:"mission-proof",id,...extra}}))}catch{}\n}'''
-          if old not in s: raise SystemExit('setStateEvidence anchor missing')
+          # The mission management adapter was repainting completed quest buttons as "Desmarcar".
+          p=root/'enhancements.js';s=p.read_text()
+          old='''document.querySelectorAll(".q-done[data-poi]").forEach(b=>{const isDone=effective(s,b.dataset.poi);b.textContent=isDone?"↩ Desmarcar":"✓ Completar";b.classList.toggle("green",!isDone);b.classList.toggle("secondary",isDone);b.closest(".quest")?.classList.toggle("done",isDone)})'''
+          new='''document.querySelectorAll(".q-done[data-poi]").forEach(b=>{const isDone=effective(s,b.dataset.poi);b.textContent=isDone?"📷 Cambiar foto":"✓ Completar";b.classList.toggle("green",!isDone);b.classList.toggle("secondary",isDone);b.closest(".quest")?.classList.toggle("done",isDone)})'''
+          if old not in s: raise SystemExit('enhancements renderMissionControls label anchor missing')
           s=s.replace(old,new,1)
-          s=s.replace('place:document.getElementById("kpProofPlace"),gps:document.getElementById("kpProofGpsChip")','place:document.getElementById("kpProofPlace"),lead:document.getElementById("kpProofLead"),gps:document.getElementById("kpProofGpsChip")',1)
-          s=s.replace('<div class="small">Para conseguir la escama hay que estar allí y guardar una foto.</div>','<div class="small" id="kpProofLead">Para conseguir la escama hay que estar allí y guardar una foto.</div>',1)
-          old='''    r.status.innerHTML=ok?`<strong>✓ Estás lo bastante cerca</strong>A ${Math.round(dist)} m de ${esc(p.name)}. Ya puedes hacer la foto de la misión.`:`<strong>Acércate un poco más</strong>Estás a ${Math.round(dist)} m. Esta misión se desbloquea dentro de ${limit} m.`;'''
-          new='''    r.status.innerHTML=ok?(replaceMode?`<strong>✓ Puedes cambiar la foto</strong>Sigues dentro del radio de ${esc(p.name)} (${Math.round(dist)} m). Haz la foto definitiva y sustituiremos la anterior sin tocar la misión.`:`<strong>✓ Estás lo bastante cerca</strong>A ${Math.round(dist)} m de ${esc(p.name)}. Ya puedes hacer la foto de la misión.`):`<strong>Acércate un poco más</strong>Estás a ${Math.round(dist)} m. Esta misión se desbloquea dentro de ${limit} m.`;'''
-          if old not in s: raise SystemExit('checkGps status anchor missing')
-          s=s.replace(old,new,1)
-          s=s.replace('async function reclaimSpaceAndSave(id,entry){','async function reclaimSpaceAndSave(id,entry,extra={}){',1)
-          s=s.replace('emitEvidence(id,entry,{storageRecovery:true});','emitEvidence(id,entry,{...extra,storageRecovery:true});',1)
-          s=s.replace('async function saveEvidenceAdaptive(id,entry,file){\n  try{setStateEvidence(id,entry);return entry}catch{}','async function saveEvidenceAdaptive(id,entry,file,extra={}){\n  try{setStateEvidence(id,entry,extra);return entry}catch{}',1)
-          s=s.replace('try{setStateEvidence(id,candidate);return candidate}catch{}','try{setStateEvidence(id,candidate,extra);return candidate}catch{}')
-          s=s.replace('return reclaimSpaceAndSave(id,last);','return reclaimSpaceAndSave(id,last,extra);',1)
-          s=s.replace('''    r.status.innerHTML=`<strong>✓ Evidencia preparada</strong>${esc(currentPlayer())}, guardaremos la foto y la distancia verificada. Las coordenadas exactas no se guardan.`;\n    r.finish.dataset.photo=dataUrl;r.finish.disabled=false;r.finish.style.display="flex";''','''    r.status.innerHTML=replaceMode?`<strong>✓ Nueva foto preparada</strong>${esc(currentPlayer())}, sustituiremos la foto anterior manteniendo la misión completada.`:`<strong>✓ Evidencia preparada</strong>${esc(currentPlayer())}, guardaremos la foto y la distancia verificada. Las coordenadas exactas no se guardan.`;\n    r.finish.dataset.photo=dataUrl;r.finish.textContent=replaceMode?"✓ Guardar nueva foto":"✓ Guardar foto y completar misión";r.finish.disabled=false;r.finish.style.display="flex";''',1)
-          old='''function openProof(id){\n  const p=poi(id),q=quest(id);if(!p||!q||!Number.isFinite(p.lat)||!Number.isFinite(p.lon))return false;\n  const old=evidence(read())[id];\n  if(old?.photo&&old?.verified){allowAndComplete(id);return true}\n  activePoi=id;activePosition=null;pendingPhotoFile=null;ensureProofDialog();const r=refs();\n  r.place.textContent=p.name;r.gps.className="kp-proof-chip";r.gps.textContent="📍 GPS pendiente";r.photo.className="kp-proof-chip";r.photo.textContent="📷 Foto pendiente";\n  r.status.innerHTML=`<strong>Primero: estar allí</strong>Debes estar dentro de ${radius(id)} m de ${esc(p.name)}.`;\n  r.input.value="";r.input.disabled=true;r.label.classList.add("disabled");r.label.classList.remove("ready");r.preview.style.display="none";r.image.removeAttribute("src");r.finish.dataset.photo="";r.finish.disabled=true;r.finish.style.display="none";\n  if(!proofDialog.open)proofDialog.showModal();checkGps();return true;\n}'''
-          new='''function openProof(id,options={}){\n  const p=poi(id),q=quest(id);if(!p||!q||!Number.isFinite(p.lat)||!Number.isFinite(p.lon))return false;\n  const state=read(),old=evidence(state)[id],isDone=done(state,id);\n  if(old?.photo&&old?.verified&&!isDone&&!options.replace){allowAndComplete(id);return true}\n  replaceMode=!!(old?.photo&&old?.verified&&(isDone||options.replace));previousEvidence=replaceMode?{...old}:null;\n  activePoi=id;activePosition=null;pendingPhotoFile=null;ensureProofDialog();const r=refs();\n  r.place.textContent=p.name;r.lead.textContent=replaceMode?"La misión ya está completada. Puedes sustituir su foto mientras sigas en el lugar.":"Para conseguir la escama hay que estar allí y guardar una foto.";\n  r.gps.className="kp-proof-chip";r.gps.textContent="📍 GPS pendiente";r.photo.className=`kp-proof-chip ${replaceMode?"ok":""}`;r.photo.textContent=replaceMode?"📷 Foto actual":"📷 Foto pendiente";\n  r.status.innerHTML=replaceMode?`<strong>Foto actual guardada</strong>Comprueba el GPS y podrás cambiarla sin perder la misión ni la recompensa.`:`<strong>Primero: estar allí</strong>Debes estar dentro de ${radius(id)} m de ${esc(p.name)}.`;\n  r.input.value="";r.input.disabled=true;r.label.classList.add("disabled");r.label.classList.remove("ready");if(r.label.firstChild)r.label.firstChild.nodeValue=replaceMode?"📷 Cambiar foto":"📷 Hacer foto";\n  if(replaceMode){r.preview.style.display="block";r.image.src=old.photo}else{r.preview.style.display="none";r.image.removeAttribute("src")}\n  r.finish.dataset.photo="";r.finish.textContent=replaceMode?"✓ Guardar nueva foto":"✓ Guardar foto y completar misión";r.finish.disabled=true;r.finish.style.display="none";\n  if(!proofDialog.open)proofDialog.showModal();checkGps();return true;\n}'''
-          if old not in s: raise SystemExit('openProof anchor missing')
-          s=s.replace(old,new,1)
-          old='''  const stamp=now();\n  const entry={id,questId:q.id,place:p.name,title:q.title,photo,comment:COMMENTS[id]||`Una misión menos y un recuerdo más de ${p.name}.`,by:currentPlayer(),completedAt:stamp,distance:Math.round(dist),radius:limit,verified:true,updatedAt:stamp};\n  r.finish.disabled=true;r.status.innerHTML="<strong>Guardando la foto…</strong>Si hace falta, la app ajustará automáticamente su tamaño sin pedirte que la repitas.";\n  try{\n    const saved=await saveEvidenceAdaptive(id,entry,pendingPhotoFile);\n    r.finish.dataset.photo=saved.photo;r.image.src=saved.photo;\n  }catch{\n    r.finish.disabled=false;r.status.innerHTML="<strong>El almacenamiento de la app está completamente lleno</strong>La foto sigue preparada en esta pantalla. No la repitas; cierra otras pestañas de Kraków Pocket y vuelve a pulsar Guardar.";return;\n  }\n  pendingPhotoFile=null;proofDialog.close();allowAndComplete(id);'''
-          new='''  const stamp=now(),wasReplace=replaceMode;\n  const entry={id,questId:q.id,place:p.name,title:q.title,photo,comment:COMMENTS[id]||`Una misión menos y un recuerdo más de ${p.name}.`,by:currentPlayer(),completedAt:wasReplace&&previousEvidence?.completedAt?previousEvidence.completedAt:stamp,distance:Math.round(dist),radius:limit,verified:true,updatedAt:stamp,...(wasReplace?{replacedAt:stamp}:{})};\n  r.finish.disabled=true;r.status.innerHTML=wasReplace?"<strong>Sustituyendo la foto…</strong>La misión y la recompensa se mantienen intactas.":"<strong>Guardando la foto…</strong>Si hace falta, la app ajustará automáticamente su tamaño sin pedirte que la repitas.";\n  try{\n    const saved=await saveEvidenceAdaptive(id,entry,pendingPhotoFile,{replaceOnly:wasReplace});\n    r.finish.dataset.photo=saved.photo;r.image.src=saved.photo;\n  }catch{\n    r.finish.disabled=false;r.status.innerHTML="<strong>El almacenamiento de la app está completamente lleno</strong>La foto sigue preparada en esta pantalla. No la repitas; cierra otras pestañas de Kraków Pocket y vuelve a pulsar Guardar.";return;\n  }\n  pendingPhotoFile=null;replaceMode=false;previousEvidence=null;proofDialog.close();if(!wasReplace)allowAndComplete(id);else try{window.dispatchEvent(new CustomEvent("kp:mission-photo-replaced",{detail:{id}}))}catch{}'''
-          if old not in s: raise SystemExit('finishMission replacement anchor missing')
-          s=s.replace(old,new,1)
-          old='''  const s=read();if(done(s,id))return;\n  e.preventDefault();e.stopImmediatePropagation();openProof(id);'''
-          new='''  const s=read();\n  e.preventDefault();e.stopImmediatePropagation();\n  if(done(s,id)){openProof(id,{replace:true});return}\n  openProof(id);'''
-          if old not in s: raise SystemExit('interceptCompletion anchor missing')
-          s=s.replace(old,new,1)
-          s=s.replace('albumUnifiedV5:true,legacyAlbumUi:false,legacyAlbumExporter:false,','albumUnifiedV5:true,legacyAlbumUi:false,legacyAlbumExporter:false,replaceCompletedPhoto:true,',1)
+          old='''document.addEventListener("click",e=>{const b=e.target.closest?.(".q-done[data-poi]");if(!b)return;e.preventDefault();e.stopImmediatePropagation();const s=normalize(read()),id=b.dataset.poi,isDone=effective(s,id),q=D.quests.find(x=>x.poi===id);change([id],!isDone,isDone?`↩ ${q?.title||"Misión"} vuelve a estar pendiente`:`✓ ${q?.title||"Misión"} completada`)},true);'''
+          new='''document.addEventListener("click",e=>{const b=e.target.closest?.(".q-done[data-poi]");if(!b)return;const s=normalize(read()),id=b.dataset.poi,isDone=effective(s,id);if(isDone){const proof=s.missionEvidence?.[id],api=window.KP_MISSION_PROOF;if(proof?.verified===true&&typeof proof.photo==="string"&&proof.photo.startsWith("data:image/")&&api?.replaceCompletedPhoto&&typeof api.open==="function"){e.preventDefault();e.stopImmediatePropagation();api.open(id,{replace:true});return}return}e.preventDefault();e.stopImmediatePropagation();const q=D.quests.find(x=>x.poi===id);change([id],true,`✓ ${q?.title||"Misión"} completada`)},true);'''
+          if old not in s: raise SystemExit('enhancements q-done click anchor missing')
+          s=s.replace(old,new,1).replace('window.KP_ENHANCEMENTS={version:"7.0",reloadFree:true};','window.KP_ENHANCEMENTS={version:"7.1",reloadFree:true,completedMissionPhotoReplacement:true};',1)
           p.write_text(s)
 
-          p=root/'mission-proof-guard.js';s=p.read_text()
-          s=s.replace('const state=read();if(done(state,id))return;\n  const proof=state.missionEvidence?.[id];','const state=read();\n  const proof=state.missionEvidence?.[id];',1)
-          old='''  if(proof?.verified===true&&typeof proof.photo==="string"&&proof.photo.startsWith("data:image/"))return;\n  const api=window.KP_MISSION_PROOF;\n  if(!api?.open)return;\n  event.preventDefault();event.stopImmediatePropagation();event.stopPropagation();\n  api.open(id);'''
-          new='''  const api=window.KP_MISSION_PROOF;\n  if(!api?.open)return;\n  if(done(state,id)&&proof?.verified===true&&typeof proof.photo==="string"&&proof.photo.startsWith("data:image/")){event.preventDefault();event.stopImmediatePropagation();event.stopPropagation();api.open(id,{replace:true});return}\n  if(proof?.verified===true&&typeof proof.photo==="string"&&proof.photo.startsWith("data:image/"))return;\n  event.preventDefault();event.stopImmediatePropagation();event.stopPropagation();\n  api.open(id);'''
-          if old not in s: raise SystemExit('mission proof guard anchor missing')
-          s=s.replace(old,new,1).replace('version:"1.0",hardGate:true,requiresStoredEvidence:true','version:"1.1",hardGate:true,requiresStoredEvidence:true,replaceCompletedPhoto:true',1)
+          # The pixel/story UI must describe the same action instead of suggesting an undo.
+          p=root/'mission-fix.js';s=p.read_text()
+          s=s.replace('const label = done ? "↩ Desmarcar" : "Completar";','const label = done ? "📷 Cambiar foto" : "Completar";',1)
+          old='''    const done = qIds.has(id) ? isDone(s, id) : discovered(s, id);\n    const label = done ? "↩ Desmarcar descubierto" : "✨ Marcar descubierto";'''
+          new='''    const done = qIds.has(id) ? isDone(s, id) : discovered(s, id);\n    const label = qIds.has(id) && done ? "📷 Cambiar foto" : (done ? "↩ Desmarcar descubierto" : "✨ Marcar descubierto");'''
+          if old not in s: raise SystemExit('mission-fix story label anchor missing')
+          s=s.replace(old,new,1).replace('window.KP_MISSION_UX = { version: "4.2", stateHooks: false, networkHooks: false };','window.KP_MISSION_UX = { version: "4.3", stateHooks: false, networkHooks: false, completedMissionPhotoReplacement: true };',1)
           p.write_text(s)
 
+          # Replacement is marked on the evidence itself. This closes the race where storage/state events
+          # can arrive before the custom event carrying replaceOnly metadata.
           p=root/'album-next.js';s=p.read_text()
-          s=s.replace('function archiveReplacedEvidence(){\n const current=mergeEvidence(protectedState().missionEvidence||{}),extra=[];','function archiveReplacedEvidence(skipId=""){\n const current=mergeEvidence(protectedState().missionEvidence||{}),extra=[];',1)
-          s=s.replace('for(const [id,old] of Object.entries(lastEvidence||{})){\n  const fresh=current[id];','for(const [id,old] of Object.entries(lastEvidence||{})){\n  if(skipId&&id===skipId)continue;\n  const fresh=current[id];',1)
-          s=s.replace('function handleData(){archiveReplacedEvidence();patch();scheduleRefresh(600)}','function handleData(event){archiveReplacedEvidence(event?.detail?.replaceOnly?event.detail.id:"");patch();scheduleRefresh(600)}',1)
-          s=s.replace('preservesSupersededEvidence:true,eventDrivenRefresh:true','preservesSupersededEvidence:true,intentionalReplacementSkipsArchive:true,eventDrivenRefresh:true',1)
+          old='''  if(skipId&&id===skipId)continue;\n  const fresh=current[id];if(!old?.photo||!fresh?.photo||photoHash(old.photo)===photoHash(fresh.photo))continue;'''
+          new='''  const fresh=current[id];\n  if(skipId&&id===skipId)continue;\n  if(fresh?.replacedAt&&stamp(fresh)>=stamp(old)){continue}\n  if(!old?.photo||!fresh?.photo||photoHash(old.photo)===photoHash(fresh.photo))continue;'''
+          if old not in s: raise SystemExit('album replacement archive anchor missing')
+          s=s.replace(old,new,1)
+          s=s.replace('controllerRevision:"20260813b"','controllerRevision:"20260813c"',1)
+          s=s.replace('intentionalReplacementSkipsArchive:true,eventDrivenRefresh:true','intentionalReplacementSkipsArchive:true,replacementArchiveGuardByEntry:true,eventDrivenRefresh:true',1)
           p.write_text(s)
-
-          p=root/'app.js';s=p.read_text()
-          target='${isDone?"✓ Completada":"Completar"}'
-          if target not in s: raise SystemExit('completed quest button anchor missing')
-          p.write_text(s.replace(target,'${isDone?"📷 Cambiar foto":"Completar"}',1))
 
           p=root/'sw.js';s=p.read_text()
-          if 'krakow-pocket-v63-photo-quota-20260813a' not in s: raise SystemExit('service worker v63 anchor missing')
-          p.write_text(s.replace('krakow-pocket-v63-photo-quota-20260813a','krakow-pocket-v64-photo-replace-20260813a',1))
+          if 'krakow-pocket-v64-photo-replace-20260813a' not in s: raise SystemExit('service worker v64 anchor missing')
+          p.write_text(s.replace('krakow-pocket-v64-photo-replace-20260813a','krakow-pocket-v65-photo-replace-20260813b',1))
           PY
           APP='Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2'
-          node --check "$APP/mission-proof.js"
-          node --check "$APP/mission-proof-guard.js"
+          node --check "$APP/enhancements.js"
+          node --check "$APP/mission-fix.js"
           node --check "$APP/album-next.js"
-          node --check "$APP/app.js"
           node --check "$APP/sw.js"
-          grep -q 'const VERSION="2.2"' "$APP/mission-proof.js"
-          grep -q 'replaceCompletedPhoto:true' "$APP/mission-proof.js"
-          grep -q 'Guardar nueva foto' "$APP/mission-proof.js"
-          grep -q 'replaceOnly:wasReplace' "$APP/mission-proof.js"
-          grep -q 'replaceCompletedPhoto:true' "$APP/mission-proof-guard.js"
-          grep -q 'intentionalReplacementSkipsArchive:true' "$APP/album-next.js"
-          grep -q '📷 Cambiar foto' "$APP/app.js"
-          grep -q 'krakow-pocket-v64-photo-replace-20260813a' "$APP/sw.js"
-      - name: Commit completed mission photo replacement
+          grep -q 'version:"7.1"' "$APP/enhancements.js"
+          grep -q 'completedMissionPhotoReplacement:true' "$APP/enhancements.js"
+          grep -q '📷 Cambiar foto' "$APP/enhancements.js"
+          grep -q 'version: "4.3"' "$APP/mission-fix.js"
+          grep -q 'replacementArchiveGuardByEntry:true' "$APP/album-next.js"
+          grep -q 'controllerRevision:"20260813c"' "$APP/album-next.js"
+          grep -q 'krakow-pocket-v65-photo-replace-20260813b' "$APP/sw.js"
+      - name: Commit final replacement fix
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/mission-proof.js Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/mission-proof-guard.js Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/sw.js
-          git commit -m 'Allow replacing completed mission photos safely'
+          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/enhancements.js Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/mission-fix.js Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/sw.js
+          git commit -m 'Finish completed mission photo replacement UX'
           git push origin HEAD:main
