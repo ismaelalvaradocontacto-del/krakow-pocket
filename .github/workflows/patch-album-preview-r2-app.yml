@@ -1,4 +1,4 @@
-name: Compact Krakow Pocket album preview action bar
+name: Fix Krakow Pocket photo storage quota
 on:
   push:
     branches: [main]
@@ -12,26 +12,53 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
-      - name: Compact mobile preview footer
+      - name: Add adaptive photo storage recovery
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js')
+          root=Path('Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2')
+          p=root/'mission-proof.js'
           s=p.read_text()
-          old='''@media(max-width:430px){#kpAlbumV5Card .kp-v5-buttons{grid-template-columns:1fr!important}#kpAlbumV6Add{grid-column:auto}#kpAlbumV5Dialog .kp-v5-shell>footer{grid-template-columns:repeat(2,1fr)!important;gap:6px!important}#kpAlbumV5Dialog .kp-v5-shell>footer button{min-height:44px!important;font-size:12px!important;padding:7px 5px!important}.kp-v5-shell>header strong{font-size:16px!important}}'''
-          new='''@media(max-width:430px){#kpAlbumV5Card .kp-v5-buttons{grid-template-columns:1fr!important}#kpAlbumV6Add{grid-column:auto}#kpAlbumV5Dialog .kp-v5-shell>footer{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important;padding:7px 6px calc(7px + env(safe-area-inset-bottom))!important}#kpAlbumV5Dialog .kp-v5-shell>footer button{min-height:44px!important;font-size:11px!important;padding:6px 2px!important;line-height:1.05!important;white-space:nowrap!important}.kp-v5-shell>header strong{font-size:16px!important}}'''
-          if old not in s: raise SystemExit('mobile 2x2 footer target missing')
-          s=s.replace(old,new,1).replace('controllerRevision:"20260813a"','controllerRevision:"20260813b"',1)
+          s=s.replace('const VERSION="2.0";','const VERSION="2.1";',1)
+          s=s.replace('let activePoi=null,activePosition=null,allowId=null,proofDialog=null;','let activePoi=null,activePosition=null,allowId=null,proofDialog=null,pendingPhotoFile=null;',1)
+          old='''async function optimizePhoto(file){const img=await loadImage(file);let data=renderJpeg(img,720,.7);if(data.length>180000)data=renderJpeg(img,560,.62);if(data.length>180000)data=renderJpeg(img,440,.56);return data}\n\nasync function onPhotoSelected(e){'''
+          new='''async function optimizePhoto(file){const img=await loadImage(file);let data=renderJpeg(img,720,.68);if(data.length>130000)data=renderJpeg(img,600,.60);if(data.length>130000)data=renderJpeg(img,500,.54);if(data.length>130000)data=renderJpeg(img,420,.48);return data}\nfunction loadDataImage(data){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=data})}\nfunction emitEvidence(id,entry,extra={}){try{window.dispatchEvent(new CustomEvent("kp:mission-evidence-local",{detail:{id,entry,...extra}}))}catch{}try{window.dispatchEvent(new CustomEvent("kp:statechange",{detail:{source:"mission-proof",id,...extra}}))}catch{}}\nasync function reclaimSpaceAndSave(id,entry){\n  const state=read(), ev={...(state.missionEvidence||{}),[id]:entry};\n  state.missionEvidence=ev;state.updatedAt=entry.updatedAt||now();\n  const candidates=Object.entries(ev).filter(([key,x])=>key!==id&&typeof x?.photo==="string"&&x.photo.startsWith("data:image/")&&x.photo.length>90000).sort((a,b)=>b[1].photo.length-a[1].photo.length);\n  const reclaimed=[];\n  for(const [key,item] of candidates){\n    try{\n      const img=await loadDataImage(item.photo);let photo=renderJpeg(img,620,.56);if(photo.length>105000)photo=renderJpeg(img,520,.50);if(photo.length>105000)photo=renderJpeg(img,440,.44);\n      if(photo.length>=item.photo.length)continue;\n      const ts=now();ev[key]={...item,photo,photoQuality:"storage-reclaimed-v1",updatedAt:ts};state.updatedAt=ts;reclaimed.push([key,ev[key]]);\n      try{localStorage.setItem(STORAGE,JSON.stringify(state));emitEvidence(id,entry,{storageRecovery:true});for(const [rid,rentry] of reclaimed)emitEvidence(rid,rentry,{storageReclaim:true});return entry}catch{}\n    }catch{}\n  }\n  throw new Error("quota")\n}\nasync function saveEvidenceAdaptive(id,entry,file){\n  try{setStateEvidence(id,entry);return entry}catch{}\n  if(!file)throw new Error("quota");\n  const img=await loadImage(file),attempts=[[520,.52],[440,.46],[360,.40],[300,.35],[250,.31],[210,.28]];let last=entry;\n  for(const [max,quality] of attempts){\n    const ts=now(),photo=renderJpeg(img,max,quality),candidate={...entry,photo,photoQuality:"storage-adaptive-v1",updatedAt:ts};last=candidate;\n    try{setStateEvidence(id,candidate);return candidate}catch{}\n  }\n  return reclaimSpaceAndSave(id,last);\n}\n\nasync function onPhotoSelected(e){'''
+          if old not in s: raise SystemExit('optimizePhoto anchor missing')
+          s=s.replace(old,new,1)
+          s=s.replace('''  const file=e.target.files?.[0];if(!file||!activePoi)return;\n  const r=refs();''','''  const file=e.target.files?.[0];if(!file||!activePoi)return;\n  pendingPhotoFile=file;\n  const r=refs();''',1)
+          s=s.replace('''    if(!(await checkGps())){e.target.value="";return}''','''    if(!(await checkGps())){pendingPhotoFile=null;e.target.value="";return}''',1)
+          s=s.replace('''  }catch{\n    r.photo.className="kp-proof-chip bad";r.photo.textContent="📷 No se pudo leer";r.status.innerHTML="<strong>No he podido preparar esa imagen</strong>Haz otra foto o elige otra de la fototeca.";e.target.value="";\n  }''','''  }catch{\n    pendingPhotoFile=null;r.photo.className="kp-proof-chip bad";r.photo.textContent="📷 No se pudo leer";r.status.innerHTML="<strong>No he podido preparar esa imagen</strong>Haz otra foto o elige otra de la fototeca.";e.target.value="";\n  }''',1)
+          s=s.replace('''  activePoi=id;activePosition=null;ensureProofDialog();const r=refs();''','''  activePoi=id;activePosition=null;pendingPhotoFile=null;ensureProofDialog();const r=refs();''',1)
+          old='''function finishMission(){\n  const r=refs(),photo=r.finish.dataset.photo,id=activePoi,p=poi(id),q=quest(id);\n  if(!id||!photo||!activePosition||!p||!q)return;\n  const dist=activePosition.distance,limit=radius(id);\n  if(!Number.isFinite(dist)||dist>limit){checkGps();return}\n  const stamp=now();\n  const entry={id,questId:q.id,place:p.name,title:q.title,photo,comment:COMMENTS[id]||`Una misión menos y un recuerdo más de ${p.name}.`,by:currentPlayer(),completedAt:stamp,distance:Math.round(dist),radius:limit,verified:true,updatedAt:stamp};\n  try{setStateEvidence(id,entry)}catch{r.status.innerHTML="<strong>No queda espacio suficiente en el iPhone</strong>Haz otra foto; la app intentará guardarla más comprimida.";return}\n  proofDialog.close();allowAndComplete(id);\n}'''
+          new='''async function finishMission(){\n  const r=refs(),photo=r.finish.dataset.photo,id=activePoi,p=poi(id),q=quest(id);\n  if(!id||!photo||!activePosition||!p||!q)return;\n  const dist=activePosition.distance,limit=radius(id);\n  if(!Number.isFinite(dist)||dist>limit){checkGps();return}\n  const stamp=now();\n  const entry={id,questId:q.id,place:p.name,title:q.title,photo,comment:COMMENTS[id]||`Una misión menos y un recuerdo más de ${p.name}.`,by:currentPlayer(),completedAt:stamp,distance:Math.round(dist),radius:limit,verified:true,updatedAt:stamp};\n  r.finish.disabled=true;r.status.innerHTML="<strong>Guardando la foto…</strong>Si hace falta, la app ajustará automáticamente su tamaño sin pedirte que la repitas.";\n  try{\n    const saved=await saveEvidenceAdaptive(id,entry,pendingPhotoFile);\n    r.finish.dataset.photo=saved.photo;r.image.src=saved.photo;\n  }catch{\n    r.finish.disabled=false;r.status.innerHTML="<strong>El almacenamiento de la app está completamente lleno</strong>La foto sigue preparada en esta pantalla. No la repitas; cierra otras pestañas de Kraków Pocket y vuelve a pulsar Guardar.";return;\n  }\n  pendingPhotoFile=null;proofDialog.close();allowAndComplete(id);\n}'''
+          if old not in s: raise SystemExit('finishMission anchor missing')
+          s=s.replace(old,new,1)
           p.write_text(s)
+
+          p=root/'album-photo-quality.js';s=p.read_text()
+          s=s.replace('const VERSION = "1.0";','const VERSION = "1.1";',1)
+          s=s.replace('const MAX_DATA_LENGTH = 300000;','const MAX_DATA_LENGTH = 220000;\nconst SOFT_STATE_LIMIT = 2600000;',1)
+          s=s.replace('''async function upgradeEvidence(id, entry) {\n  if (applying || !id || !entry?.photo) return;''','''async function upgradeEvidence(id, entry) {\n  if (applying || !id || !entry?.photo) return;\n  if (entry.photoQuality === "storage-adaptive-v1" || entry.photoQuality === "storage-reclaimed-v1") {\n    if (id === "auschwitz") pendingExtra = null; else pendingMission = null;\n    return;\n  }''',1)
+          s=s.replace('''  const state = read(), current = state.missionEvidence?.[id];\n  if (!current?.photo) return;''','''  const state = read(), current = state.missionEvidence?.[id];\n  if (!current?.photo) return;\n  let currentSize = 0; try { currentSize = JSON.stringify(state).length; } catch {}\n  if (currentSize > SOFT_STATE_LIMIT) return;''',1)
+          s=s.replace('''  try {\n    applying = true;\n    localStorage.setItem(STORAGE, JSON.stringify(next));''','''  let payload = ""; try { payload = JSON.stringify(next); } catch { return; }\n  if (payload.length > SOFT_STATE_LIMIT) return;\n  try {\n    applying = true;\n    localStorage.setItem(STORAGE, payload);''',1)
+          s=s.replace('''  maxDataLength: MAX_DATA_LENGTH,''','''  maxDataLength: MAX_DATA_LENGTH,\n  softStateLimit: SOFT_STATE_LIMIT,''',1)
+          p.write_text(s)
+
+          p=root/'sw.js';s=p.read_text().replace('const CACHE="krakow-pocket-v62-album-preview-20260813a";','const CACHE="krakow-pocket-v63-photo-quota-20260813a";',1);p.write_text(s)
           PY
-          APP='Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js'
-          node --check "$APP"
-          grep -q 'repeat(4,minmax(0,1fr))' "$APP"
-          grep -q 'controllerRevision:"20260813b"' "$APP"
-      - name: Commit compact preview footer
+          APP='Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2'
+          node --check "$APP/mission-proof.js"
+          node --check "$APP/album-photo-quality.js"
+          node --check "$APP/sw.js"
+          grep -q 'const VERSION="2.1"' "$APP/mission-proof.js"
+          grep -q 'saveEvidenceAdaptive' "$APP/mission-proof.js"
+          grep -q 'storage-reclaimed-v1' "$APP/mission-proof.js"
+          grep -q 'SOFT_STATE_LIMIT = 2600000' "$APP/album-photo-quality.js"
+          grep -q 'krakow-pocket-v63-photo-quota-20260813a' "$APP/sw.js"
+      - name: Commit photo quota fix
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js
-          git commit -m 'Compact mobile album preview actions'
+          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/mission-proof.js Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-photo-quality.js Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/sw.js
+          git commit -m 'Recover automatically from iPhone photo quota limits'
           git push origin HEAD:main
