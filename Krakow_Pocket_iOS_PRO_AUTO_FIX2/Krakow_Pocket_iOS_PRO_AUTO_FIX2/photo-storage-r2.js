@@ -3,7 +3,7 @@
 if (window.__kpR2PhotoStorage) return;
 window.__kpR2PhotoStorage = true;
 
-const VERSION = "1.0";
+const VERSION = "1.1";
 const STORAGE = "krakowPocketCoop";
 const ENDPOINT = "/api/photo";
 const HEADERS = {
@@ -12,6 +12,8 @@ const HEADERS = {
 };
 const pending = { mission:null, auschwitz:null };
 let migrating = false;
+let frameObserver = null;
+let outerObserver = null;
 
 const now = () => new Date().toISOString();
 const read = () => { try { return JSON.parse(localStorage.getItem(STORAGE) || "{}"); } catch { return {}; } };
@@ -25,6 +27,34 @@ function dataUrlToBlob(dataUrl) {
   const out = new Uint8Array(bytes.length);
   for (let i=0;i<bytes.length;i++) out[i] = bytes.charCodeAt(i);
   return new Blob([out], { type:match[1] || "image/jpeg" });
+}
+
+function loadDataImage(data) {
+  return new Promise((resolve,reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = data;
+  });
+}
+
+async function tinyPreview(data) {
+  if (!embedded(data)) return data;
+  try {
+    const img = await loadDataImage(data);
+    const iw = img.naturalWidth || img.width, ih = img.naturalHeight || img.height;
+    const scale = Math.min(1, 520 / Math.max(iw, ih));
+    const w = Math.max(1, Math.round(iw * scale)), h = Math.max(1, Math.round(ih * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w; canvas.height = h;
+    const ctx = canvas.getContext("2d", { alpha:false });
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0,0,w,h);
+    ctx.drawImage(img,0,0,w,h);
+    return canvas.toDataURL("image/jpeg", .54);
+  } catch { return data; }
 }
 
 async function health() {
@@ -53,20 +83,22 @@ async function uploadFile(file, meta={}) {
   return uploadBlob(file, { ...meta, name:file?.name || meta.name });
 }
 
-function writeExternal(id, previous, uploaded, extra={}) {
+async function writeExternal(id, previous, uploaded, extra={}) {
   const s = read();
   const current = s.missionEvidence?.[id];
-  if (!current || (!embedded(current.photo) && !external(current.photo))) return null;
-  if (external(current.photo) && current.photoKey === uploaded.key) return current;
+  if (!current || !embedded(current.photo)) return null;
+  if (external(current.photoFull) && current.photoKey === uploaded.key) return current;
   const stamp = now();
+  const preview = await tinyPreview(current.photo);
   const entry = {
     ...current,
     ...previous,
-    photo:uploaded.url,
+    photo:preview,
+    photoFull:uploaded.url,
     photoKey:uploaded.key,
     photoMime:uploaded.type || "",
     photoSize:Number(uploaded.size || 0),
-    photoQuality:"r2-original-v1",
+    photoQuality:"r2-preview-v1",
     photoStorage:"cloudflare-r2",
     updatedAt:stamp
   };
@@ -75,6 +107,7 @@ function writeExternal(id, previous, uploaded, extra={}) {
   localStorage.setItem(STORAGE, JSON.stringify(s));
   try { window.dispatchEvent(new CustomEvent("kp:mission-evidence-local", { detail:{ id, entry, r2Storage:true, ...extra } })); } catch {}
   try { window.dispatchEvent(new CustomEvent("kp:statechange", { detail:{ source:"r2-photo-storage", id, ...extra } })); } catch {}
+  upgradeVisiblePhotos();
   return entry;
 }
 
@@ -105,8 +138,71 @@ window.addEventListener("kp:mission-evidence-local", async event => {
   pending[kind] = null;
   const result = await task;
   if (!result?.url) return;
-  writeExternal(id, entry, result, { freshUpload:true });
+  await writeExternal(id, entry, result, { freshUpload:true });
 });
+
+function replacementMap() {
+  const map = new Map();
+  for (const entry of Object.values(read().missionEvidence || {})) {
+    if (embedded(entry?.photo) && external(entry?.photoFull)) map.set(entry.photo, entry.photoFull);
+  }
+  return map;
+}
+
+function upgradeImagesIn(root) {
+  if (!root?.querySelectorAll) return;
+  const map = replacementMap();
+  if (!map.size) return;
+  const images = root.matches?.("img") ? [root] : [...root.querySelectorAll("img")];
+  for (const img of images) {
+    const raw = img.getAttribute("src") || "";
+    const full = map.get(raw);
+    if (full && raw !== full) img.setAttribute("src", full);
+  }
+}
+
+function bindFrame(frame) {
+  if (!frame) return;
+  const apply = () => {
+    try {
+      const doc = frame.contentDocument;
+      if (!doc) return;
+      upgradeImagesIn(doc);
+      frameObserver?.disconnect();
+      frameObserver = new MutationObserver(records => {
+        for (const record of records) {
+          if (record.type === "attributes" && record.target instanceof HTMLImageElement) upgradeImagesIn(record.target);
+          for (const node of record.addedNodes || []) if (node.nodeType === 1) upgradeImagesIn(node);
+        }
+      });
+      frameObserver.observe(doc.documentElement, { subtree:true, childList:true, attributes:true, attributeFilter:["src"] });
+    } catch {}
+  };
+  frame.addEventListener("load", apply);
+  apply();
+}
+
+function upgradeVisiblePhotos() {
+  upgradeImagesIn(document);
+  bindFrame(document.getElementById("kpAlbumV5Frame"));
+}
+
+function installObservers() {
+  outerObserver?.disconnect();
+  outerObserver = new MutationObserver(records => {
+    for (const record of records) {
+      if (record.type === "attributes" && record.target instanceof HTMLImageElement) upgradeImagesIn(record.target);
+      for (const node of record.addedNodes || []) {
+        if (node.nodeType !== 1) continue;
+        upgradeImagesIn(node);
+        const frame = node.matches?.("#kpAlbumV5Frame") ? node : node.querySelector?.("#kpAlbumV5Frame");
+        if (frame) bindFrame(frame);
+      }
+    }
+  });
+  outerObserver.observe(document.documentElement, { subtree:true, childList:true, attributes:true, attributeFilter:["src"] });
+  upgradeVisiblePhotos();
+}
 
 async function migrateExisting() {
   if (migrating || !navigator.onLine) return { migrated:0 };
@@ -115,12 +211,12 @@ async function migrateExisting() {
   try {
     if (!(await health())) return { migrated:0, unavailable:true };
     const s = read();
-    const entries = Object.entries(s.missionEvidence || {}).filter(([,entry]) => embedded(entry?.photo));
+    const entries = Object.entries(s.missionEvidence || {}).filter(([,entry]) => embedded(entry?.photo) && !external(entry?.photoFull));
     for (const [id,entry] of entries) {
       try {
         const blob = dataUrlToBlob(entry.photo);
         const uploaded = await uploadBlob(blob, { name:`legacy-${id}.jpg`, poi:id });
-        if (writeExternal(id, entry, uploaded, { legacyMigration:true })) migrated++;
+        if (await writeExternal(id, entry, uploaded, { legacyMigration:true })) migrated++;
       } catch (error) {
         console.warn("Kraków Pocket R2 legacy migration", id, error);
       }
@@ -130,8 +226,9 @@ async function migrateExisting() {
 }
 
 window.addEventListener("online", () => setTimeout(migrateExisting, 1200));
-if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(migrateExisting, 1800), { once:true });
-else setTimeout(migrateExisting, 1800);
+window.addEventListener("kp:statechange", () => setTimeout(upgradeVisiblePhotos, 0));
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => { installObservers(); setTimeout(migrateExisting, 1800); }, { once:true });
+else { installObservers(); setTimeout(migrateExisting, 1800); }
 
 window.KP_PHOTO_STORAGE = {
   version:VERSION,
@@ -142,7 +239,9 @@ window.KP_PHOTO_STORAGE = {
   health,
   uploadFile,
   migrateExisting,
+  upgradeVisiblePhotos,
   originalUploads:true,
+  localPreviewOnly:true,
   legacyCompatible:true
 };
 })();
