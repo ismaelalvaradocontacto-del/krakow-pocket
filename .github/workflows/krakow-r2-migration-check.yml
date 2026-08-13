@@ -24,6 +24,13 @@ jobs:
           node --check "$ROOT/r2-photo-server.js"
           node --check "$ROOT/functions/api/photo.js"
 
+      - name: Check R2 scripts are loaded by the app
+        run: |
+          ROOT=Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2
+          grep -q 'photo-storage-auth.js' "$ROOT/index.html"
+          grep -q 'photo-storage-r2.js' "$ROOT/index.html"
+          grep -q 'album-photo-quality.js' "$ROOT/index.html"
+
       - name: Check protected R2 path
         run: |
           ROOT=Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2
@@ -33,11 +40,15 @@ jobs:
           grep -q 'X-KP-Upload-Token' "$ROOT/photo-storage-auth.js"
           grep -q 'onRequestPost' "$ROOT/functions/api/photo.js"
 
-      - name: Ensure no committed upload token
+      - name: Ensure no committed upload token or obsolete shared secret
         run: |
           ROOT=Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2
           if grep -Eq 'APP_SECRET|const[[:space:]]+KP_UPLOAD_TOKEN[[:space:]]*=' "$ROOT/r2-photo-server.js" "$ROOT/functions/api/photo.js"; then
             echo 'Committed server upload secret detected'
+            exit 1
+          fi
+          if grep -q 'krakow2026' "$ROOT/photo-storage-r2.js"; then
+            echo 'Obsolete client-side shared secret detected'
             exit 1
           fi
 
