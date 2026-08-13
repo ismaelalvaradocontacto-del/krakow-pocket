@@ -1,0 +1,42 @@
+name: Krakow R2 migration check
+
+on:
+  push:
+    branches:
+      - r2-photo-storage-migration
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate-r2-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check JavaScript syntax
+        run: |
+          node --check Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-photo-quality.js
+          node --check Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/photo-storage-auth.js
+          node --check Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/photo-storage-r2.js
+          node --check functions/api/photo.js
+
+      - name: Check R2 binding and protected write path
+        run: |
+          grep -q 'KP_PHOTOS' functions/api/photo.js
+          grep -q 'KP_UPLOAD_TOKEN' functions/api/photo.js
+          grep -q 'X-KP-Upload-Token' functions/api/photo.js
+          grep -q 'X-KP-Upload-Token' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/photo-storage-auth.js
+
+      - name: Ensure server has no committed upload secret
+        run: |
+          if grep -Eq 'APP_SECRET|const[[:space:]]+KP_UPLOAD_TOKEN[[:space:]]*=' functions/api/photo.js; then
+            echo 'Committed server upload secret detected'
+            exit 1
+          fi
+
+      - name: Ensure R2 layer keeps legacy fallback
+        run: |
+          grep -q 'legacyCompatible:true' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/photo-storage-r2.js
+          grep -q 'localPreviewOnly:true' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/photo-storage-r2.js
