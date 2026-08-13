@@ -1,7 +1,5 @@
 const MAX_BYTES = 25 * 1024 * 1024;
 const PREFIX = "krakow-pocket/2026/";
-const ADVENTURE = "WAWEL-ISMAEL-LAURA";
-const APP_SECRET = "krakow2026";
 
 const json = (data, status = 200, extra = {}) => new Response(JSON.stringify(data), {
   status,
@@ -12,8 +10,22 @@ function bucket(context) {
   return context.env?.KP_PHOTOS || null;
 }
 
-function authorized(request) {
-  return request.headers.get("X-KP-Adventure") === ADVENTURE && request.headers.get("X-KP-Secret") === APP_SECRET;
+function tokenConfigured(context) {
+  return String(context.env?.KP_UPLOAD_TOKEN || "").length >= 24;
+}
+
+function constantTimeEqual(a, b) {
+  a = String(a || ""); b = String(b || "");
+  if (!a.length || a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
+
+function authorized(context) {
+  const expected = String(context.env?.KP_UPLOAD_TOKEN || "");
+  const supplied = String(context.request.headers.get("X-KP-Upload-Token") || "");
+  return expected.length >= 24 && constantTimeEqual(expected, supplied);
 }
 
 function safeMeta(value, max = 120) {
@@ -41,7 +53,9 @@ export async function onRequestGet(context) {
   if (!store) return json({ ok: false, error: "R2 binding KP_PHOTOS is not configured" }, 503);
 
   const url = new URL(context.request.url);
-  if (url.searchParams.get("health") === "1") return json({ ok: true, storage: "r2" });
+  if (url.searchParams.get("health") === "1") {
+    return json({ ok: true, storage: "r2", uploadProtected: tokenConfigured(context) });
+  }
 
   const key = url.searchParams.get("key") || "";
   if (!validKey(key)) return json({ ok: false, error: "Invalid photo key" }, 400);
@@ -60,7 +74,8 @@ export async function onRequestGet(context) {
 export async function onRequestPost(context) {
   const store = bucket(context);
   if (!store) return json({ ok: false, error: "R2 binding KP_PHOTOS is not configured" }, 503);
-  if (!authorized(context.request)) return json({ ok: false, error: "Unauthorized" }, 401);
+  if (!tokenConfigured(context)) return json({ ok: false, error: "Upload token is not configured" }, 503);
+  if (!authorized(context)) return json({ ok: false, error: "Unauthorized" }, 401);
 
   const type = String(context.request.headers.get("Content-Type") || "").toLowerCase().split(";")[0].trim();
   if (!type.startsWith("image/")) return json({ ok: false, error: "Only images are accepted" }, 415);
@@ -100,7 +115,8 @@ export async function onRequestPost(context) {
 export async function onRequestDelete(context) {
   const store = bucket(context);
   if (!store) return json({ ok: false, error: "R2 binding KP_PHOTOS is not configured" }, 503);
-  if (!authorized(context.request)) return json({ ok: false, error: "Unauthorized" }, 401);
+  if (!tokenConfigured(context)) return json({ ok: false, error: "Upload token is not configured" }, 503);
+  if (!authorized(context)) return json({ ok: false, error: "Unauthorized" }, 401);
 
   const url = new URL(context.request.url);
   const key = url.searchParams.get("key") || "";
