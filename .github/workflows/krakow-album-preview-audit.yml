@@ -11,8 +11,10 @@ on:
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/mission-proof.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/mission-proof-guard.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/mission-fix.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-photo-quality.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/enhancements.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/stability.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/styles.css'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/storybook.css'
@@ -40,24 +42,32 @@ jobs:
           node --check "$APP_DIR/album-next.js"
           node --check "$APP_DIR/mission-proof.js"
           node --check "$APP_DIR/mission-proof-guard.js"
+          node --check "$APP_DIR/mission-fix.js"
           node --check "$APP_DIR/album-photo-quality.js"
           node --check "$APP_DIR/app.js"
+          node --check "$APP_DIR/enhancements.js"
           node --check "$APP_DIR/sw.js"
           node --check .github/scripts/krakow-album-preview-audit.mjs
           node --check .github/scripts/krakow-mission-photo-replace.mjs
           grep -q 'const VERSION="6.2"' "$APP_DIR/album-next.js"
-          grep -q 'controllerRevision:"20260813b"' "$APP_DIR/album-next.js"
+          grep -q 'controllerRevision:"20260813c"' "$APP_DIR/album-next.js"
           grep -q 'intentionalReplacementSkipsArchive:true' "$APP_DIR/album-next.js"
+          grep -q 'replacementArchiveGuardByEntry:true' "$APP_DIR/album-next.js"
           grep -q 'isolatedPreviewGuard:true' "$APP_DIR/album-next.js"
           grep -q 'KP_ALBUM_DOCUMENT_FACTORY' "$APP_DIR/album-v5.js"
           grep -q 'const VERSION="2.2"' "$APP_DIR/mission-proof.js"
           grep -q 'replaceCompletedPhoto:true' "$APP_DIR/mission-proof.js"
           grep -q 'replaceOnly:wasReplace' "$APP_DIR/mission-proof.js"
           grep -q 'replaceCompletedPhoto:true' "$APP_DIR/mission-proof-guard.js"
+          grep -q 'version: "4.3"' "$APP_DIR/mission-fix.js"
+          grep -q '📷 Cambiar foto' "$APP_DIR/mission-fix.js"
           grep -q '📷 Cambiar foto' "$APP_DIR/app.js"
+          grep -q 'version:"7.1"' "$APP_DIR/enhancements.js"
+          grep -q 'completedMissionPhotoReplacement:true' "$APP_DIR/enhancements.js"
+          grep -q '📷 Cambiar foto' "$APP_DIR/enhancements.js"
           grep -q 'const VERSION = "1.1"' "$APP_DIR/album-photo-quality.js"
           grep -q 'SOFT_STATE_LIMIT = 2600000' "$APP_DIR/album-photo-quality.js"
-          grep -q 'krakow-pocket-v64-photo-replace-20260813a' "$APP_DIR/sw.js"
+          grep -q 'krakow-pocket-v65-photo-replace-20260813b' "$APP_DIR/sw.js"
           grep -q 'self.skipWaiting' "$APP_DIR/sw.js"
       - name: Install browser engines
         run: |
@@ -80,13 +90,15 @@ jobs:
       - name: Wait for deployed completed-photo replacement
         run: |
           for i in {1..60}; do
-            A=0; M=0; G=0; B=0; S=0
-            curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'intentionalReplacementSkipsArchive:true' && A=1 || true
+            A=0; M=0; G=0; X=0; U=0; B=0; S=0
+            curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'replacementArchiveGuardByEntry:true' && A=1 || true
             curl -fsS https://krakow-pocket.pages.dev/mission-proof.js | grep -q 'const VERSION="2.2"' && M=1 || true
             curl -fsS https://krakow-pocket.pages.dev/mission-proof-guard.js | grep -q 'replaceCompletedPhoto:true' && G=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/enhancements.js | grep -q 'version:"7.1"' && X=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/mission-fix.js | grep -q 'version: "4.3"' && U=1 || true
             curl -fsS https://krakow-pocket.pages.dev/app.js | grep -q '📷 Cambiar foto' && B=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v64-photo-replace-20260813a' && S=1 || true
-            if [ "$A" = 1 ] && [ "$M" = 1 ] && [ "$G" = 1 ] && [ "$B" = 1 ] && [ "$S" = 1 ]; then exit 0; fi
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v65-photo-replace-20260813b' && S=1 || true
+            if [ "$A" = 1 ] && [ "$M" = 1 ] && [ "$G" = 1 ] && [ "$X" = 1 ] && [ "$U" = 1 ] && [ "$B" = 1 ] && [ "$S" = 1 ]; then exit 0; fi
             sleep 4
           done
           exit 1
@@ -110,4 +122,4 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-# gate: isolated album preview + adaptive quota recovery + replace photo on completed mission
+# final gate: isolated album preview + adaptive quota recovery + safe completed mission photo replacement
