@@ -11,6 +11,7 @@ on:
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/stability.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/styles.css'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/storybook.css'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/sw.js'
   workflow_dispatch:
 
 concurrency:
@@ -32,9 +33,15 @@ jobs:
           APP_DIR='Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2'
           node --check "$APP_DIR/album-v5.js"
           node --check "$APP_DIR/album-next.js"
+          node --check "$APP_DIR/sw.js"
           node --check .github/scripts/krakow-album-preview-audit.mjs
-          grep -q 'frame.srcdoc=html()' "$APP_DIR/album-next.js"
-          grep -q 'data-kp-album-v5' "$APP_DIR/album-v5.js"
+          grep -q 'const VERSION="6.2"' "$APP_DIR/album-next.js"
+          grep -q 'isolatedPreviewGuard:true' "$APP_DIR/album-next.js"
+          grep -q 'rejectsAppMarkup:true' "$APP_DIR/album-next.js"
+          grep -q 'stableDocumentFactory:true' "$APP_DIR/album-next.js"
+          grep -q 'KP_ALBUM_DOCUMENT_FACTORY' "$APP_DIR/album-v5.js"
+          grep -q 'krakow-pocket-v62-album-preview-20260813a' "$APP_DIR/sw.js"
+          grep -q 'self.skipWaiting' "$APP_DIR/sw.js"
       - name: Install browser engines
         run: |
           npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
@@ -52,7 +59,10 @@ jobs:
       - name: Wait for deployed album controller
         run: |
           for i in {1..60}; do
-            curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'const VERSION="6.1"' && exit 0 || true
+            A=0; S=0
+            curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'const VERSION="6.2"' && A=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v62-album-preview-20260813a' && S=1 || true
+            if [ "$A" = 1 ] && [ "$S" = 1 ]; then exit 0; fi
             sleep 4
           done
           exit 1
