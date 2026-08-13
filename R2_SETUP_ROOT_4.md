@@ -1,0 +1,1 @@
+Do not expose R2 credentials in browser JavaScript. The browser talks only to the Pages Function endpoint.
