@@ -77,9 +77,10 @@ function evidenceArchiveRecord(id,e){
   comment:e.comment||"",by:e.by||e.player||e.completedBy||"Ambos",verified:e.verified===true,
   distance:Number.isFinite(+e.distance)?Math.round(+e.distance):null,extra:!!(e.extra||e.bonus),completedAt:when,updatedAt:when,photoHash:fp,source:"mission-history"};
 }
-function archiveReplacedEvidence(){
+function archiveReplacedEvidence(skipId=""){
  const current=mergeEvidence(protectedState().missionEvidence||{}),extra=[];
  for(const [id,old] of Object.entries(lastEvidence||{})){
+  if(skipId&&id===skipId)continue;
   const fresh=current[id];if(!old?.photo||!fresh?.photo||photoHash(old.photo)===photoHash(fresh.photo))continue;
   const older=stamp(fresh)>=stamp(old)?old:fresh,r=evidenceArchiveRecord(id,older);if(r)extra.push(r);
  }
@@ -247,13 +248,13 @@ function patchCard(){
 }
 function installApi(){
  const api=captureBase();if(!api?.html)return false;
- window.KP_ALBUM_V5={...window.KP_ALBUM_V5,version:"5.0",albumModelVersion:VERSION,html,open,download,share,print,file,stateSignature:canonicalSignature,multiPhoto:true,verticalPhotosUncropped:true,preservesSupersededEvidence:true,eventDrivenRefresh:true};
+ window.KP_ALBUM_V5={...window.KP_ALBUM_V5,version:"5.0",albumModelVersion:VERSION,html,open,download,share,print,file,stateSignature:canonicalSignature,multiPhoto:true,verticalPhotosUncropped:true,preservesSupersededEvidence:true,intentionalReplacementSkipsArchive:true,eventDrivenRefresh:true};
  window.KP_ALBUM_EXPERIENCE={...(window.KP_ALBUM_EXPERIENCE||{}),version:"5.0",albumModelVersion:VERSION,html,open,download,share,print,file,multiPhoto:true,eventDrivenRefresh:true};
  if(window.KP_MISSION_PROOF){window.KP_MISSION_PROOF.openAlbum=open;window.KP_MISSION_PROOF.downloadAlbum=download}
  return true;
 }
 function patch(){installStyles();const ok=installApi();patchCard();return ok}
-function handleData(){archiveReplacedEvidence();patch();scheduleRefresh(600)}
+function handleData(event){archiveReplacedEvidence(event?.detail?.replaceOnly?event.detail.id:"");patch();scheduleRefresh(600)}
 
 document.addEventListener("click",e=>{
  const id=e.target.closest?.("button")?.id||"";

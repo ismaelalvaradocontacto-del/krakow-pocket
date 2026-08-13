@@ -3,7 +3,7 @@
 if(window.__kpMissionProof)return;
 window.__kpMissionProof=true;
 
-const VERSION="2.1";
+const VERSION="2.2";
 const STORAGE="krakowPocketCoop";
 const PLAYER="krakowPlayer";
 const D=window.KP_DATA;
@@ -34,7 +34,7 @@ const done=(s,id)=>s.missionStatus?.[id]?!!s.missionStatus[id].done:(s.visited||
 const evidence=s=>s.missionEvidence&&typeof s.missionEvidence==="object"?s.missionEvidence:{};
 const radius=id=>RADII[id]||120;
 const currentPlayer=()=>localStorage.getItem(PLAYER)||"Ismael";
-let activePoi=null,activePosition=null,allowId=null,proofDialog=null,pendingPhotoFile=null;
+let activePoi=null,activePosition=null,allowId=null,proofDialog=null,pendingPhotoFile=null,replaceMode=false,previousEvidence=null;
 
 function havMeters(a,b){
   const R=6371000,rad=x=>x*Math.PI/180,dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon),la1=rad(a.lat),la2=rad(b.lat);
@@ -61,13 +61,13 @@ function injectStyles(){
   document.head.appendChild(style);
 }
 
-function setStateEvidence(id,entry){
+function setStateEvidence(id,entry,extra={}){
   const s=read();
   s.missionEvidence={...(s.missionEvidence||{}),[id]:entry};
   s.updatedAt=now();
   localStorage.setItem(STORAGE,JSON.stringify(s));
-  try{window.dispatchEvent(new CustomEvent("kp:mission-evidence-local",{detail:{id,entry}}))}catch{}
-  try{window.dispatchEvent(new CustomEvent("kp:statechange",{detail:{source:"mission-proof",id}}))}catch{}
+  try{window.dispatchEvent(new CustomEvent("kp:mission-evidence-local",{detail:{id,entry,...extra}}))}catch{}
+  try{window.dispatchEvent(new CustomEvent("kp:statechange",{detail:{source:"mission-proof",id,...extra}}))}catch{}
 }
 
 function getPosition(){
@@ -82,14 +82,14 @@ function getPosition(){
 }
 
 function refs(){return{
-  place:document.getElementById("kpProofPlace"),gps:document.getElementById("kpProofGpsChip"),photo:document.getElementById("kpProofPhotoChip"),status:document.getElementById("kpProofStatus"),input:document.getElementById("kpProofInput"),label:document.getElementById("kpProofPhotoLabel"),preview:document.getElementById("kpProofPreview"),image:document.getElementById("kpProofImage"),retry:document.getElementById("kpProofRetry"),finish:document.getElementById("kpProofFinish")
+  place:document.getElementById("kpProofPlace"),lead:document.getElementById("kpProofLead"),gps:document.getElementById("kpProofGpsChip"),photo:document.getElementById("kpProofPhotoChip"),status:document.getElementById("kpProofStatus"),input:document.getElementById("kpProofInput"),label:document.getElementById("kpProofPhotoLabel"),preview:document.getElementById("kpProofPreview"),image:document.getElementById("kpProofImage"),retry:document.getElementById("kpProofRetry"),finish:document.getElementById("kpProofFinish")
 }}
 
 function ensureProofDialog(){
   if(proofDialog?.isConnected)return proofDialog;
   proofDialog=document.createElement("dialog");
   proofDialog.id="kpMissionProofDialog";
-  proofDialog.innerHTML=`<div class="kp-proof-shell"><div class="kp-proof-head"><div><div class="smart-kicker">MISIÓN VERIFICADA</div><h2 id="kpProofPlace">Cracovia</h2><div class="small">Para conseguir la escama hay que estar allí y guardar una foto.</div></div><button class="kp-proof-close" id="kpProofClose" type="button" aria-label="Cerrar">✕</button></div><div class="kp-proof-rule"><div class="kp-proof-chip" id="kpProofGpsChip">📍 GPS pendiente</div><div class="kp-proof-chip" id="kpProofPhotoChip">📷 Foto pendiente</div></div><div class="kp-proof-status" id="kpProofStatus"><strong>Comprobando ubicación…</strong>Espera un momento.</div><div class="kp-proof-preview" id="kpProofPreview"><img id="kpProofImage" alt="Fotografía de la misión"></div><div class="kp-proof-actions"><button id="kpProofRetry" type="button">↻ Comprobar GPS</button><label class="kp-proof-photo-label disabled" id="kpProofPhotoLabel">📷 Hacer foto<input id="kpProofInput" type="file" accept="image/*" capture="environment" disabled></label><button id="kpProofFinish" type="button" disabled>✓ Guardar foto y completar misión</button></div></div>`;
+  proofDialog.innerHTML=`<div class="kp-proof-shell"><div class="kp-proof-head"><div><div class="smart-kicker">MISIÓN VERIFICADA</div><h2 id="kpProofPlace">Cracovia</h2><div class="small" id="kpProofLead">Para conseguir la escama hay que estar allí y guardar una foto.</div></div><button class="kp-proof-close" id="kpProofClose" type="button" aria-label="Cerrar">✕</button></div><div class="kp-proof-rule"><div class="kp-proof-chip" id="kpProofGpsChip">📍 GPS pendiente</div><div class="kp-proof-chip" id="kpProofPhotoChip">📷 Foto pendiente</div></div><div class="kp-proof-status" id="kpProofStatus"><strong>Comprobando ubicación…</strong>Espera un momento.</div><div class="kp-proof-preview" id="kpProofPreview"><img id="kpProofImage" alt="Fotografía de la misión"></div><div class="kp-proof-actions"><button id="kpProofRetry" type="button">↻ Comprobar GPS</button><label class="kp-proof-photo-label disabled" id="kpProofPhotoLabel">📷 Hacer foto<input id="kpProofInput" type="file" accept="image/*" capture="environment" disabled></label><button id="kpProofFinish" type="button" disabled>✓ Guardar foto y completar misión</button></div></div>`;
   document.body.appendChild(proofDialog);
   document.getElementById("kpProofClose").onclick=()=>proofDialog.close();
   document.getElementById("kpProofRetry").onclick=()=>checkGps();
@@ -112,7 +112,7 @@ async function checkGps(){
     const ok=dist<=limit;
     r.gps.className=`kp-proof-chip ${ok?"ok":"bad"}`;
     r.gps.textContent=ok?`📍 ${Math.round(dist)} m · OK`:`📍 ${Math.round(dist)} m`;
-    r.status.innerHTML=ok?`<strong>✓ Estás lo bastante cerca</strong>A ${Math.round(dist)} m de ${esc(p.name)}. Ya puedes hacer la foto de la misión.`:`<strong>Acércate un poco más</strong>Estás a ${Math.round(dist)} m. Esta misión se desbloquea dentro de ${limit} m.`;
+    r.status.innerHTML=ok?(replaceMode?`<strong>✓ Puedes cambiar la foto</strong>Sigues dentro del radio de ${esc(p.name)} (${Math.round(dist)} m). Haz la foto definitiva y sustituiremos la anterior sin tocar la misión.`:`<strong>✓ Estás lo bastante cerca</strong>A ${Math.round(dist)} m de ${esc(p.name)}. Ya puedes hacer la foto de la misión.`):`<strong>Acércate un poco más</strong>Estás a ${Math.round(dist)} m. Esta misión se desbloquea dentro de ${limit} m.`;
     r.input.disabled=!ok;r.label.classList.toggle("disabled",!ok);r.label.classList.toggle("ready",ok);
     return ok;
   }catch{
@@ -127,7 +127,7 @@ function renderJpeg(img,max,quality){const iw=img.naturalWidth||img.width,ih=img
 async function optimizePhoto(file){const img=await loadImage(file);let data=renderJpeg(img,720,.68);if(data.length>130000)data=renderJpeg(img,600,.60);if(data.length>130000)data=renderJpeg(img,500,.54);if(data.length>130000)data=renderJpeg(img,420,.48);return data}
 function loadDataImage(data){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=data})}
 function emitEvidence(id,entry,extra={}){try{window.dispatchEvent(new CustomEvent("kp:mission-evidence-local",{detail:{id,entry,...extra}}))}catch{}try{window.dispatchEvent(new CustomEvent("kp:statechange",{detail:{source:"mission-proof",id,...extra}}))}catch{}}
-async function reclaimSpaceAndSave(id,entry){
+async function reclaimSpaceAndSave(id,entry,extra={}){
   const state=read(), ev={...(state.missionEvidence||{}),[id]:entry};
   state.missionEvidence=ev;state.updatedAt=entry.updatedAt||now();
   const candidates=Object.entries(ev).filter(([key,x])=>key!==id&&typeof x?.photo==="string"&&x.photo.startsWith("data:image/")&&x.photo.length>90000).sort((a,b)=>b[1].photo.length-a[1].photo.length);
@@ -137,20 +137,20 @@ async function reclaimSpaceAndSave(id,entry){
       const img=await loadDataImage(item.photo);let photo=renderJpeg(img,620,.56);if(photo.length>105000)photo=renderJpeg(img,520,.50);if(photo.length>105000)photo=renderJpeg(img,440,.44);
       if(photo.length>=item.photo.length)continue;
       const ts=now();ev[key]={...item,photo,photoQuality:"storage-reclaimed-v1",updatedAt:ts};state.updatedAt=ts;reclaimed.push([key,ev[key]]);
-      try{localStorage.setItem(STORAGE,JSON.stringify(state));emitEvidence(id,entry,{storageRecovery:true});for(const [rid,rentry] of reclaimed)emitEvidence(rid,rentry,{storageReclaim:true});return entry}catch{}
+      try{localStorage.setItem(STORAGE,JSON.stringify(state));emitEvidence(id,entry,{...extra,storageRecovery:true});for(const [rid,rentry] of reclaimed)emitEvidence(rid,rentry,{storageReclaim:true});return entry}catch{}
     }catch{}
   }
   throw new Error("quota")
 }
-async function saveEvidenceAdaptive(id,entry,file){
-  try{setStateEvidence(id,entry);return entry}catch{}
+async function saveEvidenceAdaptive(id,entry,file,extra={}){
+  try{setStateEvidence(id,entry,extra);return entry}catch{}
   if(!file)throw new Error("quota");
   const img=await loadImage(file),attempts=[[520,.52],[440,.46],[360,.40],[300,.35],[250,.31],[210,.28]];let last=entry;
   for(const [max,quality] of attempts){
     const ts=now(),photo=renderJpeg(img,max,quality),candidate={...entry,photo,photoQuality:"storage-adaptive-v1",updatedAt:ts};last=candidate;
-    try{setStateEvidence(id,candidate);return candidate}catch{}
+    try{setStateEvidence(id,candidate,extra);return candidate}catch{}
   }
-  return reclaimSpaceAndSave(id,last);
+  return reclaimSpaceAndSave(id,last,extra);
 }
 
 async function onPhotoSelected(e){
@@ -161,21 +161,25 @@ async function onPhotoSelected(e){
     if(!(await checkGps())){pendingPhotoFile=null;e.target.value="";return}
     const dataUrl=await optimizePhoto(file);
     r.image.src=dataUrl;r.preview.style.display="block";r.photo.className="kp-proof-chip ok";r.photo.textContent="📷 Foto lista";
-    r.status.innerHTML=`<strong>✓ Evidencia preparada</strong>${esc(currentPlayer())}, guardaremos la foto y la distancia verificada. Las coordenadas exactas no se guardan.`;
-    r.finish.dataset.photo=dataUrl;r.finish.disabled=false;r.finish.style.display="flex";
+    r.status.innerHTML=replaceMode?`<strong>✓ Nueva foto preparada</strong>${esc(currentPlayer())}, sustituiremos la foto anterior manteniendo la misión completada.`:`<strong>✓ Evidencia preparada</strong>${esc(currentPlayer())}, guardaremos la foto y la distancia verificada. Las coordenadas exactas no se guardan.`;
+    r.finish.dataset.photo=dataUrl;r.finish.textContent=replaceMode?"✓ Guardar nueva foto":"✓ Guardar foto y completar misión";r.finish.disabled=false;r.finish.style.display="flex";
   }catch{
     pendingPhotoFile=null;r.photo.className="kp-proof-chip bad";r.photo.textContent="📷 No se pudo leer";r.status.innerHTML="<strong>No he podido preparar esa imagen</strong>Haz otra foto o elige otra de la fototeca.";e.target.value="";
   }
 }
 
-function openProof(id){
+function openProof(id,options={}){
   const p=poi(id),q=quest(id);if(!p||!q||!Number.isFinite(p.lat)||!Number.isFinite(p.lon))return false;
-  const old=evidence(read())[id];
-  if(old?.photo&&old?.verified){allowAndComplete(id);return true}
+  const state=read(),old=evidence(state)[id],isDone=done(state,id);
+  if(old?.photo&&old?.verified&&!isDone&&!options.replace){allowAndComplete(id);return true}
+  replaceMode=!!(old?.photo&&old?.verified&&(isDone||options.replace));previousEvidence=replaceMode?{...old}:null;
   activePoi=id;activePosition=null;pendingPhotoFile=null;ensureProofDialog();const r=refs();
-  r.place.textContent=p.name;r.gps.className="kp-proof-chip";r.gps.textContent="📍 GPS pendiente";r.photo.className="kp-proof-chip";r.photo.textContent="📷 Foto pendiente";
-  r.status.innerHTML=`<strong>Primero: estar allí</strong>Debes estar dentro de ${radius(id)} m de ${esc(p.name)}.`;
-  r.input.value="";r.input.disabled=true;r.label.classList.add("disabled");r.label.classList.remove("ready");r.preview.style.display="none";r.image.removeAttribute("src");r.finish.dataset.photo="";r.finish.disabled=true;r.finish.style.display="none";
+  r.place.textContent=p.name;r.lead.textContent=replaceMode?"La misión ya está completada. Puedes sustituir su foto mientras sigas en el lugar.":"Para conseguir la escama hay que estar allí y guardar una foto.";
+  r.gps.className="kp-proof-chip";r.gps.textContent="📍 GPS pendiente";r.photo.className=`kp-proof-chip ${replaceMode?"ok":""}`;r.photo.textContent=replaceMode?"📷 Foto actual":"📷 Foto pendiente";
+  r.status.innerHTML=replaceMode?`<strong>Foto actual guardada</strong>Comprueba el GPS y podrás cambiarla sin perder la misión ni la recompensa.`:`<strong>Primero: estar allí</strong>Debes estar dentro de ${radius(id)} m de ${esc(p.name)}.`;
+  r.input.value="";r.input.disabled=true;r.label.classList.add("disabled");r.label.classList.remove("ready");if(r.label.firstChild)r.label.firstChild.nodeValue=replaceMode?"📷 Cambiar foto":"📷 Hacer foto";
+  if(replaceMode){r.preview.style.display="block";r.image.src=old.photo}else{r.preview.style.display="none";r.image.removeAttribute("src")}
+  r.finish.dataset.photo="";r.finish.textContent=replaceMode?"✓ Guardar nueva foto":"✓ Guardar foto y completar misión";r.finish.disabled=true;r.finish.style.display="none";
   if(!proofDialog.open)proofDialog.showModal();checkGps();return true;
 }
 
@@ -184,16 +188,16 @@ async function finishMission(){
   if(!id||!photo||!activePosition||!p||!q)return;
   const dist=activePosition.distance,limit=radius(id);
   if(!Number.isFinite(dist)||dist>limit){checkGps();return}
-  const stamp=now();
-  const entry={id,questId:q.id,place:p.name,title:q.title,photo,comment:COMMENTS[id]||`Una misión menos y un recuerdo más de ${p.name}.`,by:currentPlayer(),completedAt:stamp,distance:Math.round(dist),radius:limit,verified:true,updatedAt:stamp};
-  r.finish.disabled=true;r.status.innerHTML="<strong>Guardando la foto…</strong>Si hace falta, la app ajustará automáticamente su tamaño sin pedirte que la repitas.";
+  const stamp=now(),wasReplace=replaceMode;
+  const entry={id,questId:q.id,place:p.name,title:q.title,photo,comment:COMMENTS[id]||`Una misión menos y un recuerdo más de ${p.name}.`,by:currentPlayer(),completedAt:wasReplace&&previousEvidence?.completedAt?previousEvidence.completedAt:stamp,distance:Math.round(dist),radius:limit,verified:true,updatedAt:stamp,...(wasReplace?{replacedAt:stamp}:{})};
+  r.finish.disabled=true;r.status.innerHTML=wasReplace?"<strong>Sustituyendo la foto…</strong>La misión y la recompensa se mantienen intactas.":"<strong>Guardando la foto…</strong>Si hace falta, la app ajustará automáticamente su tamaño sin pedirte que la repitas.";
   try{
-    const saved=await saveEvidenceAdaptive(id,entry,pendingPhotoFile);
+    const saved=await saveEvidenceAdaptive(id,entry,pendingPhotoFile,{replaceOnly:wasReplace});
     r.finish.dataset.photo=saved.photo;r.image.src=saved.photo;
   }catch{
     r.finish.disabled=false;r.status.innerHTML="<strong>El almacenamiento de la app está completamente lleno</strong>La foto sigue preparada en esta pantalla. No la repitas; cierra otras pestañas de Kraków Pocket y vuelve a pulsar Guardar.";return;
   }
-  pendingPhotoFile=null;proofDialog.close();allowAndComplete(id);
+  pendingPhotoFile=null;replaceMode=false;previousEvidence=null;proofDialog.close();if(!wasReplace)allowAndComplete(id);else try{window.dispatchEvent(new CustomEvent("kp:mission-photo-replaced",{detail:{id}}))}catch{}
 }
 
 function allowAndComplete(id){
@@ -205,8 +209,10 @@ function interceptCompletion(e){
   const b=e.target.closest?.(".q-done");if(!b)return;
   const id=b.dataset.poi;if(!id)return;
   if(allowId===id){allowId=null;return}
-  const s=read();if(done(s,id))return;
-  e.preventDefault();e.stopImmediatePropagation();openProof(id);
+  const s=read();
+  e.preventDefault();e.stopImmediatePropagation();
+  if(done(s,id)){openProof(id,{replace:true});return}
+  openProof(id);
 }
 
 const albumApi=()=>window.KP_ALBUM_V5||window.KP_ALBUM_EXPERIENCE;
@@ -215,7 +221,7 @@ const downloadAlbum=()=>albumApi()?.download?.()??false;
 function expose(){
   window.KP_MISSION_PROOF={
     version:VERSION,requiresPhoto:true,requiresProximity:true,sharedEvidence:true,storesExactCoordinates:false,
-    albumUnifiedV5:true,legacyAlbumUi:false,legacyAlbumExporter:false,
+    albumUnifiedV5:true,legacyAlbumUi:false,legacyAlbumExporter:false,replaceCompletedPhoto:true,
     radii:{...RADII},open:openProof,openAlbum,downloadAlbum,
     getEvidence:()=>evidence(read()),count:()=>Object.values(evidence(read())).filter(x=>x?.verified&&x?.photo).length
   };
