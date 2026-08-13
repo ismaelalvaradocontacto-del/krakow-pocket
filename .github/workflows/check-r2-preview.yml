@@ -1,0 +1,27 @@
+name: Check Krakow R2 preview
+
+on:
+  push:
+    branches:
+      - r2-photo-storage-migration
+  workflow_dispatch:
+
+jobs:
+  check-preview-r2:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check preview R2 health
+        run: |
+          set -e
+          URL="https://r2-photo-storage-migration.krakow-pocket.pages.dev/api/photo?health=1"
+          echo "Checking $URL"
+          body=$(curl -sS --retry 5 --retry-delay 2 --max-time 20 -w '\nHTTP_STATUS:%{http_code}' "$URL")
+          echo "$body"
+          status=$(printf '%s' "$body" | sed -n 's/^HTTP_STATUS://p' | tail -1)
+          payload=$(printf '%s' "$body" | sed '/^HTTP_STATUS:/d')
+          if [ "$status" = "200" ] && printf '%s' "$payload" | grep -q '"storage":"r2"'; then
+            echo "R2_HEALTH=READY"
+            exit 0
+          fi
+          echo "R2_HEALTH=NOT_READY"
+          exit 2
