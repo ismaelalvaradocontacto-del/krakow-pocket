@@ -1,0 +1,73 @@
+name: Apply Krakow Pocket isolated album preview
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/patch-album-preview-r2-app.yml']
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - name: Patch preview controller and cache
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          root=Path('Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2')
+          nxt=root/'album-next.js'; v5=root/'album-v5.js'; sw=root/'sw.js'; audit=Path('.github/scripts/krakow-album-preview-audit.mjs')
+          s=nxt.read_text().replace('const VERSION="6.1";','const VERSION="6.2";',1)
+          old='''let baseApi=null;\nfunction captureBase(){if(!baseApi&&window.KP_ALBUM_V5?.html)baseApi={...window.KP_ALBUM_V5};return baseApi}\nfunction withProjected(fn){'''
+          new='''let baseApi=null;\nfunction isAlbumMarkup(markup){\n const text=String(markup||"");\n if(!text.includes('data-kp-album-v5="1"')||!/(?:class=["'][^"']*\\bbook\\b)/i.test(text))return false;\n return !/(?:class=["'][^"']*\\bapp\\b|class=["'][^"']*\\bbottom\\b|id=["']home["']|id=["']mapPanel["']|id=["']updateBanner["'])/i.test(text);\n}\nfunction safeAlbumFallback(){return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Álbum de Cracovia</title><style>html,body{margin:0;background:#171310;color:#2d2723;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}.book{min-height:100vh;background:#f8f5ee;display:grid;place-items:center;padding:28px}.safe{max-width:560px;text-align:center}.safe h1{font:500 38px/1.05 Georgia,serif}.safe p{line-height:1.55;color:#6f665e}</style></head><body data-kp-album-v5="1" data-kp-album-safe="1"><main class="book"><div class="safe"><div>ÁLBUM DIGITAL</div><h1>Vista protegida del álbum</h1><p>La previsualización se está reconstruyendo de forma segura. Cierra y vuelve a abrir el álbum si no aparecen todavía tus fotografías.</p></div></main></body></html>'}\nfunction captureBase(){\n if(baseApi?.html)return baseApi;\n const factory=window.KP_ALBUM_DOCUMENT_FACTORY;\n if(factory?.albumDocument===true&&typeof factory.html==="function"){try{const sample=factory.html();if(isAlbumMarkup(sample)){baseApi={html:factory.html,version:factory.version||"5.0",albumDocument:true};return baseApi}}catch{}}\n const candidate=window.KP_ALBUM_V5;\n if(candidate?.html&&candidate.html!==html){try{const sample=candidate.html();if(isAlbumMarkup(sample)){baseApi={...candidate};return baseApi}}catch{}}\n return baseApi;\n}\nfunction withProjected(fn){'''
+          if old not in s: raise SystemExit('captureBase target missing')
+          s=s.replace(old,new,1)
+          old='''function html(){\n const api=captureBase();if(!api?.html)return"";\n let out=withProjected(()=>api.html());\n const css='<style data-kp-album-multi="1">@media screen{.photo-button img,.photo-card:nth-child(4n+1) .photo-button img,.photo-card:nth-child(4n+4) .photo-button img{aspect-ratio:auto!important;height:auto!important;max-height:78svh!important;object-fit:contain!important;background:#ebe5dc!important}}@media print{.photo-button img,.photo-card:nth-child(4n+1) .photo-button img,.photo-card:nth-child(4n+4) .photo-button img{aspect-ratio:auto!important;object-fit:contain!important;max-height:92mm!important}}</style>';\n return out.replace("</head>",css+"</head>").replace('data-kp-album-v5="1"','data-kp-album-v5="1" data-kp-album-multi="1"');\n}'''
+          new='''function html(){\n const api=captureBase();if(!api?.html)return safeAlbumFallback();\n let out="";try{out=withProjected(()=>api.html())}catch{}\n if(!isAlbumMarkup(out))return safeAlbumFallback();\n const css='<style data-kp-album-multi="1">@media screen{.photo-button img,.photo-card:nth-child(4n+1) .photo-button img,.photo-card:nth-child(4n+4) .photo-button img{aspect-ratio:auto!important;height:auto!important;max-height:78svh!important;object-fit:contain!important;background:#ebe5dc!important}}@media print{.photo-button img,.photo-card:nth-child(4n+1) .photo-button img,.photo-card:nth-child(4n+4) .photo-button img{aspect-ratio:auto!important;object-fit:contain!important;max-height:92mm!important}}</style>';\n out=out.replace("</head>",css+"</head>").replace('data-kp-album-v5="1"','data-kp-album-v5="1" data-kp-album-multi="1"');\n return isAlbumMarkup(out)?out:safeAlbumFallback();\n}'''
+          if old not in s: raise SystemExit('html target missing')
+          s=s.replace(old,new,1).replace('let dialog=null,frame=null,lastSig="",refreshTimer=0,refreshing=false,pending=false,printing=false,fallbackTimer=0;','let dialog=null,frame=null,lastSig="",refreshTimer=0,refreshing=false,pending=false,printing=false,fallbackTimer=0,repairingFrame=false;',1)
+          old=''' frame=document.getElementById("kpAlbumV5Frame");return dialog;\n}'''
+          new=''' frame=document.getElementById("kpAlbumV5Frame");\n if(frame&&!frame.dataset.kpAlbumGuard){frame.dataset.kpAlbumGuard="1";frame.setAttribute("referrerpolicy","no-referrer");frame.addEventListener("load",guardLoadedFrame)}\n return dialog;\n}\nfunction frameIsAlbum(){try{const d=frame?.contentDocument;return !!d?.querySelector('[data-kp-album-v5="1"]')&&!!d.querySelector('.book')&&!d.querySelector('.app,nav.bottom,#home,#mapPanel,#updateBanner')}catch{return false}}\nfunction setFrameDocument(markup){if(!frame)return false;const safe=isAlbumMarkup(markup)?markup:safeAlbumFallback();frame.removeAttribute("src");frame.srcdoc=safe;return true}\nfunction guardLoadedFrame(){if(!dialog?.open||!frame||frameIsAlbum()){repairingFrame=false;return}if(repairingFrame)return;repairingFrame=true;setFrameDocument(html());setTimeout(()=>{repairingFrame=false},240)}'''
+          if old not in s: raise SystemExit('viewer target missing')
+          s=s.replace(old,new,1).replace(' frame.srcdoc=html();return true;',' setFrameDocument(html());return true;',1).replace(' pending=refreshing=printing=false;lastSig=canonicalSignature();scrollIntent(0);frame.srcdoc=html();',' pending=refreshing=printing=false;lastSig=canonicalSignature();scrollIntent(0);setFrameDocument(html());',1)
+          s=s.replace("s.textContent='#kpAlbumV5Card .kp-album-next-note","s.textContent='#kpAlbumV5ShareTop{display:none!important}#kpAlbumV5Card .kp-album-next-note",1)
+          oldcss='''@media(max-width:420px){#kpAlbumV5Card .kp-v5-buttons{grid-template-columns:1fr!important}#kpAlbumV6Add{grid-column:auto}#kpAlbumV5Dialog .kp-v5-shell>footer{grid-template-columns:repeat(4,1fr)!important}#kpAlbumV5Dialog .kp-v5-shell>footer button{font-size:10px!important}}'''
+          newcss='''@media(max-width:430px){#kpAlbumV5Card .kp-v5-buttons{grid-template-columns:1fr!important}#kpAlbumV6Add{grid-column:auto}#kpAlbumV5Dialog .kp-v5-shell>footer{grid-template-columns:repeat(2,1fr)!important;gap:6px!important}#kpAlbumV5Dialog .kp-v5-shell>footer button{min-height:44px!important;font-size:12px!important;padding:7px 5px!important}.kp-v5-shell>header strong{font-size:16px!important}}'''
+          if oldcss not in s: raise SystemExit('mobile css target missing')
+          s=s.replace(oldcss,newcss,1)
+          old='''window.KP_ALBUM_NEXT={version:VERSION,controllerRevision:"20260812a",multiPhoto:true,open,add:openAdd,html,download,print,share,photoCount,archiveReplacedEvidence,eventDrivenRefresh:true,singleRefreshOwner:true,protectedStateProjection:true,semanticContentSignature:true,quiescentRefresh:true,noGlobalMutationObserver:true,noContinuousDomPolling:true,serializedRefresh:true,printRefreshLock:true,scrollIntentProtocol:true,deferredOverlayRefresh:true};'''
+          new='''window.KP_ALBUM_NEXT={version:VERSION,controllerRevision:"20260813a",multiPhoto:true,open,add:openAdd,html,download,print,share,photoCount,archiveReplacedEvidence,eventDrivenRefresh:true,singleRefreshOwner:true,protectedStateProjection:true,semanticContentSignature:true,quiescentRefresh:true,noGlobalMutationObserver:true,noContinuousDomPolling:true,serializedRefresh:true,printRefreshLock:true,scrollIntentProtocol:true,deferredOverlayRefresh:true,isolatedPreviewGuard:true,rejectsAppMarkup:true,stableDocumentFactory:true};'''
+          if old not in s: raise SystemExit('api target missing')
+          nxt.write_text(s.replace(old,new,1))
+
+          s=v5.read_text()
+          s=s.replace('function monitorOpen(){\n  clearInterval(openTimer);openSignature=stateSignature();','function monitorOpen(){\n  if(window.KP_ALBUM_NEXT?.singleRefreshOwner)return;\n  clearInterval(openTimer);openSignature=stateSignature();',1)
+          s=s.replace('function open(){\n  cleanupLegacy();injectShellStyles();ensureDialog();frame.srcdoc=standaloneHtml();','function open(){\n  const owner=window.KP_ALBUM_NEXT;if(owner?.singleRefreshOwner&&typeof owner.open==="function"&&owner.open!==open)return owner.open();\n  cleanupLegacy();injectShellStyles();ensureDialog();frame.srcdoc=standaloneHtml();',1)
+          marker='window.KP_ALBUM_EXPERIENCE={version:VERSION,open,html:standaloneHtml'
+          if marker not in s: raise SystemExit('v5 export marker missing')
+          v5.write_text(s.replace(marker,'window.KP_ALBUM_DOCUMENT_FACTORY={version:VERSION,html:standaloneHtml,albumDocument:true,immutableSource:true};\n'+marker,1))
+
+          s=sw.read_text().replace('const CACHE="krakow-pocket-v50-album-multi-20260812a";','const CACHE="krakow-pocket-v62-album-preview-20260813a";',1)
+          old='self.addEventListener("install",e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)))})'
+          if old not in s: raise SystemExit('sw install target missing')
+          sw.write_text(s.replace(old,'self.addEventListener("install",e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)))})',1))
+
+          s=audit.read_text(); marker='''    addCheck(checks,`${engineName}: projected multi-photo data visible`,visual.photos===4&&visual.memories===1,JSON.stringify(visual));\n\n    await page.locator('#kpAlbumV5Dialog').screenshot'''
+          insert='''    addCheck(checks,`${engineName}: projected multi-photo data visible`,visual.photos===4&&visual.memories===1,JSON.stringify(visual));\n    const guardFlags=await page.evaluate(()=>({version:window.KP_ALBUM_NEXT?.version,isolated:window.KP_ALBUM_NEXT?.isolatedPreviewGuard,rejects:window.KP_ALBUM_NEXT?.rejectsAppMarkup,factory:window.KP_ALBUM_NEXT?.stableDocumentFactory}));\n    addCheck(checks,`${engineName}: isolated preview guard active`,guardFlags.version==='6.2'&&guardFlags.isolated===true&&guardFlags.rejects===true&&guardFlags.factory===true,JSON.stringify(guardFlags));\n    await page.evaluate(()=>{const x=document.getElementById('kpAlbumV5Frame');x.removeAttribute('srcdoc');x.src='./'});\n    await f.locator('[data-kp-album-v5="1"]').waitFor({state:'attached',timeout:12000});await page.waitForTimeout(500);\n    const repaired=await f.locator('html').evaluate(()=>({album:!!document.querySelector('[data-kp-album-v5="1"]'),book:!!document.querySelector('.book'),app:!!document.querySelector('.app'),bottom:!!document.querySelector('nav.bottom'),url:location.href}));\n    addCheck(checks,`${engineName}: contaminated iframe self-repairs to album`,repaired.album&&repaired.book&&!repaired.app&&!repaired.bottom,JSON.stringify(repaired));\n\n    await page.locator('#kpAlbumV5Dialog').screenshot'''
+          if marker not in s: raise SystemExit('audit marker missing')
+          audit.write_text(s.replace(marker,insert,1))
+          PY
+          APP='Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2'
+          node --check "$APP/album-next.js"; node --check "$APP/album-v5.js"; node --check "$APP/sw.js"; node --check .github/scripts/krakow-album-preview-audit.mjs
+          grep -q 'const VERSION="6.2"' "$APP/album-next.js"
+          grep -q 'isolatedPreviewGuard:true' "$APP/album-next.js"
+          grep -q 'KP_ALBUM_DOCUMENT_FACTORY' "$APP/album-v5.js"
+          grep -q 'krakow-pocket-v62-album-preview-20260813a' "$APP/sw.js"
+      - name: Commit app fix
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-v5.js Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/sw.js .github/scripts/krakow-album-preview-audit.mjs
+          git commit -m 'Isolate album preview from app UI'
+          git push origin HEAD:main
