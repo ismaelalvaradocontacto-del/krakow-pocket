@@ -3,13 +3,9 @@
 if (window.__kpR2PhotoStorage) return;
 window.__kpR2PhotoStorage = true;
 
-const VERSION = "1.1";
+const VERSION = "1.2";
 const STORAGE = "krakowPocketCoop";
 const ENDPOINT = "/api/photo";
-const HEADERS = {
-  "X-KP-Adventure": "WAWEL-ISMAEL-LAURA",
-  "X-KP-Secret": "krakow2026"
-};
 const pending = { mission:null, auschwitz:null };
 let migrating = false;
 let frameObserver = null;
@@ -68,7 +64,6 @@ async function health() {
 async function uploadBlob(blob, meta={}) {
   if (!blob || !String(blob.type || "").startsWith("image/")) throw new Error("Invalid image");
   const headers = {
-    ...HEADERS,
     "Content-Type": blob.type || "image/jpeg",
     "X-KP-Filename": String(meta.name || "photo").slice(0,120),
     "X-KP-Poi": String(meta.poi || "").slice(0,64)
