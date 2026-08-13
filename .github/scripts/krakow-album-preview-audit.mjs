@@ -40,6 +40,24 @@ function addCheck(bucket,name,ok,detail=''){
   if(!ok) report.failures.push(`${name}${detail?` — ${detail}`:''}`);
 }
 
+async function stableFrameState(frameLocator,timeout=12000){
+  const end=Date.now()+timeout; let last=null;
+  while(Date.now()<end){
+    try{
+      await frameLocator.locator('[data-kp-album-v5="1"]').waitFor({state:'attached',timeout:900});
+      const value=await frameLocator.locator('html').evaluate(()=>({album:!!document.querySelector('[data-kp-album-v5="1"]'),book:!!document.querySelector('.book'),app:!!document.querySelector('.app'),bottom:!!document.querySelector('nav.bottom'),url:location.href}));
+      if(value.album&&value.book&&!value.app&&!value.bottom)return value;
+      last=value;
+    }catch(e){
+      const text=String(e);
+      if(!/Execution context was destroyed|Frame was detached|navigation|Target page/i.test(text))throw e;
+      last={transition:text.slice(0,180)};
+    }
+    await new Promise(r=>setTimeout(r,120));
+  }
+  throw new Error(`iframe did not stabilize as album: ${JSON.stringify(last)}`);
+}
+
 for(const [engineName,engine] of engines){
   const checks=[]; const errors=[]; let browser;
   try{
@@ -103,8 +121,7 @@ for(const [engineName,engine] of engines){
     const guardFlags=await page.evaluate(()=>({version:window.KP_ALBUM_NEXT?.version,isolated:window.KP_ALBUM_NEXT?.isolatedPreviewGuard,rejects:window.KP_ALBUM_NEXT?.rejectsAppMarkup,factory:window.KP_ALBUM_NEXT?.stableDocumentFactory}));
     addCheck(checks,`${engineName}: isolated preview guard active`,guardFlags.version==='6.2'&&guardFlags.isolated===true&&guardFlags.rejects===true&&guardFlags.factory===true,JSON.stringify(guardFlags));
     await page.evaluate(()=>{const x=document.getElementById('kpAlbumV5Frame');x.removeAttribute('srcdoc');x.src='./'});
-    await f.locator('[data-kp-album-v5="1"]').waitFor({state:'attached',timeout:12000});await page.waitForTimeout(500);
-    const repaired=await f.locator('html').evaluate(()=>({album:!!document.querySelector('[data-kp-album-v5="1"]'),book:!!document.querySelector('.book'),app:!!document.querySelector('.app'),bottom:!!document.querySelector('nav.bottom'),url:location.href}));
+    const repaired=await stableFrameState(f,12000);
     addCheck(checks,`${engineName}: contaminated iframe self-repairs to album`,repaired.album&&repaired.book&&!repaired.app&&!repaired.bottom,JSON.stringify(repaired));
 
     await page.locator('#kpAlbumV5Dialog').screenshot({path:path.join(outDir,`${label}-${engineName}-preview-shell.png`)});
