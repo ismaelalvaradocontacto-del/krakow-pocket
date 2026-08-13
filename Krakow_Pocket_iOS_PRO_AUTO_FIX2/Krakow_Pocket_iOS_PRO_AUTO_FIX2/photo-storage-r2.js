@@ -1,0 +1,148 @@
+(() => {
+"use strict";
+if (window.__kpR2PhotoStorage) return;
+window.__kpR2PhotoStorage = true;
+
+const VERSION = "1.0";
+const STORAGE = "krakowPocketCoop";
+const ENDPOINT = "/api/photo";
+const HEADERS = {
+  "X-KP-Adventure": "WAWEL-ISMAEL-LAURA",
+  "X-KP-Secret": "krakow2026"
+};
+const pending = { mission:null, auschwitz:null };
+let migrating = false;
+
+const now = () => new Date().toISOString();
+const read = () => { try { return JSON.parse(localStorage.getItem(STORAGE) || "{}"); } catch { return {}; } };
+const external = value => typeof value === "string" && (/^https?:\/\//i.test(value) || value.startsWith("/api/photo?key="));
+const embedded = value => typeof value === "string" && value.startsWith("data:image/");
+
+function dataUrlToBlob(dataUrl) {
+  const match = String(dataUrl || "").match(/^data:([^;,]+);base64,(.+)$/);
+  if (!match) throw new Error("Unsupported embedded image");
+  const bytes = atob(match[2]);
+  const out = new Uint8Array(bytes.length);
+  for (let i=0;i<bytes.length;i++) out[i] = bytes.charCodeAt(i);
+  return new Blob([out], { type:match[1] || "image/jpeg" });
+}
+
+async function health() {
+  if (!navigator.onLine) return false;
+  try {
+    const r = await fetch(`${ENDPOINT}?health=1`, { cache:"no-store" });
+    return r.ok && (await r.json())?.ok === true;
+  } catch { return false; }
+}
+
+async function uploadBlob(blob, meta={}) {
+  if (!blob || !String(blob.type || "").startsWith("image/")) throw new Error("Invalid image");
+  const headers = {
+    ...HEADERS,
+    "Content-Type": blob.type || "image/jpeg",
+    "X-KP-Filename": String(meta.name || "photo").slice(0,120),
+    "X-KP-Poi": String(meta.poi || "").slice(0,64)
+  };
+  const r = await fetch(ENDPOINT, { method:"POST", headers, body:blob });
+  const body = await r.json().catch(() => ({}));
+  if (!r.ok || !body?.url) throw new Error(body?.error || `R2 upload ${r.status}`);
+  return body;
+}
+
+async function uploadFile(file, meta={}) {
+  return uploadBlob(file, { ...meta, name:file?.name || meta.name });
+}
+
+function writeExternal(id, previous, uploaded, extra={}) {
+  const s = read();
+  const current = s.missionEvidence?.[id];
+  if (!current || (!embedded(current.photo) && !external(current.photo))) return null;
+  if (external(current.photo) && current.photoKey === uploaded.key) return current;
+  const stamp = now();
+  const entry = {
+    ...current,
+    ...previous,
+    photo:uploaded.url,
+    photoKey:uploaded.key,
+    photoMime:uploaded.type || "",
+    photoSize:Number(uploaded.size || 0),
+    photoQuality:"r2-original-v1",
+    photoStorage:"cloudflare-r2",
+    updatedAt:stamp
+  };
+  s.missionEvidence = { ...(s.missionEvidence || {}), [id]:entry };
+  s.updatedAt = stamp;
+  localStorage.setItem(STORAGE, JSON.stringify(s));
+  try { window.dispatchEvent(new CustomEvent("kp:mission-evidence-local", { detail:{ id, entry, r2Storage:true, ...extra } })); } catch {}
+  try { window.dispatchEvent(new CustomEvent("kp:statechange", { detail:{ source:"r2-photo-storage", id, ...extra } })); } catch {}
+  return entry;
+}
+
+function kindForInput(id) {
+  if (id === "kpAuschwitzInput") return "auschwitz";
+  if (id === "kpProofInput") return "mission";
+  return "";
+}
+
+document.addEventListener("change", event => {
+  const input = event.target;
+  if (!(input instanceof HTMLInputElement)) return;
+  const kind = kindForInput(input.id);
+  if (!kind) return;
+  const file = input.files?.[0];
+  if (!file || !String(file.type || "").startsWith("image/")) return;
+  pending[kind] = uploadFile(file).catch(error => ({ error }));
+}, true);
+
+window.addEventListener("kp:mission-evidence-local", async event => {
+  if (event.detail?.r2Storage) return;
+  const id = event.detail?.id;
+  const entry = event.detail?.entry;
+  if (!id || !embedded(entry?.photo)) return;
+  const kind = id === "auschwitz" ? "auschwitz" : "mission";
+  const task = pending[kind];
+  if (!task) return;
+  pending[kind] = null;
+  const result = await task;
+  if (!result?.url) return;
+  writeExternal(id, entry, result, { freshUpload:true });
+});
+
+async function migrateExisting() {
+  if (migrating || !navigator.onLine) return { migrated:0 };
+  migrating = true;
+  let migrated = 0;
+  try {
+    if (!(await health())) return { migrated:0, unavailable:true };
+    const s = read();
+    const entries = Object.entries(s.missionEvidence || {}).filter(([,entry]) => embedded(entry?.photo));
+    for (const [id,entry] of entries) {
+      try {
+        const blob = dataUrlToBlob(entry.photo);
+        const uploaded = await uploadBlob(blob, { name:`legacy-${id}.jpg`, poi:id });
+        if (writeExternal(id, entry, uploaded, { legacyMigration:true })) migrated++;
+      } catch (error) {
+        console.warn("Kraków Pocket R2 legacy migration", id, error);
+      }
+    }
+    return { migrated };
+  } finally { migrating = false; }
+}
+
+window.addEventListener("online", () => setTimeout(migrateExisting, 1200));
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => setTimeout(migrateExisting, 1800), { once:true });
+else setTimeout(migrateExisting, 1800);
+
+window.KP_PHOTO_STORAGE = {
+  version:VERSION,
+  provider:"cloudflare-r2",
+  endpoint:ENDPOINT,
+  external,
+  embedded,
+  health,
+  uploadFile,
+  migrateExisting,
+  originalUploads:true,
+  legacyCompatible:true
+};
+})();
