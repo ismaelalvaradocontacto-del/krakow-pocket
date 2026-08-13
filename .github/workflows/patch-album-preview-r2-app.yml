@@ -1,4 +1,4 @@
-name: Harden Krakow Pocket preview WebKit audit
+name: Compact Krakow Pocket album preview action bar
 on:
   push:
     branches: [main]
@@ -12,27 +12,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
-      - name: Make forced-contamination assertion navigation-safe
+      - name: Compact mobile preview footer
         run: |
           python3 - <<'PY'
           from pathlib import Path
-          p=Path('.github/scripts/krakow-album-preview-audit.mjs')
+          p=Path('Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js')
           s=p.read_text()
-          anchor='''function addCheck(bucket,name,ok,detail=''){\n  bucket.push({name,ok:!!ok,detail});\n  if(!ok) report.failures.push(`${name}${detail?` — ${detail}`:''}`);\n}\n'''
-          helper='''function addCheck(bucket,name,ok,detail=''){\n  bucket.push({name,ok:!!ok,detail});\n  if(!ok) report.failures.push(`${name}${detail?` — ${detail}`:''}`);\n}\n\nasync function stableFrameState(frameLocator,timeout=12000){\n  const end=Date.now()+timeout; let last=null;\n  while(Date.now()<end){\n    try{\n      await frameLocator.locator('[data-kp-album-v5="1"]').waitFor({state:'attached',timeout:900});\n      const value=await frameLocator.locator('html').evaluate(()=>({album:!!document.querySelector('[data-kp-album-v5="1"]'),book:!!document.querySelector('.book'),app:!!document.querySelector('.app'),bottom:!!document.querySelector('nav.bottom'),url:location.href}));\n      if(value.album&&value.book&&!value.app&&!value.bottom)return value;\n      last=value;\n    }catch(e){\n      const text=String(e);\n      if(!/Execution context was destroyed|Frame was detached|navigation|Target page/i.test(text))throw e;\n      last={transition:text.slice(0,180)};\n    }\n    await new Promise(r=>setTimeout(r,120));\n  }\n  throw new Error(`iframe did not stabilize as album: ${JSON.stringify(last)}`);\n}\n'''
-          if anchor not in s: raise SystemExit('addCheck anchor missing')
-          s=s.replace(anchor,helper,1)
-          old='''    await page.evaluate(()=>{const x=document.getElementById('kpAlbumV5Frame');x.removeAttribute('srcdoc');x.src='./'});\n    await f.locator('[data-kp-album-v5="1"]').waitFor({state:'attached',timeout:12000});await page.waitForTimeout(500);\n    const repaired=await f.locator('html').evaluate(()=>({album:!!document.querySelector('[data-kp-album-v5="1"]'),book:!!document.querySelector('.book'),app:!!document.querySelector('.app'),bottom:!!document.querySelector('nav.bottom'),url:location.href}));\n    addCheck(checks,`${engineName}: contaminated iframe self-repairs to album`,repaired.album&&repaired.book&&!repaired.app&&!repaired.bottom,JSON.stringify(repaired));'''
-          new='''    await page.evaluate(()=>{const x=document.getElementById('kpAlbumV5Frame');x.removeAttribute('srcdoc');x.src='./'});\n    const repaired=await stableFrameState(f,12000);\n    addCheck(checks,`${engineName}: contaminated iframe self-repairs to album`,repaired.album&&repaired.book&&!repaired.app&&!repaired.bottom,JSON.stringify(repaired));'''
-          if old not in s: raise SystemExit('forced-contamination block missing')
-          p.write_text(s.replace(old,new,1))
+          old='''@media(max-width:430px){#kpAlbumV5Card .kp-v5-buttons{grid-template-columns:1fr!important}#kpAlbumV6Add{grid-column:auto}#kpAlbumV5Dialog .kp-v5-shell>footer{grid-template-columns:repeat(2,1fr)!important;gap:6px!important}#kpAlbumV5Dialog .kp-v5-shell>footer button{min-height:44px!important;font-size:12px!important;padding:7px 5px!important}.kp-v5-shell>header strong{font-size:16px!important}}'''
+          new='''@media(max-width:430px){#kpAlbumV5Card .kp-v5-buttons{grid-template-columns:1fr!important}#kpAlbumV6Add{grid-column:auto}#kpAlbumV5Dialog .kp-v5-shell>footer{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px!important;padding:7px 6px calc(7px + env(safe-area-inset-bottom))!important}#kpAlbumV5Dialog .kp-v5-shell>footer button{min-height:44px!important;font-size:11px!important;padding:6px 2px!important;line-height:1.05!important;white-space:nowrap!important}.kp-v5-shell>header strong{font-size:16px!important}}'''
+          if old not in s: raise SystemExit('mobile 2x2 footer target missing')
+          s=s.replace(old,new,1).replace('controllerRevision:"20260813a"','controllerRevision:"20260813b"',1)
+          p.write_text(s)
           PY
-          node --check .github/scripts/krakow-album-preview-audit.mjs
-          grep -q 'stableFrameState' .github/scripts/krakow-album-preview-audit.mjs
-      - name: Commit audit hardening
+          APP='Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js'
+          node --check "$APP"
+          grep -q 'repeat(4,minmax(0,1fr))' "$APP"
+          grep -q 'controllerRevision:"20260813b"' "$APP"
+      - name: Commit compact preview footer
         run: |
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add .github/scripts/krakow-album-preview-audit.mjs
-          git commit -m 'Make WebKit album self-repair audit navigation-safe'
+          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js
+          git commit -m 'Compact mobile album preview actions'
           git push origin HEAD:main
