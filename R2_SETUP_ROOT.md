@@ -1,0 +1,1 @@
+Kraków Pocket R2 migration branch. See nested R2_SETUP.md for required Cloudflare binding `KP_PHOTOS`.
