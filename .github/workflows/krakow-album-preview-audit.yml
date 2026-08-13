@@ -8,6 +8,8 @@ on:
       - '.github/workflows/krakow-album-preview-audit.yml'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-v5.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/mission-proof.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-photo-quality.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/stability.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/styles.css'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/storybook.css'
@@ -27,12 +29,14 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Static preview audit
+      - name: Static preview and photo storage audit
         run: |
           set -euxo pipefail
           APP_DIR='Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2'
           node --check "$APP_DIR/album-v5.js"
           node --check "$APP_DIR/album-next.js"
+          node --check "$APP_DIR/mission-proof.js"
+          node --check "$APP_DIR/album-photo-quality.js"
           node --check "$APP_DIR/sw.js"
           node --check .github/scripts/krakow-album-preview-audit.mjs
           grep -q 'const VERSION="6.2"' "$APP_DIR/album-next.js"
@@ -42,7 +46,12 @@ jobs:
           grep -q 'stableDocumentFactory:true' "$APP_DIR/album-next.js"
           grep -q 'repeat(4,minmax(0,1fr))' "$APP_DIR/album-next.js"
           grep -q 'KP_ALBUM_DOCUMENT_FACTORY' "$APP_DIR/album-v5.js"
-          grep -q 'krakow-pocket-v62-album-preview-20260813a' "$APP_DIR/sw.js"
+          grep -q 'const VERSION="2.1"' "$APP_DIR/mission-proof.js"
+          grep -q 'saveEvidenceAdaptive' "$APP_DIR/mission-proof.js"
+          grep -q 'storage-reclaimed-v1' "$APP_DIR/mission-proof.js"
+          grep -q 'const VERSION = "1.1"' "$APP_DIR/album-photo-quality.js"
+          grep -q 'SOFT_STATE_LIMIT = 2600000' "$APP_DIR/album-photo-quality.js"
+          grep -q 'krakow-pocket-v63-photo-quota-20260813a' "$APP_DIR/sw.js"
           grep -q 'self.skipWaiting' "$APP_DIR/sw.js"
           grep -q 'stableFrameState' .github/scripts/krakow-album-preview-audit.mjs
       - name: Install browser engines
@@ -59,14 +68,16 @@ jobs:
           KP_AUDIT_LABEL: local
           KP_AUDIT_OUT: /tmp/album-preview-audit
         run: node .github/scripts/krakow-album-preview-audit.mjs
-      - name: Wait for deployed album controller
+      - name: Wait for deployed photo storage recovery
         run: |
           for i in {1..60}; do
-            A=0; S=0; C=0
+            A=0; C=0; M=0; Q=0; S=0
             curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'const VERSION="6.2"' && A=1 || true
             curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'controllerRevision:"20260813b"' && C=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v62-album-preview-20260813a' && S=1 || true
-            if [ "$A" = 1 ] && [ "$C" = 1 ] && [ "$S" = 1 ]; then exit 0; fi
+            curl -fsS https://krakow-pocket.pages.dev/mission-proof.js | grep -q 'const VERSION="2.1"' && M=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/album-photo-quality.js | grep -q 'const VERSION = "1.1"' && Q=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v63-photo-quota-20260813a' && S=1 || true
+            if [ "$A" = 1 ] && [ "$C" = 1 ] && [ "$M" = 1 ] && [ "$Q" = 1 ] && [ "$S" = 1 ]; then exit 0; fi
             sleep 4
           done
           exit 1
@@ -85,4 +96,4 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-# final gate: isolated 6.2 + navigation-safe WebKit repair + compact mobile footer
+# final gate: isolated album preview + adaptive iPhone photo quota recovery
