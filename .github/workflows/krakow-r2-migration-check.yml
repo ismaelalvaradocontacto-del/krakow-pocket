@@ -1,0 +1,60 @@
+name: Krakow R2 migration check
+
+on:
+  push:
+    branches:
+      - r2-photo-storage-migration
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  validate-r2-migration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check JavaScript syntax
+        run: |
+          ROOT=Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2
+          node --check "$ROOT/album-photo-quality.js"
+          node --check "$ROOT/photo-storage-auth.js"
+          node --check "$ROOT/photo-storage-r2.js"
+          node --check "$ROOT/r2-photo-server.js"
+          node --check "$ROOT/functions/api/photo.js"
+
+      - name: Check R2 scripts are loaded by the app
+        run: |
+          ROOT=Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2
+          grep -q 'photo-storage-auth.js' "$ROOT/index.html"
+          grep -q 'photo-storage-r2.js' "$ROOT/index.html"
+          grep -q 'album-photo-quality.js' "$ROOT/index.html"
+
+      - name: Check protected R2 path
+        run: |
+          ROOT=Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2
+          grep -q 'KP_PHOTOS' "$ROOT/r2-photo-server.js"
+          grep -q 'KP_UPLOAD_TOKEN' "$ROOT/r2-photo-server.js"
+          grep -q 'X-KP-Upload-Token' "$ROOT/r2-photo-server.js"
+          grep -q 'X-KP-Upload-Token' "$ROOT/photo-storage-auth.js"
+          grep -q 'onRequestPost' "$ROOT/functions/api/photo.js"
+
+      - name: Ensure no committed upload token or obsolete shared secret
+        run: |
+          ROOT=Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2
+          if grep -Eq 'APP_SECRET|const[[:space:]]+KP_UPLOAD_TOKEN[[:space:]]*=' "$ROOT/r2-photo-server.js" "$ROOT/functions/api/photo.js"; then
+            echo 'Committed server upload secret detected'
+            exit 1
+          fi
+          if grep -q 'krakow2026' "$ROOT/photo-storage-r2.js"; then
+            echo 'Obsolete client-side shared secret detected'
+            exit 1
+          fi
+
+      - name: Check legacy and offline safeguards
+        run: |
+          ROOT=Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2
+          grep -q 'legacyCompatible:true' "$ROOT/photo-storage-r2.js"
+          grep -q 'localPreviewOnly:true' "$ROOT/photo-storage-r2.js"
+          grep -q 'u.pathname==="/api/photo"' "$ROOT/sw.js"
