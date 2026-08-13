@@ -3,16 +3,30 @@
 if (window.__kpAlbumPhotoQuality) return;
 window.__kpAlbumPhotoQuality = true;
 
-if (!window.__kpR2PhotoStorageLoader && !document.querySelector('script[data-kp-r2-photo-storage]')) {
+function loadR2Storage() {
+  if (window.__kpR2PhotoStorageLoader || document.querySelector('script[data-kp-r2-photo-storage]')) return;
   window.__kpR2PhotoStorageLoader = true;
   const storage = document.createElement("script");
-  storage.src = "./photo-storage-r2.js?v=20260813a";
+  storage.src = "./photo-storage-r2.js?v=20260813b";
   storage.async = false;
   storage.dataset.kpR2PhotoStorage = "1";
   document.head.appendChild(storage);
 }
 
-const VERSION = "1.2";
+if (!window.__kpR2PhotoAuthLoader && !document.querySelector('script[data-kp-r2-photo-auth]')) {
+  window.__kpR2PhotoAuthLoader = true;
+  const auth = document.createElement("script");
+  auth.src = "./photo-storage-auth.js?v=20260813a";
+  auth.async = false;
+  auth.dataset.kpR2PhotoAuth = "1";
+  auth.onload = loadR2Storage;
+  auth.onerror = loadR2Storage;
+  document.head.appendChild(auth);
+} else {
+  loadR2Storage();
+}
+
+const VERSION = "1.3";
 const STORAGE = "krakowPocketCoop";
 const TARGET_MAX = 1280;
 const MAX_DATA_LENGTH = 220000;
