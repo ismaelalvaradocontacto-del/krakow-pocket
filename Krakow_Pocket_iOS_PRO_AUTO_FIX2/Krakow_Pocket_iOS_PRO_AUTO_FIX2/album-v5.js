@@ -185,10 +185,12 @@ function refreshFrame(preserve=true){
   frame.srcdoc=content;openSignature=stateSignature();pendingRefresh=false;return true;
 }
 function monitorOpen(){
+  if(window.KP_ALBUM_NEXT?.singleRefreshOwner)return;
   clearInterval(openTimer);openSignature=stateSignature();
   openTimer=setInterval(()=>{if(!dialog?.open){clearInterval(openTimer);openTimer=0;return;}const sig=stateSignature();if(sig===openSignature&&!pendingRefresh)return;const doc=frame?.contentDocument;if(doc?.querySelector("#storyMode.open,#lightbox.open")){pendingRefresh=true;return;}refreshFrame(true);},1200);
 }
 function open(){
+  const owner=window.KP_ALBUM_NEXT;if(owner?.singleRefreshOwner&&typeof owner.open==="function"&&owner.open!==open)return owner.open();
   cleanupLegacy();injectShellStyles();ensureDialog();frame.srcdoc=standaloneHtml();openSignature=stateSignature();pendingRefresh=false;document.documentElement.classList.add("kp-album-v5-open");if(!dialog.open)dialog.showModal();monitorOpen();return true;
 }
 function renderCard(){
@@ -207,6 +209,7 @@ function boot(){
   setTimeout(()=>{cleanupLegacy();renderCard();patchLegacyApis();},700);
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
+window.KP_ALBUM_DOCUMENT_FACTORY={version:VERSION,html:standaloneHtml,albumDocument:true,immutableSource:true};
 window.KP_ALBUM_EXPERIENCE={version:VERSION,open,html:standaloneHtml,download,share,print:printAlbum,file:albumFile,digitalAlbum:true,unifiedSingleSource:true,legacyUiDisabled:true,iosQuickLookCompatible:true,noJsNavigation:true,offlineHtml:true,photoDataDeduplicated:true,storyMode:true,storyAutoplay:true,filmstrip:true,ambientStory:true,responsive:true,printReady:true,pdfWaitsForFrame:true,safariScrollRestore:true};
 window.KP_ALBUM_V5={version:VERSION,open,html:standaloneHtml,download,share,print:printAlbum,renderCard,cleanupLegacy,stateSignature,singleSource:true,uniqueControlIds:true,boundedOpenMonitor:true,pdfWaitsForFrame:true,safariScrollRestore:true};
 })();

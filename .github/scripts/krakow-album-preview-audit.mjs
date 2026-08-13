@@ -100,6 +100,12 @@ for(const [engineName,engine] of engines){
     addCheck(checks,`${engineName}: controls are touch friendly`,visual.minTap>=40,JSON.stringify(visual));
     addCheck(checks,`${engineName}: vertical photos are contained`,visual.photoObjectFit==='contain'&&visual.photoHeight>visual.photoWidth,JSON.stringify(visual));
     addCheck(checks,`${engineName}: projected multi-photo data visible`,visual.photos===4&&visual.memories===1,JSON.stringify(visual));
+    const guardFlags=await page.evaluate(()=>({version:window.KP_ALBUM_NEXT?.version,isolated:window.KP_ALBUM_NEXT?.isolatedPreviewGuard,rejects:window.KP_ALBUM_NEXT?.rejectsAppMarkup,factory:window.KP_ALBUM_NEXT?.stableDocumentFactory}));
+    addCheck(checks,`${engineName}: isolated preview guard active`,guardFlags.version==='6.2'&&guardFlags.isolated===true&&guardFlags.rejects===true&&guardFlags.factory===true,JSON.stringify(guardFlags));
+    await page.evaluate(()=>{const x=document.getElementById('kpAlbumV5Frame');x.removeAttribute('srcdoc');x.src='./'});
+    await f.locator('[data-kp-album-v5="1"]').waitFor({state:'attached',timeout:12000});await page.waitForTimeout(500);
+    const repaired=await f.locator('html').evaluate(()=>({album:!!document.querySelector('[data-kp-album-v5="1"]'),book:!!document.querySelector('.book'),app:!!document.querySelector('.app'),bottom:!!document.querySelector('nav.bottom'),url:location.href}));
+    addCheck(checks,`${engineName}: contaminated iframe self-repairs to album`,repaired.album&&repaired.book&&!repaired.app&&!repaired.bottom,JSON.stringify(repaired));
 
     await page.locator('#kpAlbumV5Dialog').screenshot({path:path.join(outDir,`${label}-${engineName}-preview-shell.png`)});
     await f.locator('body').screenshot({path:path.join(outDir,`${label}-${engineName}-album-document.png`),fullPage:true});

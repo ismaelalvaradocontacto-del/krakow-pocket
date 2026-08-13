@@ -3,7 +3,7 @@
 if(window.__kpAlbumNext)return;
 window.__kpAlbumNext=true;
 
-const VERSION="6.1";
+const VERSION="6.2";
 const STORAGE="krakowPocketCoop";
 const PLAYER="krakowPlayer";
 const $=(s,r=document)=>r.querySelector(s);
@@ -91,21 +91,36 @@ function archiveReplacedEvidence(){
 }
 
 let baseApi=null;
-function captureBase(){if(!baseApi&&window.KP_ALBUM_V5?.html)baseApi={...window.KP_ALBUM_V5};return baseApi}
+function isAlbumMarkup(markup){
+ const text=String(markup||"");
+ if(!text.includes('data-kp-album-v5="1"')||!/(?:class=["'][^"']*\bbook\b)/i.test(text))return false;
+ return !/(?:class=["'][^"']*\bapp\b|class=["'][^"']*\bbottom\b|id=["']home["']|id=["']mapPanel["']|id=["']updateBanner["'])/i.test(text);
+}
+function safeAlbumFallback(){return '<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Álbum de Cracovia</title><style>html,body{margin:0;background:#171310;color:#2d2723;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",sans-serif}.book{min-height:100vh;background:#f8f5ee;display:grid;place-items:center;padding:28px}.safe{max-width:560px;text-align:center}.safe h1{font:500 38px/1.05 Georgia,serif}.safe p{line-height:1.55;color:#6f665e}</style></head><body data-kp-album-v5="1" data-kp-album-safe="1"><main class="book"><div class="safe"><div>ÁLBUM DIGITAL</div><h1>Vista protegida del álbum</h1><p>La previsualización se está reconstruyendo de forma segura. Cierra y vuelve a abrir el álbum si no aparecen todavía tus fotografías.</p></div></main></body></html>'}
+function captureBase(){
+ if(baseApi?.html)return baseApi;
+ const factory=window.KP_ALBUM_DOCUMENT_FACTORY;
+ if(factory?.albumDocument===true&&typeof factory.html==="function"){try{const sample=factory.html();if(isAlbumMarkup(sample)){baseApi={html:factory.html,version:factory.version||"5.0",albumDocument:true};return baseApi}}catch{}}
+ const candidate=window.KP_ALBUM_V5;
+ if(candidate?.html&&candidate.html!==html){try{const sample=candidate.html();if(isAlbumMarkup(sample)){baseApi={...candidate};return baseApi}}catch{}}
+ return baseApi;
+}
 function withProjected(fn){
  const state=projectedState(),prev=Storage.prototype.getItem;
  Storage.prototype.getItem=function(key){if(this===localStorage&&key===STORAGE)return JSON.stringify(state);return prev.call(this,key)};
  try{return fn(state)}finally{Storage.prototype.getItem=prev}
 }
 function html(){
- const api=captureBase();if(!api?.html)return"";
- let out=withProjected(()=>api.html());
+ const api=captureBase();if(!api?.html)return safeAlbumFallback();
+ let out="";try{out=withProjected(()=>api.html())}catch{}
+ if(!isAlbumMarkup(out))return safeAlbumFallback();
  const css='<style data-kp-album-multi="1">@media screen{.photo-button img,.photo-card:nth-child(4n+1) .photo-button img,.photo-card:nth-child(4n+4) .photo-button img{aspect-ratio:auto!important;height:auto!important;max-height:78svh!important;object-fit:contain!important;background:#ebe5dc!important}}@media print{.photo-button img,.photo-card:nth-child(4n+1) .photo-button img,.photo-card:nth-child(4n+4) .photo-button img{aspect-ratio:auto!important;object-fit:contain!important;max-height:92mm!important}}</style>';
- return out.replace("</head>",css+"</head>").replace('data-kp-album-v5="1"','data-kp-album-v5="1" data-kp-album-multi="1"');
+ out=out.replace("</head>",css+"</head>").replace('data-kp-album-v5="1"','data-kp-album-v5="1" data-kp-album-multi="1"');
+ return isAlbumMarkup(out)?out:safeAlbumFallback();
 }
 function photoCount(){return Object.values(projectedState().missionEvidence||{}).filter(x=>typeof x?.photo==="string"&&x.photo.startsWith("data:image/")).length}
 
-let dialog=null,frame=null,lastSig="",refreshTimer=0,refreshing=false,pending=false,printing=false,fallbackTimer=0;
+let dialog=null,frame=null,lastSig="",refreshTimer=0,refreshing=false,pending=false,printing=false,fallbackTimer=0,repairingFrame=false;
 function ensureViewer(){
  dialog=document.getElementById("kpAlbumV5Dialog");
  if(!dialog){
@@ -114,8 +129,13 @@ function ensureViewer(){
   document.body.appendChild(dialog);
   dialog.addEventListener("close",stopViewer);
  }
- frame=document.getElementById("kpAlbumV5Frame");return dialog;
+ frame=document.getElementById("kpAlbumV5Frame");
+ if(frame&&!frame.dataset.kpAlbumGuard){frame.dataset.kpAlbumGuard="1";frame.setAttribute("referrerpolicy","no-referrer");frame.addEventListener("load",guardLoadedFrame)}
+ return dialog;
 }
+function frameIsAlbum(){try{const d=frame?.contentDocument;return !!d?.querySelector('[data-kp-album-v5="1"]')&&!!d.querySelector('.book')&&!d.querySelector('.app,nav.bottom,#home,#mapPanel,#updateBanner')}catch{return false}}
+function setFrameDocument(markup){if(!frame)return false;const safe=isAlbumMarkup(markup)?markup:safeAlbumFallback();frame.removeAttribute("src");frame.srcdoc=safe;return true}
+function guardLoadedFrame(){if(!dialog?.open||!frame||frameIsAlbum()){repairingFrame=false;return}if(repairingFrame)return;repairingFrame=true;setFrameDocument(html());setTimeout(()=>{repairingFrame=false},240)}
 function stopViewer(){
  document.documentElement.classList.remove("kp-album-v5-open");clearTimeout(refreshTimer);clearInterval(fallbackTimer);
  refreshTimer=fallbackTimer=0;refreshing=pending=printing=false;
@@ -135,7 +155,7 @@ function writeFrame(markCurrent=true){
  if(markCurrent)lastSig=current;
  const y=frame.contentWindow?.scrollY||0;scrollIntent(y);refreshing=true;pending=false;
  frame.addEventListener("load",()=>{bindFrameActivity();setTimeout(()=>{refreshing=false;flushPending()},120)},{once:true});
- frame.srcdoc=html();return true;
+ setFrameDocument(html());return true;
 }
 function refreshNow(){
  clearTimeout(refreshTimer);refreshTimer=0;
@@ -157,7 +177,7 @@ function flushPending(){
 }
 function open(){
  captureBase();ensureViewer();archiveReplacedEvidence();clearTimeout(refreshTimer);clearInterval(fallbackTimer);
- pending=refreshing=printing=false;lastSig=canonicalSignature();scrollIntent(0);frame.srcdoc=html();
+ pending=refreshing=printing=false;lastSig=canonicalSignature();scrollIntent(0);setFrameDocument(html());
  document.documentElement.classList.add("kp-album-v5-open");if(!dialog.open)dialog.showModal();
  frame.addEventListener("load",bindFrameActivity,{once:true});
  fallbackTimer=setInterval(()=>{if(!dialog?.open||refreshing||printing||frameBlocked())return;if(canonicalSignature()!==lastSig)scheduleRefresh(650)},2200);
@@ -216,7 +236,7 @@ async function savePhotos(){
 
 function installStyles(){
  if(document.getElementById("kpAlbumNextStyles"))return;const s=document.createElement("style");s.id="kpAlbumNextStyles";
- s.textContent='#kpAlbumV5Card .kp-album-next-note{margin-top:9px;padding:9px 11px;border-radius:13px;background:rgba(82,125,57,.11);font-size:12px}#kpAlbumV5Card .kp-v5-buttons{grid-template-columns:1fr 1fr!important}#kpAlbumV6Add{grid-column:1/-1}#kpAlbumV5Dialog .kp-v5-shell>footer{grid-template-columns:repeat(4,1fr)!important}#kpAlbumV6AddDialog{border:0;padding:0;background:transparent;width:100%;height:100%;max-width:none;max-height:none}#kpAlbumV6AddDialog::backdrop{background:#1b120ddb;backdrop-filter:blur(8px)}.kp-album-add-shell{position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));max-width:620px;margin:auto;max-height:88dvh;overflow:auto;padding:18px;border-radius:24px;background:#f7edd9;border:2px solid #6d432b;color:#3d271c}.kp-album-add-close{width:44px;height:44px;border:2px solid #6d432b;border-radius:14px;background:#fff4d4}.kp-album-file{min-height:54px;margin:13px 0;display:flex;align-items:center;justify-content:center;border:2px dashed #8f6546;border-radius:16px;background:#fff8e8;font-weight:900}.kp-album-file input{position:absolute;opacity:0;width:1px;height:1px}.kp-album-add-shell .field{margin-top:10px}.kp-album-add-shell .field>span{display:block;font-size:12px;font-weight:800;margin-bottom:5px}.kp-album-add-shell input,.kp-album-add-shell select,.kp-album-add-shell textarea{width:100%;min-height:44px;border:1px solid #b99875;border-radius:12px;background:#fff;padding:10px;font:inherit}.kp-album-manage-row{display:grid;grid-template-columns:48px 1fr 40px;align-items:center;gap:9px;margin-top:8px;padding:7px;border-radius:12px;background:#fff8e8}.kp-album-manage-row img{width:48px;height:48px;object-fit:cover;border-radius:9px}.kp-album-manage-row b,.kp-album-manage-row small{display:block}.kp-album-manage-row button{width:38px;height:38px;border:0;border-radius:10px;background:#ead8c3}@media(max-width:420px){#kpAlbumV5Card .kp-v5-buttons{grid-template-columns:1fr!important}#kpAlbumV6Add{grid-column:auto}#kpAlbumV5Dialog .kp-v5-shell>footer{grid-template-columns:repeat(4,1fr)!important}#kpAlbumV5Dialog .kp-v5-shell>footer button{font-size:10px!important}}';
+ s.textContent='#kpAlbumV5ShareTop{display:none!important}#kpAlbumV5Card .kp-album-next-note{margin-top:9px;padding:9px 11px;border-radius:13px;background:rgba(82,125,57,.11);font-size:12px}#kpAlbumV5Card .kp-v5-buttons{grid-template-columns:1fr 1fr!important}#kpAlbumV6Add{grid-column:1/-1}#kpAlbumV5Dialog .kp-v5-shell>footer{grid-template-columns:repeat(4,1fr)!important}#kpAlbumV6AddDialog{border:0;padding:0;background:transparent;width:100%;height:100%;max-width:none;max-height:none}#kpAlbumV6AddDialog::backdrop{background:#1b120ddb;backdrop-filter:blur(8px)}.kp-album-add-shell{position:fixed;left:12px;right:12px;bottom:max(12px,env(safe-area-inset-bottom));max-width:620px;margin:auto;max-height:88dvh;overflow:auto;padding:18px;border-radius:24px;background:#f7edd9;border:2px solid #6d432b;color:#3d271c}.kp-album-add-close{width:44px;height:44px;border:2px solid #6d432b;border-radius:14px;background:#fff4d4}.kp-album-file{min-height:54px;margin:13px 0;display:flex;align-items:center;justify-content:center;border:2px dashed #8f6546;border-radius:16px;background:#fff8e8;font-weight:900}.kp-album-file input{position:absolute;opacity:0;width:1px;height:1px}.kp-album-add-shell .field{margin-top:10px}.kp-album-add-shell .field>span{display:block;font-size:12px;font-weight:800;margin-bottom:5px}.kp-album-add-shell input,.kp-album-add-shell select,.kp-album-add-shell textarea{width:100%;min-height:44px;border:1px solid #b99875;border-radius:12px;background:#fff;padding:10px;font:inherit}.kp-album-manage-row{display:grid;grid-template-columns:48px 1fr 40px;align-items:center;gap:9px;margin-top:8px;padding:7px;border-radius:12px;background:#fff8e8}.kp-album-manage-row img{width:48px;height:48px;object-fit:cover;border-radius:9px}.kp-album-manage-row b,.kp-album-manage-row small{display:block}.kp-album-manage-row button{width:38px;height:38px;border:0;border-radius:10px;background:#ead8c3}@media(max-width:430px){#kpAlbumV5Card .kp-v5-buttons{grid-template-columns:1fr!important}#kpAlbumV6Add{grid-column:auto}#kpAlbumV5Dialog .kp-v5-shell>footer{grid-template-columns:repeat(2,1fr)!important;gap:6px!important}#kpAlbumV5Dialog .kp-v5-shell>footer button{min-height:44px!important;font-size:12px!important;padding:7px 5px!important}.kp-v5-shell>header strong{font-size:16px!important}}';
  document.head.appendChild(s);
 }
 function patchCard(){
@@ -250,7 +270,7 @@ function boot(){
  captureBase();archiveReplacedEvidence();patch();[100,350,900].forEach(ms=>setTimeout(patch,ms));
  ["kp:mission-evidence-local","kp:mission-evidence-sync","kp:album-photos-sync","kp:album-photos-local","kp:diary-sync","kp:statechange","storage","pageshow"].forEach(t=>window.addEventListener(t,handleData));
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)handleData()});
- window.KP_ALBUM_NEXT={version:VERSION,controllerRevision:"20260812a",multiPhoto:true,open,add:openAdd,html,download,print,share,photoCount,archiveReplacedEvidence,eventDrivenRefresh:true,singleRefreshOwner:true,protectedStateProjection:true,semanticContentSignature:true,quiescentRefresh:true,noGlobalMutationObserver:true,noContinuousDomPolling:true,serializedRefresh:true,printRefreshLock:true,scrollIntentProtocol:true,deferredOverlayRefresh:true};
+ window.KP_ALBUM_NEXT={version:VERSION,controllerRevision:"20260813a",multiPhoto:true,open,add:openAdd,html,download,print,share,photoCount,archiveReplacedEvidence,eventDrivenRefresh:true,singleRefreshOwner:true,protectedStateProjection:true,semanticContentSignature:true,quiescentRefresh:true,noGlobalMutationObserver:true,noContinuousDomPolling:true,serializedRefresh:true,printRefreshLock:true,scrollIntentProtocol:true,deferredOverlayRefresh:true,isolatedPreviewGuard:true,rejectsAppMarkup:true,stableDocumentFactory:true};
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 })();
