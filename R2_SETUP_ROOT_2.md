@@ -1,0 +1,1 @@
+Cloudflare Pages must expose an R2 binding named KP_PHOTOS before the photo endpoint can be enabled.
