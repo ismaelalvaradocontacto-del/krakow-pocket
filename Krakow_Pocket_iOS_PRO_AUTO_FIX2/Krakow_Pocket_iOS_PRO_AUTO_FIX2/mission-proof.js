@@ -3,7 +3,7 @@
 if(window.__kpMissionProof)return;
 window.__kpMissionProof=true;
 
-const VERSION="2.0";
+const VERSION="2.1";
 const STORAGE="krakowPocketCoop";
 const PLAYER="krakowPlayer";
 const D=window.KP_DATA;
@@ -34,7 +34,7 @@ const done=(s,id)=>s.missionStatus?.[id]?!!s.missionStatus[id].done:(s.visited||
 const evidence=s=>s.missionEvidence&&typeof s.missionEvidence==="object"?s.missionEvidence:{};
 const radius=id=>RADII[id]||120;
 const currentPlayer=()=>localStorage.getItem(PLAYER)||"Ismael";
-let activePoi=null,activePosition=null,allowId=null,proofDialog=null;
+let activePoi=null,activePosition=null,allowId=null,proofDialog=null,pendingPhotoFile=null;
 
 function havMeters(a,b){
   const R=6371000,rad=x=>x*Math.PI/180,dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon),la1=rad(a.lat),la2=rad(b.lat);
@@ -124,19 +124,47 @@ async function checkGps(){
 
 function loadImage(file){return new Promise((resolve,reject)=>{const url=URL.createObjectURL(file),img=new Image();img.onload=()=>{URL.revokeObjectURL(url);resolve(img)};img.onerror=e=>{URL.revokeObjectURL(url);reject(e)};img.src=url})}
 function renderJpeg(img,max,quality){const iw=img.naturalWidth||img.width,ih=img.naturalHeight||img.height,scale=Math.min(1,max/Math.max(iw,ih)),w=Math.max(1,Math.round(iw*scale)),h=Math.max(1,Math.round(ih*scale)),c=document.createElement("canvas");c.width=w;c.height=h;const ctx=c.getContext("2d",{alpha:false});ctx.fillStyle="#fff";ctx.fillRect(0,0,w,h);ctx.drawImage(img,0,0,w,h);return c.toDataURL("image/jpeg",quality)}
-async function optimizePhoto(file){const img=await loadImage(file);let data=renderJpeg(img,720,.7);if(data.length>180000)data=renderJpeg(img,560,.62);if(data.length>180000)data=renderJpeg(img,440,.56);return data}
+async function optimizePhoto(file){const img=await loadImage(file);let data=renderJpeg(img,720,.68);if(data.length>130000)data=renderJpeg(img,600,.60);if(data.length>130000)data=renderJpeg(img,500,.54);if(data.length>130000)data=renderJpeg(img,420,.48);return data}
+function loadDataImage(data){return new Promise((resolve,reject)=>{const img=new Image();img.onload=()=>resolve(img);img.onerror=reject;img.src=data})}
+function emitEvidence(id,entry,extra={}){try{window.dispatchEvent(new CustomEvent("kp:mission-evidence-local",{detail:{id,entry,...extra}}))}catch{}try{window.dispatchEvent(new CustomEvent("kp:statechange",{detail:{source:"mission-proof",id,...extra}}))}catch{}}
+async function reclaimSpaceAndSave(id,entry){
+  const state=read(), ev={...(state.missionEvidence||{}),[id]:entry};
+  state.missionEvidence=ev;state.updatedAt=entry.updatedAt||now();
+  const candidates=Object.entries(ev).filter(([key,x])=>key!==id&&typeof x?.photo==="string"&&x.photo.startsWith("data:image/")&&x.photo.length>90000).sort((a,b)=>b[1].photo.length-a[1].photo.length);
+  const reclaimed=[];
+  for(const [key,item] of candidates){
+    try{
+      const img=await loadDataImage(item.photo);let photo=renderJpeg(img,620,.56);if(photo.length>105000)photo=renderJpeg(img,520,.50);if(photo.length>105000)photo=renderJpeg(img,440,.44);
+      if(photo.length>=item.photo.length)continue;
+      const ts=now();ev[key]={...item,photo,photoQuality:"storage-reclaimed-v1",updatedAt:ts};state.updatedAt=ts;reclaimed.push([key,ev[key]]);
+      try{localStorage.setItem(STORAGE,JSON.stringify(state));emitEvidence(id,entry,{storageRecovery:true});for(const [rid,rentry] of reclaimed)emitEvidence(rid,rentry,{storageReclaim:true});return entry}catch{}
+    }catch{}
+  }
+  throw new Error("quota")
+}
+async function saveEvidenceAdaptive(id,entry,file){
+  try{setStateEvidence(id,entry);return entry}catch{}
+  if(!file)throw new Error("quota");
+  const img=await loadImage(file),attempts=[[520,.52],[440,.46],[360,.40],[300,.35],[250,.31],[210,.28]];let last=entry;
+  for(const [max,quality] of attempts){
+    const ts=now(),photo=renderJpeg(img,max,quality),candidate={...entry,photo,photoQuality:"storage-adaptive-v1",updatedAt:ts};last=candidate;
+    try{setStateEvidence(id,candidate);return candidate}catch{}
+  }
+  return reclaimSpaceAndSave(id,last);
+}
 
 async function onPhotoSelected(e){
   const file=e.target.files?.[0];if(!file||!activePoi)return;
+  pendingPhotoFile=file;
   const r=refs();r.photo.className="kp-proof-chip";r.photo.textContent="📷 preparando…";r.status.innerHTML="<strong>Preparando la foto…</strong>La reducimos para guardarla de forma segura.";
   try{
-    if(!(await checkGps())){e.target.value="";return}
+    if(!(await checkGps())){pendingPhotoFile=null;e.target.value="";return}
     const dataUrl=await optimizePhoto(file);
     r.image.src=dataUrl;r.preview.style.display="block";r.photo.className="kp-proof-chip ok";r.photo.textContent="📷 Foto lista";
     r.status.innerHTML=`<strong>✓ Evidencia preparada</strong>${esc(currentPlayer())}, guardaremos la foto y la distancia verificada. Las coordenadas exactas no se guardan.`;
     r.finish.dataset.photo=dataUrl;r.finish.disabled=false;r.finish.style.display="flex";
   }catch{
-    r.photo.className="kp-proof-chip bad";r.photo.textContent="📷 No se pudo leer";r.status.innerHTML="<strong>No he podido preparar esa imagen</strong>Haz otra foto o elige otra de la fototeca.";e.target.value="";
+    pendingPhotoFile=null;r.photo.className="kp-proof-chip bad";r.photo.textContent="📷 No se pudo leer";r.status.innerHTML="<strong>No he podido preparar esa imagen</strong>Haz otra foto o elige otra de la fototeca.";e.target.value="";
   }
 }
 
@@ -144,22 +172,28 @@ function openProof(id){
   const p=poi(id),q=quest(id);if(!p||!q||!Number.isFinite(p.lat)||!Number.isFinite(p.lon))return false;
   const old=evidence(read())[id];
   if(old?.photo&&old?.verified){allowAndComplete(id);return true}
-  activePoi=id;activePosition=null;ensureProofDialog();const r=refs();
+  activePoi=id;activePosition=null;pendingPhotoFile=null;ensureProofDialog();const r=refs();
   r.place.textContent=p.name;r.gps.className="kp-proof-chip";r.gps.textContent="📍 GPS pendiente";r.photo.className="kp-proof-chip";r.photo.textContent="📷 Foto pendiente";
   r.status.innerHTML=`<strong>Primero: estar allí</strong>Debes estar dentro de ${radius(id)} m de ${esc(p.name)}.`;
   r.input.value="";r.input.disabled=true;r.label.classList.add("disabled");r.label.classList.remove("ready");r.preview.style.display="none";r.image.removeAttribute("src");r.finish.dataset.photo="";r.finish.disabled=true;r.finish.style.display="none";
   if(!proofDialog.open)proofDialog.showModal();checkGps();return true;
 }
 
-function finishMission(){
+async function finishMission(){
   const r=refs(),photo=r.finish.dataset.photo,id=activePoi,p=poi(id),q=quest(id);
   if(!id||!photo||!activePosition||!p||!q)return;
   const dist=activePosition.distance,limit=radius(id);
   if(!Number.isFinite(dist)||dist>limit){checkGps();return}
   const stamp=now();
   const entry={id,questId:q.id,place:p.name,title:q.title,photo,comment:COMMENTS[id]||`Una misión menos y un recuerdo más de ${p.name}.`,by:currentPlayer(),completedAt:stamp,distance:Math.round(dist),radius:limit,verified:true,updatedAt:stamp};
-  try{setStateEvidence(id,entry)}catch{r.status.innerHTML="<strong>No queda espacio suficiente en el iPhone</strong>Haz otra foto; la app intentará guardarla más comprimida.";return}
-  proofDialog.close();allowAndComplete(id);
+  r.finish.disabled=true;r.status.innerHTML="<strong>Guardando la foto…</strong>Si hace falta, la app ajustará automáticamente su tamaño sin pedirte que la repitas.";
+  try{
+    const saved=await saveEvidenceAdaptive(id,entry,pendingPhotoFile);
+    r.finish.dataset.photo=saved.photo;r.image.src=saved.photo;
+  }catch{
+    r.finish.disabled=false;r.status.innerHTML="<strong>El almacenamiento de la app está completamente lleno</strong>La foto sigue preparada en esta pantalla. No la repitas; cierra otras pestañas de Kraków Pocket y vuelve a pulsar Guardar.";return;
+  }
+  pendingPhotoFile=null;proofDialog.close();allowAndComplete(id);
 }
 
 function allowAndComplete(id){

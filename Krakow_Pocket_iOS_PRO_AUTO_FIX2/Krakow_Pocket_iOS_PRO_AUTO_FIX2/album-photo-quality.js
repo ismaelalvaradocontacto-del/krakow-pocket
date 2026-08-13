@@ -3,10 +3,11 @@
 if (window.__kpAlbumPhotoQuality) return;
 window.__kpAlbumPhotoQuality = true;
 
-const VERSION = "1.0";
+const VERSION = "1.1";
 const STORAGE = "krakowPocketCoop";
 const TARGET_MAX = 1280;
-const MAX_DATA_LENGTH = 300000;
+const MAX_DATA_LENGTH = 220000;
+const SOFT_STATE_LIMIT = 2600000;
 let pendingMission = null;
 let pendingExtra = null;
 let applying = false;
@@ -64,6 +65,10 @@ document.addEventListener("change", e => {
 
 async function upgradeEvidence(id, entry) {
   if (applying || !id || !entry?.photo) return;
+  if (entry.photoQuality === "storage-adaptive-v1" || entry.photoQuality === "storage-reclaimed-v1") {
+    if (id === "auschwitz") pendingExtra = null; else pendingMission = null;
+    return;
+  }
   const source = id === "auschwitz" ? pendingExtra : pendingMission;
   if (!source) return;
   const high = await source;
@@ -71,6 +76,8 @@ async function upgradeEvidence(id, entry) {
   if (!high?.data || high.data === entry.photo) return;
   const state = read(), current = state.missionEvidence?.[id];
   if (!current?.photo) return;
+  let currentSize = 0; try { currentSize = JSON.stringify(state).length; } catch {}
+  if (currentSize > SOFT_STATE_LIMIT) return;
   const updatedAt = stamp();
   const upgraded = {
     ...current,
@@ -81,9 +88,11 @@ async function upgradeEvidence(id, entry) {
     updatedAt
   };
   const next = {...state, missionEvidence:{...(state.missionEvidence||{}), [id]:upgraded}, updatedAt};
+  let payload = ""; try { payload = JSON.stringify(next); } catch { return; }
+  if (payload.length > SOFT_STATE_LIMIT) return;
   try {
     applying = true;
-    localStorage.setItem(STORAGE, JSON.stringify(next));
+    localStorage.setItem(STORAGE, payload);
   } catch {
     applying = false;
     return;
@@ -105,6 +114,7 @@ window.KP_ALBUM_PHOTO_QUALITY = {
   version: VERSION,
   targetMax: TARGET_MAX,
   maxDataLength: MAX_DATA_LENGTH,
+  softStateLimit: SOFT_STATE_LIMIT,
   qualityTag: "album-hq-v1",
   highQualityFuturePhotos: true,
   storageSafeFallback: true,
