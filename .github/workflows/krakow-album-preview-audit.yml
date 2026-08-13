@@ -5,11 +5,14 @@ on:
     branches: [main]
     paths:
       - '.github/scripts/krakow-album-preview-audit.mjs'
+      - '.github/scripts/krakow-mission-photo-replace.mjs'
       - '.github/workflows/krakow-album-preview-audit.yml'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-v5.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-next.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/mission-proof.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/mission-proof-guard.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-photo-quality.js'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/app.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/stability.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/styles.css'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/storybook.css'
@@ -29,31 +32,33 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Static preview and photo storage audit
+      - name: Static preview, quota and replacement audit
         run: |
           set -euxo pipefail
           APP_DIR='Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2'
           node --check "$APP_DIR/album-v5.js"
           node --check "$APP_DIR/album-next.js"
           node --check "$APP_DIR/mission-proof.js"
+          node --check "$APP_DIR/mission-proof-guard.js"
           node --check "$APP_DIR/album-photo-quality.js"
+          node --check "$APP_DIR/app.js"
           node --check "$APP_DIR/sw.js"
           node --check .github/scripts/krakow-album-preview-audit.mjs
+          node --check .github/scripts/krakow-mission-photo-replace.mjs
           grep -q 'const VERSION="6.2"' "$APP_DIR/album-next.js"
           grep -q 'controllerRevision:"20260813b"' "$APP_DIR/album-next.js"
+          grep -q 'intentionalReplacementSkipsArchive:true' "$APP_DIR/album-next.js"
           grep -q 'isolatedPreviewGuard:true' "$APP_DIR/album-next.js"
-          grep -q 'rejectsAppMarkup:true' "$APP_DIR/album-next.js"
-          grep -q 'stableDocumentFactory:true' "$APP_DIR/album-next.js"
-          grep -q 'repeat(4,minmax(0,1fr))' "$APP_DIR/album-next.js"
           grep -q 'KP_ALBUM_DOCUMENT_FACTORY' "$APP_DIR/album-v5.js"
-          grep -q 'const VERSION="2.1"' "$APP_DIR/mission-proof.js"
-          grep -q 'saveEvidenceAdaptive' "$APP_DIR/mission-proof.js"
-          grep -q 'storage-reclaimed-v1' "$APP_DIR/mission-proof.js"
+          grep -q 'const VERSION="2.2"' "$APP_DIR/mission-proof.js"
+          grep -q 'replaceCompletedPhoto:true' "$APP_DIR/mission-proof.js"
+          grep -q 'replaceOnly:wasReplace' "$APP_DIR/mission-proof.js"
+          grep -q 'replaceCompletedPhoto:true' "$APP_DIR/mission-proof-guard.js"
+          grep -q '📷 Cambiar foto' "$APP_DIR/app.js"
           grep -q 'const VERSION = "1.1"' "$APP_DIR/album-photo-quality.js"
           grep -q 'SOFT_STATE_LIMIT = 2600000' "$APP_DIR/album-photo-quality.js"
-          grep -q 'krakow-pocket-v63-photo-quota-20260813a' "$APP_DIR/sw.js"
+          grep -q 'krakow-pocket-v64-photo-replace-20260813a' "$APP_DIR/sw.js"
           grep -q 'self.skipWaiting' "$APP_DIR/sw.js"
-          grep -q 'stableFrameState' .github/scripts/krakow-album-preview-audit.mjs
       - name: Install browser engines
         run: |
           npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
@@ -68,16 +73,20 @@ jobs:
           KP_AUDIT_LABEL: local
           KP_AUDIT_OUT: /tmp/album-preview-audit
         run: node .github/scripts/krakow-album-preview-audit.mjs
-      - name: Wait for deployed photo storage recovery
+      - name: Test local completed mission photo replacement
+        env:
+          KP_AUDIT_LABEL: local
+        run: node .github/scripts/krakow-mission-photo-replace.mjs
+      - name: Wait for deployed completed-photo replacement
         run: |
           for i in {1..60}; do
-            A=0; C=0; M=0; Q=0; S=0
-            curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'const VERSION="6.2"' && A=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'controllerRevision:"20260813b"' && C=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/mission-proof.js | grep -q 'const VERSION="2.1"' && M=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/album-photo-quality.js | grep -q 'const VERSION = "1.1"' && Q=1 || true
-            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v63-photo-quota-20260813a' && S=1 || true
-            if [ "$A" = 1 ] && [ "$C" = 1 ] && [ "$M" = 1 ] && [ "$Q" = 1 ] && [ "$S" = 1 ]; then exit 0; fi
+            A=0; M=0; G=0; B=0; S=0
+            curl -fsS https://krakow-pocket.pages.dev/album-next.js | grep -q 'intentionalReplacementSkipsArchive:true' && A=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/mission-proof.js | grep -q 'const VERSION="2.2"' && M=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/mission-proof-guard.js | grep -q 'replaceCompletedPhoto:true' && G=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/app.js | grep -q '📷 Cambiar foto' && B=1 || true
+            curl -fsS https://krakow-pocket.pages.dev/sw.js | grep -q 'krakow-pocket-v64-photo-replace-20260813a' && S=1 || true
+            if [ "$A" = 1 ] && [ "$M" = 1 ] && [ "$G" = 1 ] && [ "$B" = 1 ] && [ "$S" = 1 ]; then exit 0; fi
             sleep 4
           done
           exit 1
@@ -87,6 +96,11 @@ jobs:
           KP_AUDIT_LABEL: cloudflare
           KP_AUDIT_OUT: /tmp/album-preview-audit
         run: node .github/scripts/krakow-album-preview-audit.mjs
+      - name: Test deployed completed mission photo replacement
+        env:
+          KP_AUDIT_URL: https://krakow-pocket.pages.dev/
+          KP_AUDIT_LABEL: cloudflare
+        run: node .github/scripts/krakow-mission-photo-replace.mjs
       - name: Upload preview reports and screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -96,4 +110,4 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-# final gate: isolated album preview + adaptive iPhone photo quota recovery
+# gate: isolated album preview + adaptive quota recovery + replace photo on completed mission
