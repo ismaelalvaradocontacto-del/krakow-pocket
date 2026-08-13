@@ -3,7 +3,16 @@
 if (window.__kpAlbumPhotoQuality) return;
 window.__kpAlbumPhotoQuality = true;
 
-const VERSION = "1.1";
+if (!window.__kpR2PhotoStorageLoader && !document.querySelector('script[data-kp-r2-photo-storage]')) {
+  window.__kpR2PhotoStorageLoader = true;
+  const storage = document.createElement("script");
+  storage.src = "./photo-storage-r2.js?v=20260813a";
+  storage.async = false;
+  storage.dataset.kpR2PhotoStorage = "1";
+  document.head.appendChild(storage);
+}
+
+const VERSION = "1.2";
 const STORAGE = "krakowPocketCoop";
 const TARGET_MAX = 1280;
 const MAX_DATA_LENGTH = 220000;
@@ -14,6 +23,7 @@ let applying = false;
 
 const read = () => { try { return JSON.parse(localStorage.getItem(STORAGE) || "{}"); } catch { return {}; } };
 const stamp = () => new Date().toISOString();
+const externalPhoto = value => typeof value === "string" && (/^https?:\/\//i.test(value) || value.startsWith("/api/photo?key="));
 
 function loadImage(file) {
   return new Promise((resolve,reject) => {
@@ -65,6 +75,10 @@ document.addEventListener("change", e => {
 
 async function upgradeEvidence(id, entry) {
   if (applying || !id || !entry?.photo) return;
+  if (entry.photoStorage === "cloudflare-r2" || entry.photoQuality === "r2-original-v1" || externalPhoto(entry.photo)) {
+    if (id === "auschwitz") pendingExtra = null; else pendingMission = null;
+    return;
+  }
   if (entry.photoQuality === "storage-adaptive-v1" || entry.photoQuality === "storage-reclaimed-v1") {
     if (id === "auschwitz") pendingExtra = null; else pendingMission = null;
     return;
@@ -75,7 +89,7 @@ async function upgradeEvidence(id, entry) {
   if (id === "auschwitz") pendingExtra = null; else pendingMission = null;
   if (!high?.data || high.data === entry.photo) return;
   const state = read(), current = state.missionEvidence?.[id];
-  if (!current?.photo) return;
+  if (!current?.photo || current.photoStorage === "cloudflare-r2" || externalPhoto(current.photo)) return;
   let currentSize = 0; try { currentSize = JSON.stringify(state).length; } catch {}
   if (currentSize > SOFT_STATE_LIMIT) return;
   const updatedAt = stamp();
@@ -106,7 +120,7 @@ async function upgradeEvidence(id, entry) {
 }
 
 window.addEventListener("kp:mission-evidence-local", e => {
-  if (applying || e.detail?.qualityUpgrade) return;
+  if (applying || e.detail?.qualityUpgrade || e.detail?.r2Storage) return;
   upgradeEvidence(e.detail?.id, e.detail?.entry);
 });
 
@@ -117,6 +131,7 @@ window.KP_ALBUM_PHOTO_QUALITY = {
   softStateLimit: SOFT_STATE_LIMIT,
   qualityTag: "album-hq-v1",
   highQualityFuturePhotos: true,
+  r2OriginalLayer: true,
   storageSafeFallback: true,
   noUpscaling: true
 };
