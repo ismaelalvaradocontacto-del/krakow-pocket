@@ -17,26 +17,33 @@ jobs:
 
       - name: Check JavaScript syntax
         run: |
-          node --check Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/album-photo-quality.js
-          node --check Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/photo-storage-auth.js
-          node --check Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/photo-storage-r2.js
-          node --check functions/api/photo.js
+          ROOT=Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2
+          node --check "$ROOT/album-photo-quality.js"
+          node --check "$ROOT/photo-storage-auth.js"
+          node --check "$ROOT/photo-storage-r2.js"
+          node --check "$ROOT/r2-photo-server.js"
+          node --check "$ROOT/functions/api/photo.js"
 
-      - name: Check R2 binding and protected write path
+      - name: Check protected R2 path
         run: |
-          grep -q 'KP_PHOTOS' functions/api/photo.js
-          grep -q 'KP_UPLOAD_TOKEN' functions/api/photo.js
-          grep -q 'X-KP-Upload-Token' functions/api/photo.js
-          grep -q 'X-KP-Upload-Token' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/photo-storage-auth.js
+          ROOT=Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2
+          grep -q 'KP_PHOTOS' "$ROOT/r2-photo-server.js"
+          grep -q 'KP_UPLOAD_TOKEN' "$ROOT/r2-photo-server.js"
+          grep -q 'X-KP-Upload-Token' "$ROOT/r2-photo-server.js"
+          grep -q 'X-KP-Upload-Token' "$ROOT/photo-storage-auth.js"
+          grep -q 'onRequestPost' "$ROOT/functions/api/photo.js"
 
-      - name: Ensure server has no committed upload secret
+      - name: Ensure no committed upload token
         run: |
-          if grep -Eq 'APP_SECRET|const[[:space:]]+KP_UPLOAD_TOKEN[[:space:]]*=' functions/api/photo.js; then
+          ROOT=Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2
+          if grep -Eq 'APP_SECRET|const[[:space:]]+KP_UPLOAD_TOKEN[[:space:]]*=' "$ROOT/r2-photo-server.js" "$ROOT/functions/api/photo.js"; then
             echo 'Committed server upload secret detected'
             exit 1
           fi
 
-      - name: Ensure R2 layer keeps legacy fallback
+      - name: Check legacy and offline safeguards
         run: |
-          grep -q 'legacyCompatible:true' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/photo-storage-r2.js
-          grep -q 'localPreviewOnly:true' Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/photo-storage-r2.js
+          ROOT=Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2
+          grep -q 'legacyCompatible:true' "$ROOT/photo-storage-r2.js"
+          grep -q 'localPreviewOnly:true' "$ROOT/photo-storage-r2.js"
+          grep -q 'u.pathname==="/api/photo"' "$ROOT/sw.js"
