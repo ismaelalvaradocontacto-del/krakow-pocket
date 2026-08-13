@@ -42,6 +42,7 @@ jobs:
           grep -q 'KP_ALBUM_DOCUMENT_FACTORY' "$APP_DIR/album-v5.js"
           grep -q 'krakow-pocket-v62-album-preview-20260813a' "$APP_DIR/sw.js"
           grep -q 'self.skipWaiting' "$APP_DIR/sw.js"
+          grep -q 'stableFrameState' .github/scripts/krakow-album-preview-audit.mjs
       - name: Install browser engines
         run: |
           npm install --no-save playwright@1.55.0 >/tmp/npm-playwright.log 2>&1
@@ -80,3 +81,5 @@ jobs:
           path: /tmp/album-preview-audit/*
           if-no-files-found: ignore
           retention-days: 14
+
+# final rerun after navigation-safe WebKit contamination assertion
