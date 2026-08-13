@@ -144,7 +144,7 @@
     if (dialog.dataset.kpPoi !== id) dialog.dataset.kpPoi = id;
     const done = isDone(read(), id);
     button.disabled = false;
-    const label = done ? "↩ Desmarcar" : "Completar";
+    const label = done ? "📷 Cambiar foto" : "Completar";
     if (button.textContent !== label) button.textContent = label;
   }
 
@@ -161,7 +161,7 @@
     if (!button || !id) return;
     const s = read();
     const done = qIds.has(id) ? isDone(s, id) : discovered(s, id);
-    const label = done ? "↩ Desmarcar descubierto" : "✨ Marcar descubierto";
+    const label = qIds.has(id) && done ? "📷 Cambiar foto" : (done ? "↩ Desmarcar descubierto" : "✨ Marcar descubierto");
     if (button.textContent !== label) button.textContent = label;
   }
 
@@ -283,5 +283,5 @@
   if (document.body) startObserver();
   else document.addEventListener("DOMContentLoaded", startObserver, { once: true });
 
-  window.KP_MISSION_UX = { version: "4.2", stateHooks: false, networkHooks: false };
+  window.KP_MISSION_UX = { version: "4.3", stateHooks: false, networkHooks: false, completedMissionPhotoReplacement: true };
 })();

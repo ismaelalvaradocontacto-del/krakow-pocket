@@ -80,8 +80,10 @@ function evidenceArchiveRecord(id,e){
 function archiveReplacedEvidence(skipId=""){
  const current=mergeEvidence(protectedState().missionEvidence||{}),extra=[];
  for(const [id,old] of Object.entries(lastEvidence||{})){
+  const fresh=current[id];
   if(skipId&&id===skipId)continue;
-  const fresh=current[id];if(!old?.photo||!fresh?.photo||photoHash(old.photo)===photoHash(fresh.photo))continue;
+  if(fresh?.replacedAt&&stamp(fresh)>=stamp(old)){continue}
+  if(!old?.photo||!fresh?.photo||photoHash(old.photo)===photoHash(fresh.photo))continue;
   const older=stamp(fresh)>=stamp(old)?old:fresh,r=evidenceArchiveRecord(id,older);if(r)extra.push(r);
  }
  lastEvidence=JSON.parse(JSON.stringify(current));if(!extra.length)return false;
@@ -248,7 +250,7 @@ function patchCard(){
 }
 function installApi(){
  const api=captureBase();if(!api?.html)return false;
- window.KP_ALBUM_V5={...window.KP_ALBUM_V5,version:"5.0",albumModelVersion:VERSION,html,open,download,share,print,file,stateSignature:canonicalSignature,multiPhoto:true,verticalPhotosUncropped:true,preservesSupersededEvidence:true,intentionalReplacementSkipsArchive:true,eventDrivenRefresh:true};
+ window.KP_ALBUM_V5={...window.KP_ALBUM_V5,version:"5.0",albumModelVersion:VERSION,html,open,download,share,print,file,stateSignature:canonicalSignature,multiPhoto:true,verticalPhotosUncropped:true,preservesSupersededEvidence:true,intentionalReplacementSkipsArchive:true,replacementArchiveGuardByEntry:true,eventDrivenRefresh:true};
  window.KP_ALBUM_EXPERIENCE={...(window.KP_ALBUM_EXPERIENCE||{}),version:"5.0",albumModelVersion:VERSION,html,open,download,share,print,file,multiPhoto:true,eventDrivenRefresh:true};
  if(window.KP_MISSION_PROOF){window.KP_MISSION_PROOF.openAlbum=open;window.KP_MISSION_PROOF.downloadAlbum=download}
  return true;
@@ -271,7 +273,7 @@ function boot(){
  captureBase();archiveReplacedEvidence();patch();[100,350,900].forEach(ms=>setTimeout(patch,ms));
  ["kp:mission-evidence-local","kp:mission-evidence-sync","kp:album-photos-sync","kp:album-photos-local","kp:diary-sync","kp:statechange","storage","pageshow"].forEach(t=>window.addEventListener(t,handleData));
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)handleData()});
- window.KP_ALBUM_NEXT={version:VERSION,controllerRevision:"20260813b",multiPhoto:true,open,add:openAdd,html,download,print,share,photoCount,archiveReplacedEvidence,eventDrivenRefresh:true,singleRefreshOwner:true,protectedStateProjection:true,semanticContentSignature:true,quiescentRefresh:true,noGlobalMutationObserver:true,noContinuousDomPolling:true,serializedRefresh:true,printRefreshLock:true,scrollIntentProtocol:true,deferredOverlayRefresh:true,isolatedPreviewGuard:true,rejectsAppMarkup:true,stableDocumentFactory:true};
+ window.KP_ALBUM_NEXT={version:VERSION,controllerRevision:"20260813c",multiPhoto:true,open,add:openAdd,html,download,print,share,photoCount,archiveReplacedEvidence,eventDrivenRefresh:true,singleRefreshOwner:true,protectedStateProjection:true,semanticContentSignature:true,quiescentRefresh:true,noGlobalMutationObserver:true,noContinuousDomPolling:true,serializedRefresh:true,printRefreshLock:true,scrollIntentProtocol:true,deferredOverlayRefresh:true,isolatedPreviewGuard:true,rejectsAppMarkup:true,stableDocumentFactory:true};
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",boot,{once:true});else boot();
 })();
