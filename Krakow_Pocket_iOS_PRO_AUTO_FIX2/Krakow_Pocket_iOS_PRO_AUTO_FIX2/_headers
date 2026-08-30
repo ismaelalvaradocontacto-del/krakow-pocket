@@ -3,10 +3,5 @@
   Content-Disposition: attachment; filename="Pocket.mobileconfig"
   Cache-Control: no-store
 
-/pocket-v3.mobileconfig
-  Content-Type: application/x-apple-aspen-config
-  Content-Disposition: attachment; filename="Pocket.mobileconfig"
-  Cache-Control: no-store
-
 /instalar.html
   Cache-Control: no-cache, no-store, must-revalidate
