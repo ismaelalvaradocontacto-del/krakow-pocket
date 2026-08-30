@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>FullScreen</key><true/>
+      <key>Icon</key><data>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</data>
+      <key>IsRemovable</key><true/>
+      <key>Label</key><string>Pocket</string>
+      <key>PayloadDescription</key><string>Añade Pocket a la pantalla de inicio.</string>
+      <key>PayloadDisplayName</key><string>Pocket</string>
+      <key>PayloadIdentifier</key><string>dev.pages.krakow-pocket.webclip</string>
+      <key>PayloadType</key><string>com.apple.webClip.managed</string>
+      <key>PayloadUUID</key><string>49FAC338-897F-4817-BB09-0542ACC964E9</string>
+      <key>PayloadVersion</key><integer>1</integer>
+      <key>Precomposed</key><true/>
+      <key>URL</key><string>https://krakow-pocket.pages.dev/</string>
+    </dict>
+  </array>
+  <key>PayloadDescription</key><string>Instala Pocket como acceso directo en la pantalla de inicio del iPhone.</string>
+  <key>PayloadDisplayName</key><string>Pocket</string>
+  <key>PayloadIdentifier</key><string>dev.pages.krakow-pocket.profile</string>
+  <key>PayloadOrganization</key><string>Pocket</string>
+  <key>PayloadRemovalDisallowed</key><false/>
+  <key>PayloadType</key><string>Configuration</string>
+  <key>PayloadUUID</key><string>3C62F712-0027-4F25-BAF4-9058E97D2AEF</string>
+  <key>PayloadVersion</key><integer>1</integer>
+</dict>
+</plist>
