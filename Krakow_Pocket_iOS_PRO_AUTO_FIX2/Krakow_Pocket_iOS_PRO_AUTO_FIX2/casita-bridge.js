@@ -21,5 +21,17 @@
     }
   }
 
+  adapter.setCommandHandler(async command => {
+    try {
+      await fetch(`${base}/api/v1/command`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(command || {})
+      });
+      clearTimeout(timer);
+      timer = setTimeout(refresh, 100);
+    } catch (_) {}
+  });
+
   refresh();
 })();
