@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>PayloadContent</key>
+  <array>
+    <dict>
+      <key>Icon</key>
+      <data>iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAAAEkUlEQVR42u3c309TVwDA8bWXhJRCb/owFbGFPcxkc+AkCig6/4C5yHAjW7K4ZAlOYFJ+sy1Gk2XJFt0ENobLpjESfXDyw83Gvexh0qJTBw4Q3VqMom3HL0lEWmihxRdfJHdjOcKSe/x+3s9tz+03p/ceejEsT0t+BtBi5BSAOEAcIA4QB4gDxAHiAHGAOEAcAHGAOEAcIA4QB4gDxAHiAHGAOADiAHGAOEAcIA4QB4gDxAHiAHEAxAHiAHGAOEAcIA4QB4gDxAHiAHEAxAHiAHGAOEAcIA4QB4gDxAHiAIgDC4uTYA77P95XVLh70Q8bi8XC4XAkEgmGgqNjoyOjI/5AwOP1eG96e3p7Jx5MEMdTvKgajSaTyWQyqaq6MnnlvG76b1x3X3CfPefs/qObrxU81k36mpeKCnefa3de7viteFexJclCHJjPbrPv+2hv98XfK/aUx8fHEwfmSzQn1lRUu3/pyN2YSxzQYFtlO33iVJWj0mAwEAc0LkeqyioPff6loijcrUDD2wVvKYqxtKqMlQMaCnYUOEpKiQPaaitqMl/OJA5oX3/UHzgUp8QRBzSsfn71G/k7uCDVE1en+813Cv7xpChxqqparda16RlZ67Pytm1XVVX4tRwljlMtP8zNzbFyyGA2Ontv/N7AzYHWM221ez/M3LT+k88+jUQiYkd7LjUtJyuHrxU5BUPBpu+aXs3fNjQ8LHaE/O2vE4fM+vqv7Sx8d2pqSmDs1s2vEIfkevt6G5q+Ehhot9mTV6wgDskdOXb0/oTIz3xefGENcUhuMjh53vWrwMBUm5045Nd58YLAqFUpKcQhv7t+n8AoszmROOQ3Pj4uMCohIYE45Gc0ipw0dkifLarVWCU2AYJceiMXei+IxicJA755eZsEhjl8/uJQ3KWJMvWLSJ74YN37xCH5Ha9V5iUmCQwsP/6NeKQ2bq16/YUfSCybNwZFP6LLnHoQEZ6xvHvj4k903be3aHLm3Y+9QWZE8wl7xc7W35a9uwysSO0/diux4nz3IoGRVFUy6OfCWZvyM57LU+1iD8nfWvw9qUrl4hDN7bkbh66Ffh/XqvhmwY9bo/ytbLkPF5PS1urTt88cSyhWCxWXls5G50lDsx3sO6Lrqtd+n3/xLFUWs+01TXW63oKxLEkTre3lFY59D4L4lj864y6xvrSSkc0GtX7XNjnWEyBvwNl1eUdnS45pkMciyMUCh0+8u3Xhxunp6elmRRxPCmf33f8ZHPzyWax51mIQ8ILixt//enqdDl/dnZd7dbpBihxPFEBMzMz0+FwKBQcGxsbGR3xBfzeAa/H6+np65FvnSCOR/79/3OAW1kQB4gDxAHiAHGAOEAcIA4QB4gDIA4QB4gDxAHiAHGAOEAcIA4QB0Ac+K8My9OSOQtg5QBxgDhAHCAOEAeIA8QB4gBxAMQB4gBxgDhAHCAOEAeIA8QB4gCIA8QB4gBxgDhAHCAOEAeIA8QB4gCIA8QB4gBxgDhAHCAOEAeIA8QBEAeIA8QB4gBxgDhAHCAOEAeIAyAOEAeIA8QB4gBxgDigSw8B/nE4DlIQiMcAAAAASUVORK5CYII=</data>
+      <key>Label</key><string>Pocket</string>
+      <key>URL</key><string>https://krakow-pocket.pages.dev/</string>
+      <key>PayloadDisplayName</key><string>Pocket</string>
+      <key>PayloadIdentifier</key><string>dev.pages.krakow-pocket.webclip.v2</string>
+      <key>PayloadType</key><string>com.apple.webClip.managed</string>
+      <key>PayloadUUID</key><string>940BC7E8-77FA-4F87-A1ED-AB723E92D1B7</string>
+      <key>PayloadVersion</key><integer>1</integer>
+    </dict>
+  </array>
+  <key>PayloadDescription</key><string>Añade Pocket como acceso directo a la pantalla de inicio.</string>
+  <key>PayloadDisplayName</key><string>Pocket</string>
+  <key>PayloadIdentifier</key><string>dev.pages.krakow-pocket.profile.v2</string>
+  <key>PayloadOrganization</key><string>Pocket</string>
+  <key>PayloadType</key><string>Configuration</string>
+  <key>PayloadUUID</key><string>FE764C2F-A9D5-4161-98D9-66E48099FE90</string>
+  <key>PayloadVersion</key><integer>1</integer>
+</dict>
+</plist>
