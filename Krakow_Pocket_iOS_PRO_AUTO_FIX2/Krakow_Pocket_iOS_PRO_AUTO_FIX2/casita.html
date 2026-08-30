@@ -1,0 +1,208 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f4f4ef">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="format-detection" content="telephone=no">
+  <title>Casita · Pocket</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg?v=20260830casa1">
+  <link rel="icon" href="./pocket-icon-v2-192.svg?v=20260830casa1" type="image/svg+xml">
+  <link rel="stylesheet" href="./casita.css?v=20260830casa1">
+</head>
+<body>
+  <main class="home-shell">
+    <header class="home-header">
+      <div class="topbar">
+        <a class="back" href="./index.html" aria-label="Volver a Pocket">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
+          <span>Pocket</span>
+        </a>
+        <span class="mode-badge" id="modeBadge">Simulación</span>
+      </div>
+
+      <div class="hero-copy">
+        <div class="eyebrow">AGÜIMES · CASITA</div>
+        <h1>Todo bajo control.</h1>
+        <p id="homeSummary">El ambiente está estable y no hay avisos importantes.</p>
+      </div>
+    </header>
+
+    <section class="overview" aria-label="Estado general">
+      <article class="metric metric-primary">
+        <span class="metric-label">Ambiente</span>
+        <strong><span id="indoorHumidity">54</span><small>%</small></strong>
+        <span class="metric-state good" id="humidityState">Óptimo</span>
+      </article>
+      <article class="metric">
+        <span class="metric-label">Agua</span>
+        <strong><span id="tankLiters">42</span><small>L</small></strong>
+        <span class="metric-state" id="tankState">de 100 L</span>
+      </article>
+      <article class="metric">
+        <span class="metric-label">Energía hoy</span>
+        <strong><span id="energyCost">0,84</span><small>€</small></strong>
+        <span class="metric-state" id="energyKwh">3,8 kWh</span>
+      </article>
+    </section>
+
+    <nav class="section-tabs" aria-label="Secciones de Casita">
+      <button class="tab active" data-tab="resumen" type="button">Resumen</button>
+      <button class="tab" data-tab="ambiente" type="button">Ambiente</button>
+      <button class="tab" data-tab="agua" type="button">Agua</button>
+      <button class="tab" data-tab="energia" type="button">Energía</button>
+    </nav>
+
+    <section class="tab-panel active" data-panel="resumen">
+      <div class="section-title">
+        <div>
+          <div class="eyebrow">AHORA</div>
+          <h2>La casita</h2>
+        </div>
+        <span class="updated" id="lastUpdated">Ahora</span>
+      </div>
+
+      <div class="status-list">
+        <article class="status-row">
+          <div class="status-icon climate" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3v10"></path><path d="M9 6a3 3 0 0 1 6 0v7.4a5 5 0 1 1-6 0Z"></path></svg>
+          </div>
+          <div class="status-copy">
+            <strong>Habitáculo</strong>
+            <span><b id="indoorTemp">23,4 °C</b> · <span id="indoorHumidityInline">54 %</span></span>
+          </div>
+          <span class="dot good" id="indoorDot" aria-label="Estado correcto"></span>
+        </article>
+
+        <article class="status-row">
+          <div class="status-icon corner" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M4 4v16h16"></path><path d="M8 16c2.5-4.8 5.1-6.9 10-8"></path></svg>
+          </div>
+          <div class="status-copy">
+            <strong>Esquina húmeda</strong>
+            <span><b id="cornerTemp">21,8 °C</b> · <span id="cornerHumidity">68 %</span></span>
+          </div>
+          <span class="dot warning" id="cornerDot" aria-label="Revisar humedad"></span>
+        </article>
+
+        <article class="status-row">
+          <div class="status-icon patio" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M12 3v18"></path><path d="M5 8h14"></path><path d="M7 18h10"></path><path d="M8 8v10"></path><path d="M16 8v10"></path></svg>
+          </div>
+          <div class="status-copy">
+            <strong>Patio</strong>
+            <span><b id="patioTemp">20,9 °C</b> · <span id="patioHumidity">77 %</span></span>
+          </div>
+          <span class="pill" id="patioProduction">Buen momento para producir</span>
+        </article>
+      </div>
+
+      <article class="production-card">
+        <div class="production-head">
+          <div>
+            <span class="metric-label">Producción de agua</span>
+            <strong><span id="todayLiters">8,7</span> L <small>hoy</small></strong>
+          </div>
+          <span class="live-state on" id="dehumidifierState"><i></i> Produciendo</span>
+        </div>
+        <div class="progress" aria-label="Nivel del depósito"><span id="tankProgress" style="width:42%"></span></div>
+        <div class="production-foot">
+          <span><b id="productionRate">0,46 L/h</b> ahora</span>
+          <span><b id="costPerLiter">0,07 €/L</b> estimado</span>
+        </div>
+      </article>
+
+      <div class="quick-controls">
+        <button class="control-card" id="dehumidifierButton" type="button" aria-pressed="true">
+          <span class="control-copy">
+            <small>Patio</small>
+            <strong>Deshumidificador</strong>
+            <span id="dehumidifierHint">Encendido · simulación</span>
+          </span>
+          <span class="switch on" id="dehumidifierSwitch" aria-hidden="true"><i></i></span>
+        </button>
+
+        <button class="control-card" id="pumpButton" type="button" aria-pressed="false">
+          <span class="control-copy">
+            <small>Agua</small>
+            <strong>Bomba</strong>
+            <span id="pumpHint">Apagada · simulación</span>
+          </span>
+          <span class="switch" id="pumpSwitch" aria-hidden="true"><i></i></span>
+        </button>
+      </div>
+
+      <div class="safety-note">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.4c0 4.8 3.1 8.1 7.5 9.6 4.4-1.5 7.5-4.8 7.5-9.6V6Z"></path><path d="m9 12 2 2 4-4"></path></svg>
+        <div>
+          <strong>Protección del techo</strong>
+          <span>Cuando conectemos sensores reales, Pocket podrá avisar si el habitáculo baja del rango de humedad que definamos.</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="tab-panel" data-panel="ambiente" hidden>
+      <div class="section-title">
+        <div><div class="eyebrow">MICROCLIMA</div><h2>Ambiente</h2></div>
+      </div>
+      <div class="detail-grid" id="climateCards"></div>
+      <article class="info-card">
+        <span class="metric-label">Rango de trabajo</span>
+        <strong>45–60 % HR</strong>
+        <p>La app tratará el ambiente interior como prioritario: producir agua nunca deberá implicar secar demasiado la madera o el espacio habitable.</p>
+      </article>
+    </section>
+
+    <section class="tab-panel" data-panel="agua" hidden>
+      <div class="section-title">
+        <div><div class="eyebrow">RECURSO</div><h2>Agua</h2></div>
+      </div>
+      <article class="big-value-card">
+        <span class="metric-label">Depósito</span>
+        <strong><span id="waterDetailLiters">42</span><small>/ 100 L</small></strong>
+        <div class="progress large"><span id="waterDetailProgress" style="width:42%"></span></div>
+      </article>
+      <div class="detail-grid two">
+        <article class="detail-card"><span>Hoy</span><strong id="waterToday">8,7 L</strong><small>producidos</small></article>
+        <article class="detail-card"><span>Semana</span><strong id="waterWeek">51,3 L</strong><small>producidos</small></article>
+        <article class="detail-card"><span>Ritmo</span><strong id="waterRate">0,46 L/h</strong><small>ahora</small></article>
+        <article class="detail-card"><span>Lavados</span><strong id="washEstimate">≈ 1</strong><small>con 40 L/ciclo</small></article>
+      </div>
+      <article class="info-card subtle">
+        <span class="metric-label">Uso previsto</span>
+        <p>Esta agua se registra como <b>no potable</b>: lavadora, obra, limpieza y riego adecuado. Pocket mantendrá esta separación cuando conectemos depósitos o caudalímetros reales.</p>
+      </article>
+    </section>
+
+    <section class="tab-panel" data-panel="energia" hidden>
+      <div class="section-title">
+        <div><div class="eyebrow">CONSUMO</div><h2>Energía</h2></div>
+      </div>
+      <article class="big-value-card energy">
+        <span class="metric-label">Hoy</span>
+        <strong><span id="energyDetailCost">0,84</span><small>€</small></strong>
+        <p><span id="energyDetailKwh">3,8 kWh</span> consumidos por los dispositivos monitorizados.</p>
+      </article>
+      <div class="device-list">
+        <div class="device-row"><span>Deshumidificador</span><strong id="dehumidifierEnergy">2,7 kWh</strong></div>
+        <div class="device-row"><span>Lavadora</span><strong>0,6 kWh</strong></div>
+        <div class="device-row"><span>Otros</span><strong>0,5 kWh</strong></div>
+      </div>
+      <article class="info-card">
+        <span class="metric-label">Indicador clave</span>
+        <strong id="efficiencyValue">3,22 L/kWh</strong>
+        <p>Cuando tengamos un enchufe con medición y un sensor de nivel/peso, este valor será real y nos dirá cuándo merece más la pena producir agua.</p>
+      </article>
+    </section>
+
+    <footer class="home-footer">
+      <span>Los datos actuales son de demostración y se guardan solo en este dispositivo.</span>
+    </footer>
+  </main>
+
+  <script src="./casita.js?v=20260830casa1"></script>
+</body>
+</html>
