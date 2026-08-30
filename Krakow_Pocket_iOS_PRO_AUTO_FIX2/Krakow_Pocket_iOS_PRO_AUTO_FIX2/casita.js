@@ -1,24 +1,35 @@
 (() => {
-  const STORAGE_KEY = "pocket.casita.v1";
-  const defaults = {
-    mode: "simulation",
-    electricityPrice: 0.22,
-    indoor: { temp: 23.4, humidity: 54 },
-    corner: { temp: 21.8, humidity: 68 },
-    patio: { temp: 20.9, humidity: 77 },
-    tank: { liters: 42, capacity: 100 },
-    water: { today: 8.7, week: 51.3, rate: 0.46 },
-    energy: { todayKwh: 3.8, dehumidifierKwh: 2.7 },
-    devices: { dehumidifier: true, pump: false },
-    updatedAt: Date.now()
+  const STORAGE_KEY = "pocket.casita.v2";
+  const emptyState = {
+    mode: "disconnected",
+    electricityPrice: null,
+    indoor: { temp: null, humidity: null },
+    corner: { temp: null, humidity: null },
+    patio: { temp: null, humidity: null },
+    tank: { liters: null, capacity: null },
+    water: { today: null, week: null, rate: null },
+    energy: { todayKwh: null, dehumidifierKwh: null },
+    washer: { litersPerCycle: null },
+    devices: {
+      dehumidifier: { connected: false, on: null, controllable: false },
+      pump: { connected: false, on: null, controllable: false }
+    },
+    cameras: [],
+    access: { doorbellConnected: false, doorReleaseConnected: false },
+    updatedAt: null
   };
 
   const clone = value => JSON.parse(JSON.stringify(value));
+  const hasNumber = value => typeof value === "number" && Number.isFinite(value);
+  const el = id => document.getElementById(id);
+  const fmt = (value, digits = 1) => hasNumber(value)
+    ? Number(value).toLocaleString("es-ES", { maximumFractionDigits: digits, minimumFractionDigits: digits })
+    : null;
 
   function merge(base, incoming) {
     if (!incoming || typeof incoming !== "object") return base;
     for (const [key, value] of Object.entries(incoming)) {
-      if (value && typeof value === "object" && !Array.isArray(value) && base[key] && typeof base[key] === "object") {
+      if (value && typeof value === "object" && !Array.isArray(value) && base[key] && typeof base[key] === "object" && !Array.isArray(base[key])) {
         merge(base[key], value);
       } else {
         base[key] = value;
@@ -30,143 +41,187 @@
   function loadState() {
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-      return merge(clone(defaults), stored);
+      return merge(clone(emptyState), stored);
     } catch (_) {
-      return clone(defaults);
+      return clone(emptyState);
     }
   }
 
   let state = loadState();
+  let commandHandler = null;
 
   function saveState() {
-    state.updatedAt = Date.now();
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
   }
 
-  const el = id => document.getElementById(id);
-  const fmt = (value, digits = 1) => Number(value).toLocaleString("es-ES", { maximumFractionDigits: digits, minimumFractionDigits: digits });
-
   function humidityDescriptor(humidity) {
-    if (humidity < 40) return { label: "Demasiado seco", className: "danger" };
+    if (!hasNumber(humidity)) return null;
+    if (humidity < 40) return { label: "Muy seco", className: "danger" };
     if (humidity < 45) return { label: "Seco", className: "warning" };
-    if (humidity <= 60) return { label: "Óptimo", className: "good" };
+    if (humidity <= 60) return { label: "En rango", className: "good" };
     if (humidity <= 65) return { label: "Algo húmedo", className: "warning" };
     return { label: "Humedad alta", className: "danger" };
   }
 
   function patioDescriptor(humidity) {
-    if (humidity >= 70) return "Buen momento para producir";
-    if (humidity >= 60) return "Producción favorable";
-    if (humidity >= 50) return "Producción moderada";
-    return "Poca humedad disponible";
+    if (!hasNumber(humidity)) return "Sin datos";
+    if (humidity >= 70) return "Humedad alta";
+    if (humidity >= 60) return "Humedad moderada-alta";
+    if (humidity >= 50) return "Humedad moderada";
+    return "Humedad baja";
   }
 
   function timeAgo(timestamp) {
+    if (!hasNumber(timestamp)) return "Sin datos";
     const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
     if (seconds < 45) return "Ahora";
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `Hace ${minutes} min`;
     const hours = Math.floor(minutes / 60);
-    return `Hace ${hours} h`;
+    if (hours < 24) return `Hace ${hours} h`;
+    return new Date(timestamp).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   }
 
-  function setDot(node, className) {
+  function setDot(node, descriptor) {
     if (!node) return;
     node.classList.remove("good", "warning", "danger");
-    node.classList.add(className);
+    if (descriptor?.className) node.classList.add(descriptor.className);
+    node.setAttribute("aria-label", descriptor?.label || "Sin datos");
   }
 
   function renderClimateCards() {
     const mount = el("climateCards");
     if (!mount) return;
     const zones = [
-      ["Habitáculo", state.indoor, humidityDescriptor(state.indoor.humidity)],
-      ["Esquina húmeda", state.corner, humidityDescriptor(state.corner.humidity)],
-      ["Patio", state.patio, humidityDescriptor(state.patio.humidity)]
+      ["Habitáculo", state.indoor],
+      ["Esquina húmeda", state.corner],
+      ["Patio", state.patio]
     ];
-    mount.innerHTML = zones.map(([name, zone, descriptor]) => `
-      <article class="detail-card">
-        <span>${name}</span>
-        <strong>${fmt(zone.humidity, 0)} %</strong>
-        <small>${fmt(zone.temp, 1)} °C · ${descriptor.label}</small>
-      </article>
-    `).join("");
+    mount.innerHTML = zones.map(([name, zone]) => {
+      const descriptor = humidityDescriptor(zone.humidity);
+      const humidity = hasNumber(zone.humidity) ? `${fmt(zone.humidity, 0)} %` : "Sin datos";
+      const temp = hasNumber(zone.temp) ? `${fmt(zone.temp, 1)} °C` : "Temperatura sin datos";
+      return `<article class="detail-card"><span>${name}</span><strong>${humidity}</strong><small>${temp}${descriptor ? ` · ${descriptor.label}` : ""}</small></article>`;
+    }).join("");
+  }
+
+  function renderCameraCards() {
+    const mount = el("cameraCards");
+    if (!mount) return;
+    const cameras = Array.isArray(state.cameras) ? state.cameras.filter(camera => camera && camera.name) : [];
+    if (!cameras.length) {
+      mount.innerHTML = "";
+      return;
+    }
+    mount.innerHTML = cameras.map(camera => `<article class="detail-card"><span>${String(camera.location || "Cámara")}</span><strong>${String(camera.name)}</strong><small>${camera.online === true ? "Conectada" : camera.online === false ? "Sin conexión" : "Estado sin datos"}</small></article>`).join("");
+  }
+
+  function setDeviceUI(name, labelOff) {
+    const device = state.devices?.[name] || {};
+    const connected = device.connected === true;
+    const controllable = connected && device.controllable === true;
+    const on = device.on === true;
+    const button = el(`${name}Button`);
+    const switchNode = el(`${name}Switch`);
+    const hint = el(`${name}Hint`);
+
+    if (button) {
+      button.disabled = !controllable;
+      button.setAttribute("aria-disabled", String(!controllable));
+      button.setAttribute("aria-pressed", connected && typeof device.on === "boolean" ? String(on) : "false");
+    }
+    switchNode?.classList.toggle("on", connected && on);
+    if (hint) hint.textContent = !connected ? labelOff : typeof device.on !== "boolean" ? "Estado sin datos" : on ? "Encendido" : "Apagado";
   }
 
   function render() {
     const indoorStatus = humidityDescriptor(state.indoor.humidity);
     const cornerStatus = humidityDescriptor(state.corner.humidity);
-    const tankPct = Math.max(0, Math.min(100, (state.tank.liters / state.tank.capacity) * 100));
-    const energyCost = state.energy.todayKwh * state.electricityPrice;
-    const costPerLiter = state.water.today > 0 ? energyCost / state.water.today : 0;
-    const efficiency = state.energy.dehumidifierKwh > 0 ? state.water.today / state.energy.dehumidifierKwh : 0;
-    const washes = Math.max(0, Math.floor(state.tank.liters / 40));
 
-    el("indoorHumidity").textContent = fmt(state.indoor.humidity, 0);
-    el("humidityState").textContent = indoorStatus.label;
-    el("humidityState").className = `metric-state ${indoorStatus.className}`;
-    el("tankLiters").textContent = fmt(state.tank.liters, 0);
-    el("tankState").textContent = `de ${fmt(state.tank.capacity, 0)} L`;
-    el("energyCost").textContent = fmt(energyCost, 2);
-    el("energyKwh").textContent = `${fmt(state.energy.todayKwh, 1)} kWh`;
+    el("indoorHumidity").textContent = hasNumber(state.indoor.humidity) ? fmt(state.indoor.humidity, 0) : "—";
+    el("indoorHumidityUnit").textContent = hasNumber(state.indoor.humidity) ? "%" : "";
+    el("humidityState").textContent = indoorStatus?.label || "Sin datos";
+    el("humidityState").className = `metric-state${indoorStatus ? ` ${indoorStatus.className}` : ""}`;
 
-    el("indoorTemp").textContent = `${fmt(state.indoor.temp, 1)} °C`;
-    el("indoorHumidityInline").textContent = `${fmt(state.indoor.humidity, 0)} %`;
-    el("cornerTemp").textContent = `${fmt(state.corner.temp, 1)} °C`;
-    el("cornerHumidity").textContent = `${fmt(state.corner.humidity, 0)} %`;
-    el("patioTemp").textContent = `${fmt(state.patio.temp, 1)} °C`;
-    el("patioHumidity").textContent = `${fmt(state.patio.humidity, 0)} %`;
+    el("tankLiters").textContent = hasNumber(state.tank.liters) ? fmt(state.tank.liters, 0) : "—";
+    el("tankLitersUnit").textContent = hasNumber(state.tank.liters) ? "L" : "";
+    el("tankState").textContent = hasNumber(state.tank.capacity) ? `de ${fmt(state.tank.capacity, 0)} L` : "Sin datos";
+
+    const energyCost = hasNumber(state.energy.todayKwh) && hasNumber(state.electricityPrice) ? state.energy.todayKwh * state.electricityPrice : null;
+    el("energyCost").textContent = hasNumber(energyCost) ? fmt(energyCost, 2) : "—";
+    el("energyCostUnit").textContent = hasNumber(energyCost) ? "€" : "";
+    el("energyKwh").textContent = hasNumber(state.energy.todayKwh) ? `${fmt(state.energy.todayKwh, 1)} kWh` : "Sin datos";
+
+    el("indoorTemp").textContent = hasNumber(state.indoor.temp) ? `${fmt(state.indoor.temp, 1)} °C` : "Sin datos";
+    el("indoorHumidityInline").textContent = hasNumber(state.indoor.humidity) ? ` · ${fmt(state.indoor.humidity, 0)} %` : "";
+    el("cornerTemp").textContent = hasNumber(state.corner.temp) ? `${fmt(state.corner.temp, 1)} °C` : "Sin datos";
+    el("cornerHumidity").textContent = hasNumber(state.corner.humidity) ? ` · ${fmt(state.corner.humidity, 0)} %` : "";
+    el("patioTemp").textContent = hasNumber(state.patio.temp) ? `${fmt(state.patio.temp, 1)} °C` : "Sin datos";
+    el("patioHumidity").textContent = hasNumber(state.patio.humidity) ? ` · ${fmt(state.patio.humidity, 0)} %` : "";
     el("patioProduction").textContent = patioDescriptor(state.patio.humidity);
-    setDot(el("indoorDot"), indoorStatus.className);
-    setDot(el("cornerDot"), cornerStatus.className);
+    setDot(el("indoorDot"), indoorStatus);
+    setDot(el("cornerDot"), cornerStatus);
 
-    el("todayLiters").textContent = fmt(state.water.today, 1);
-    el("productionRate").textContent = `${fmt(state.water.rate, 2)} L/h`;
-    el("costPerLiter").textContent = `${fmt(costPerLiter, 2)} €/L`;
+    el("todayLiters").textContent = hasNumber(state.water.today) ? fmt(state.water.today, 1) : "—";
+    el("todayLitersUnit").textContent = hasNumber(state.water.today) ? "L hoy" : "Sin datos";
+    el("productionRate").textContent = hasNumber(state.water.rate) ? `${fmt(state.water.rate, 2)} L/h` : "Sin datos";
+
+    const costPerLiter = hasNumber(energyCost) && hasNumber(state.water.today) && state.water.today > 0 ? energyCost / state.water.today : null;
+    el("costPerLiter").textContent = hasNumber(costPerLiter) ? `${fmt(costPerLiter, 2)} €/L` : "Sin datos";
+
+    const tankPct = hasNumber(state.tank.liters) && hasNumber(state.tank.capacity) && state.tank.capacity > 0
+      ? Math.max(0, Math.min(100, (state.tank.liters / state.tank.capacity) * 100))
+      : 0;
     el("tankProgress").style.width = `${tankPct}%`;
-
-    el("waterDetailLiters").textContent = fmt(state.tank.liters, 0);
     el("waterDetailProgress").style.width = `${tankPct}%`;
-    el("waterToday").textContent = `${fmt(state.water.today, 1)} L`;
-    el("waterWeek").textContent = `${fmt(state.water.week, 1)} L`;
-    el("waterRate").textContent = `${fmt(state.water.rate, 2)} L/h`;
-    el("washEstimate").textContent = `≈ ${washes}`;
+    el("waterDetailLiters").textContent = hasNumber(state.tank.liters) ? fmt(state.tank.liters, 0) : "—";
+    el("waterDetailCapacity").textContent = hasNumber(state.tank.capacity) ? `/ ${fmt(state.tank.capacity, 0)} L` : " Sin datos";
+    el("waterToday").textContent = hasNumber(state.water.today) ? `${fmt(state.water.today, 1)} L` : "Sin datos";
+    el("waterWeek").textContent = hasNumber(state.water.week) ? `${fmt(state.water.week, 1)} L` : "Sin datos";
+    el("waterRate").textContent = hasNumber(state.water.rate) ? `${fmt(state.water.rate, 2)} L/h` : "Sin datos";
 
-    el("energyDetailCost").textContent = fmt(energyCost, 2);
-    el("energyDetailKwh").textContent = `${fmt(state.energy.todayKwh, 1)} kWh`;
-    el("dehumidifierEnergy").textContent = `${fmt(state.energy.dehumidifierKwh, 1)} kWh`;
-    el("efficiencyValue").textContent = `${fmt(efficiency, 2)} L/kWh`;
+    const washes = hasNumber(state.tank.liters) && hasNumber(state.washer?.litersPerCycle) && state.washer.litersPerCycle > 0
+      ? Math.floor(state.tank.liters / state.washer.litersPerCycle)
+      : null;
+    el("washEstimate").textContent = hasNumber(washes) ? String(washes) : "Sin datos";
 
-    const dehumidifierOn = Boolean(state.devices.dehumidifier);
-    el("dehumidifierButton").setAttribute("aria-pressed", String(dehumidifierOn));
-    el("dehumidifierSwitch").classList.toggle("on", dehumidifierOn);
-    el("dehumidifierState").classList.toggle("on", dehumidifierOn);
-    el("dehumidifierState").innerHTML = `<i></i> ${dehumidifierOn ? "Produciendo" : "Parado"}`;
-    el("dehumidifierHint").textContent = `${dehumidifierOn ? "Encendido" : "Apagado"} · simulación`;
+    el("energyDetailCost").textContent = hasNumber(energyCost) ? fmt(energyCost, 2) : "—";
+    el("energyDetailCostUnit").textContent = hasNumber(energyCost) ? "€" : "";
+    el("energyDetailKwh").textContent = hasNumber(state.energy.todayKwh) ? `${fmt(state.energy.todayKwh, 1)} kWh consumidos por dispositivos monitorizados.` : "Sin datos de consumo.";
+    el("dehumidifierEnergy").textContent = hasNumber(state.energy.dehumidifierKwh) ? `${fmt(state.energy.dehumidifierKwh, 1)} kWh` : "Sin datos";
 
-    const pumpOn = Boolean(state.devices.pump);
-    el("pumpButton").setAttribute("aria-pressed", String(pumpOn));
-    el("pumpSwitch").classList.toggle("on", pumpOn);
-    el("pumpHint").textContent = `${pumpOn ? "Encendida" : "Apagada"} · simulación`;
+    const efficiency = hasNumber(state.energy.dehumidifierKwh) && state.energy.dehumidifierKwh > 0 && hasNumber(state.water.today)
+      ? state.water.today / state.energy.dehumidifierKwh
+      : null;
+    el("efficiencyValue").textContent = hasNumber(efficiency) ? `${fmt(efficiency, 2)} L/kWh` : "Sin datos";
+
+    setDeviceUI("dehumidifier", "No conectado");
+    setDeviceUI("pump", "No conectada");
+
+    const dehumidifier = state.devices?.dehumidifier || {};
+    const dehumidifierState = el("dehumidifierState");
+    dehumidifierState?.classList.toggle("on", dehumidifier.connected === true && dehumidifier.on === true);
+    if (dehumidifierState) dehumidifierState.innerHTML = `<i></i> ${dehumidifier.connected !== true ? "No conectado" : typeof dehumidifier.on !== "boolean" ? "Estado sin datos" : dehumidifier.on ? "Produciendo" : "Parado"}`;
 
     el("lastUpdated").textContent = timeAgo(state.updatedAt);
-    el("modeBadge").textContent = state.mode === "live" ? "Conectado" : "Simulación";
+    el("modeBadge").textContent = state.mode === "live" ? "Conectado" : "Sin conectar";
 
-    if (indoorStatus.className === "danger" && state.indoor.humidity < 40) {
-      el("homeSummary").textContent = "El habitáculo está demasiado seco. Conviene parar la deshumidificación interior.";
-    } else if (cornerStatus.className === "danger") {
-      el("homeSummary").textContent = "El ambiente general está estable, pero la esquina húmeda merece seguimiento.";
+    if (state.mode !== "live") {
+      el("homeSummary").textContent = "Todavía no hay dispositivos conectados. Pocket mostrará únicamente datos reales.";
+    } else if (indoorStatus?.className === "danger" && hasNumber(state.indoor.humidity) && state.indoor.humidity < 40) {
+      el("homeSummary").textContent = "El sensor del habitáculo detecta un ambiente muy seco.";
+    } else if (cornerStatus?.className === "danger") {
+      el("homeSummary").textContent = "La esquina monitorizada presenta humedad alta.";
     } else {
-      el("homeSummary").textContent = "El ambiente está estable y no hay avisos importantes.";
+      el("homeSummary").textContent = "Dispositivos conectados. No hay avisos basados en los datos disponibles.";
     }
 
     renderClimateCards();
+    renderCameraCards();
   }
 
   function setTab(name) {
-    document.querySelectorAll(".tab").forEach(button => {
-      button.classList.toggle("active", button.dataset.tab === name);
-    });
+    document.querySelectorAll(".tab").forEach(button => button.classList.toggle("active", button.dataset.tab === name));
     document.querySelectorAll(".tab-panel").forEach(panel => {
       const active = panel.dataset.panel === name;
       panel.classList.toggle("active", active);
@@ -174,38 +229,23 @@
     });
   }
 
-  document.querySelectorAll(".tab").forEach(button => {
-    button.addEventListener("click", () => setTab(button.dataset.tab));
-  });
+  document.querySelectorAll(".tab").forEach(button => button.addEventListener("click", () => setTab(button.dataset.tab)));
+
+  function runCommand(device, action) {
+    if (typeof commandHandler !== "function") return;
+    commandHandler({ device, action, requestedAt: Date.now() });
+  }
 
   el("dehumidifierButton")?.addEventListener("click", () => {
-    if (state.mode !== "simulation") return;
-    state.devices.dehumidifier = !state.devices.dehumidifier;
-    if (!state.devices.dehumidifier) state.water.rate = 0;
-    else if (state.water.rate <= 0) state.water.rate = defaults.water.rate;
-    saveState();
-    render();
+    const device = state.devices?.dehumidifier;
+    if (device?.connected === true && device?.controllable === true && typeof device.on === "boolean") runCommand("dehumidifier", device.on ? "turn_off" : "turn_on");
   });
 
   el("pumpButton")?.addEventListener("click", () => {
-    if (state.mode !== "simulation") return;
-    state.devices.pump = !state.devices.pump;
-    saveState();
-    render();
+    const device = state.devices?.pump;
+    if (device?.connected === true && device?.controllable === true && typeof device.on === "boolean") runCommand("pump", device.on ? "turn_off" : "turn_on");
   });
 
-  /*
-    Future integration point.
-    Home Assistant / ESPHome / Supabase can feed normalized telemetry here
-    without changing the UI. Example:
-
-    window.PocketHomeAdapter.update({
-      mode: "live",
-      patio: { temp: 22.1, humidity: 74 },
-      tank: { liters: 58.4 },
-      devices: { dehumidifier: true }
-    });
-  */
   window.PocketHomeAdapter = {
     getState() { return clone(state); },
     update(payload) {
@@ -214,9 +254,12 @@
       saveState();
       render();
     },
-    resetSimulation() {
-      state = clone(defaults);
-      saveState();
+    setCommandHandler(handler) {
+      commandHandler = typeof handler === "function" ? handler : null;
+    },
+    clear() {
+      state = clone(emptyState);
+      try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
       render();
     }
   };
