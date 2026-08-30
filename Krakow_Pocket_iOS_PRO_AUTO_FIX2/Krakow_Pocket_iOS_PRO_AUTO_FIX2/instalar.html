@@ -9,19 +9,21 @@
   <meta name="apple-mobile-web-app-title" content="Pocket">
   <title>Descargar Pocket</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg">
+  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg?v=20260830c">
+  <link rel="icon" href="./pocket-icon-v2-192.svg?v=20260830c" type="image/svg+xml">
   <style>
-    :root{--bg:#f6f6f2;--card:#fff;--text:#172019;--muted:#68716b;--line:#dfe3de;--accent:#172019;--soft:#e9eee9;--green:#315d43;--shadow:0 18px 50px rgba(23,32,25,.10)}
+    :root{--bg:#f6f6f2;--card:#fff;--text:#172019;--muted:#68716b;--line:#dfe3de;--accent:#172019;--soft:#e9eee9;--green:#315d43;--warn:#8a5b16;--warnbg:#fff7e8;--shadow:0 18px 50px rgba(23,32,25,.10)}
     *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
     button,a{font:inherit;-webkit-tap-highlight-color:transparent}.wrap{width:min(620px,100%);margin:0 auto;padding:max(32px,env(safe-area-inset-top)) 18px calc(36px + env(safe-area-inset-bottom))}
-    .top{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:38px}.back{display:inline-flex;align-items:center;gap:7px;min-height:44px;color:var(--muted);text-decoration:none;font-size:14px;font-weight:700}.share{width:44px;height:44px;border:1px solid var(--line);border-radius:15px;background:#fff;color:var(--text);display:grid;place-items:center;cursor:pointer}.share svg,.btn svg,.step-icon svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-    .hero{text-align:center;padding:2px 8px 26px}.app-icon{width:132px;height:132px;margin:0 auto 25px;border-radius:31px;background:#172019;display:grid;place-items:center;color:#fff;font-size:70px;line-height:1;font-weight:800;letter-spacing:-.055em;box-shadow:0 20px 44px rgba(23,32,25,.18)}
+    .top{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:34px}.back{display:inline-flex;align-items:center;gap:7px;min-height:44px;color:var(--muted);text-decoration:none;font-size:14px;font-weight:700}.share{width:44px;height:44px;border:1px solid var(--line);border-radius:15px;background:#fff;color:var(--text);display:grid;place-items:center;cursor:pointer}.share svg,.btn svg,.step-icon svg,.notice svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+    .hero{text-align:center;padding:2px 8px 22px}.app-icon{width:132px;height:132px;margin:0 auto 25px;border-radius:31px;background:#172019;display:grid;place-items:center;color:#fff;font-size:70px;line-height:1;font-weight:800;letter-spacing:-.055em;box-shadow:0 20px 44px rgba(23,32,25,.18)}
     .eyebrow{color:var(--green);font-size:12px;font-weight:850;letter-spacing:.09em;text-transform:uppercase}h1{margin:8px 0 0;font-size:clamp(38px,10vw,58px);line-height:.98;letter-spacing:-.055em;font-weight:800}.lead{max-width:470px;margin:17px auto 0;color:var(--muted);font-size:16px;line-height:1.55}
-    .panel{margin-top:16px;padding:20px;border:1px solid var(--line);border-radius:25px;background:var(--card);box-shadow:var(--shadow)}.btn{width:100%;min-height:58px;border:0;border-radius:18px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 18px;font-size:17px;font-weight:800;cursor:pointer}.btn:disabled{opacity:.55;cursor:default}.sub{margin:11px 4px 0;text-align:center;color:var(--muted);font-size:12px;line-height:1.45}
+    .notice{display:none;grid-template-columns:38px minmax(0,1fr);gap:12px;align-items:center;margin:5px 0 14px;padding:13px 14px;border:1px solid #eed8ae;border-radius:18px;background:var(--warnbg);color:var(--warn)}.notice.show{display:grid}.notice-icon{width:38px;height:38px;border-radius:12px;background:#fff;display:grid;place-items:center}.notice strong{display:block;font-size:13px}.notice span{display:block;margin-top:2px;color:#8b7048;font-size:12px;line-height:1.4}
+    .panel{margin-top:16px;padding:20px;border:1px solid var(--line);border-radius:25px;background:var(--card);box-shadow:var(--shadow)}.btn{width:100%;min-height:58px;border:0;border-radius:18px;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 18px;font-size:17px;font-weight:800;cursor:pointer}.btn.secondary{background:var(--soft);color:var(--text)}.btn:disabled{opacity:.55;cursor:default}.sub{margin:11px 4px 0;text-align:center;color:var(--muted);font-size:12px;line-height:1.45}
     .installed{display:none;align-items:center;gap:10px;margin-bottom:14px;padding:12px 14px;border-radius:16px;background:var(--soft);color:var(--green);font-size:13px;font-weight:800}.installed.show{display:flex}.installed-dot{width:9px;height:9px;border-radius:50%;background:var(--green)}
     .how{margin-top:28px}.how-head{display:flex;justify-content:space-between;align-items:end;gap:14px;margin-bottom:12px}.how h2{margin:0;font-size:22px;letter-spacing:-.035em}.platform{color:var(--muted);font-size:12px;font-weight:750}.steps{display:grid;gap:10px}.step{display:grid;grid-template-columns:46px minmax(0,1fr);gap:13px;align-items:center;padding:15px;border:1px solid var(--line);border-radius:19px;background:rgba(255,255,255,.66)}.step-icon{width:46px;height:46px;border-radius:15px;background:var(--soft);color:var(--green);display:grid;place-items:center}.step strong{display:block;font-size:15px}.step span{display:block;margin-top:3px;color:var(--muted);font-size:13px;line-height:1.4}.num{font-size:16px;font-weight:850}
     .tiny{margin-top:24px;text-align:center;color:#929993;font-size:11px;line-height:1.5}.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(16px);max-width:calc(100% - 32px);padding:11px 15px;border-radius:999px;background:#172019;color:#fff;font-size:13px;font-weight:750;opacity:0;pointer-events:none;transition:.2s ease;white-space:nowrap}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-    dialog{width:min(500px,calc(100% - 28px));border:0;border-radius:27px;padding:0;background:#fff;color:var(--text);box-shadow:0 28px 80px rgba(0,0,0,.22)}dialog::backdrop{background:rgba(23,32,25,.34);backdrop-filter:blur(4px)}.sheet{padding:23px}.sheet-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.sheet h2{margin:0;font-size:25px;letter-spacing:-.04em}.sheet p{margin:7px 0 0;color:var(--muted);font-size:14px;line-height:1.5}.close{width:40px;height:40px;border:0;border-radius:13px;background:var(--soft);color:var(--text);font-size:18px;cursor:pointer}.ios-steps{display:grid;gap:11px;margin-top:20px}.ios-row{display:flex;align-items:center;gap:12px;padding:13px;border-radius:17px;background:#f6f7f4}.ios-symbol{flex:0 0 42px;width:42px;height:42px;border-radius:13px;background:#fff;display:grid;place-items:center;color:var(--green);font-size:20px;font-weight:800}.ios-row strong{font-size:14px}.ios-row span{display:block;margin-top:2px;color:var(--muted);font-size:12px}.sheet .btn{margin-top:18px;min-height:52px}
+    dialog{width:min(500px,calc(100% - 28px));border:0;border-radius:27px;padding:0;background:#fff;color:var(--text);box-shadow:0 28px 80px rgba(0,0,0,.22)}dialog::backdrop{background:rgba(23,32,25,.34);backdrop-filter:blur(4px)}.sheet{padding:23px}.sheet-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.sheet h2{margin:0;font-size:25px;letter-spacing:-.04em}.sheet p{margin:7px 0 0;color:var(--muted);font-size:14px;line-height:1.5}.close{width:40px;height:40px;border:0;border-radius:13px;background:var(--soft);color:var(--text);font-size:18px;cursor:pointer}.ios-steps{display:grid;gap:11px;margin-top:20px}.ios-row{display:flex;align-items:center;gap:12px;padding:13px;border-radius:17px;background:#f6f7f4}.ios-symbol{flex:0 0 42px;width:42px;height:42px;border-radius:13px;background:#fff;display:grid;place-items:center;color:var(--green);font-size:20px;font-weight:800}.ios-row strong{font-size:14px}.ios-row span{display:block;margin-top:2px;color:var(--muted);font-size:12px}.sheet .btn{margin-top:12px;min-height:52px}.sheet .btn:first-of-type{margin-top:18px}
     @media(max-width:430px){.wrap{padding-left:14px;padding-right:14px}.top{margin-bottom:27px}.app-icon{width:116px;height:116px;border-radius:28px;font-size:62px}.panel{padding:16px;border-radius:22px}.hero{padding-left:2px;padding-right:2px}.lead{font-size:15px}}
     @media(prefers-reduced-motion:reduce){*{transition:none!important}}
   </style>
@@ -42,6 +44,11 @@
       <p class="lead">Añádelo a la pantalla de inicio y ábrelo como cualquier otra app. Sin registro, sin tienda y sin instalar archivos.</p>
     </section>
 
+    <div class="notice" id="browserNotice">
+      <div class="notice-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v5m0 3h.01"/></svg></div>
+      <div><strong id="noticeTitle">Abre esta página en Safari</strong><span id="noticeText">El navegador interno de esta app no permite añadir Pocket a la pantalla de inicio.</span></div>
+    </div>
+
     <section class="panel">
       <div class="installed" id="installed"><span class="installed-dot"></span> Pocket ya está abierto como app</div>
       <button class="btn" id="installBtn" type="button">
@@ -61,11 +68,9 @@
 
   <dialog id="iosDialog">
     <div class="sheet">
-      <div class="sheet-top"><div><h2>Añadir Pocket al iPhone</h2><p>Apple no permite que una web pulse este botón por ti. Son dos toques.</p></div><button class="close" id="closeDialog" type="button" aria-label="Cerrar">×</button></div>
-      <div class="ios-steps">
-        <div class="ios-row"><div class="ios-symbol">↥</div><div><strong>1. Pulsa Compartir</strong><span>El icono de cuadrado con una flecha hacia arriba.</span></div></div>
-        <div class="ios-row"><div class="ios-symbol">＋</div><div><strong>2. Añadir a pantalla de inicio</strong><span>Confirma “Añadir” y aparecerá Pocket con su icono.</span></div></div>
-      </div>
+      <div class="sheet-top"><div><h2 id="dialogTitle">Añadir Pocket al iPhone</h2><p id="dialogLead">Apple no permite que una web pulse este botón por ti.</p></div><button class="close" id="closeDialog" type="button" aria-label="Cerrar">×</button></div>
+      <div class="ios-steps" id="dialogSteps"></div>
+      <button class="btn secondary" id="copyLink" type="button">Copiar enlace</button>
       <button class="btn" id="gotIt" type="button">Entendido</button>
     </div>
   </dialog>
@@ -81,16 +86,28 @@
       const steps=document.getElementById('steps');
       const installed=document.getElementById('installed');
       const dialog=document.getElementById('iosDialog');
+      const dialogTitle=document.getElementById('dialogTitle');
+      const dialogLead=document.getElementById('dialogLead');
+      const dialogSteps=document.getElementById('dialogSteps');
+      const browserNotice=document.getElementById('browserNotice');
+      const noticeTitle=document.getElementById('noticeTitle');
+      const noticeText=document.getElementById('noticeText');
       const toast=document.getElementById('toast');
       const ua=navigator.userAgent||'';
       const isIOS=/iPad|iPhone|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
       const isAndroid=/Android/i.test(ua);
       const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
+      const isKnownInApp=/(WhatsApp|Instagram|FBAN|FBAV|Messenger|Line|Telegram|GSA)/i.test(ua);
+      const isAltIOSBrowser=isIOS&&/(CriOS|FxiOS|EdgiOS|OPiOS)/i.test(ua);
+      const isSafariIOS=isIOS&&!isKnownInApp&&!isAltIOSBrowser&&/Safari/i.test(ua);
+      const needsSafari=isIOS&&!isSafariIOS&&!isStandalone;
       let deferredPrompt=null;
 
       const icon=(kind)=>kind==='share'?'<svg viewBox="0 0 24 24"><path d="M12 16V3m0 0L7.5 7.5M12 3l4.5 4.5"/><path d="M6 10H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1"/></svg>':'<span class="num">'+kind+'</span>';
       const row=(i,title,text)=>'<div class="step"><div class="step-icon">'+icon(i)+'</div><div><strong>'+title+'</strong><span>'+text+'</span></div></div>';
+      const dialogRow=(symbol,title,text)=>'<div class="ios-row"><div class="ios-symbol">'+symbol+'</div><div><strong>'+title+'</strong><span>'+text+'</span></div></div>';
       const showToast=(text)=>{toast.textContent=text;toast.classList.add('show');clearTimeout(showToast.t);showToast.t=setTimeout(()=>toast.classList.remove('show'),1900)};
+      const copyUrl=async()=>{try{await navigator.clipboard.writeText(location.href);showToast('Enlace copiado ✓');return true}catch(e){return false}};
 
       if(isStandalone){
         installed.classList.add('show');
@@ -100,7 +117,16 @@
 
       if(isIOS){
         platformLabel.textContent='iPhone / iPad';
-        steps.innerHTML=row('share','Pulsa Compartir','En Safari, toca el cuadrado con la flecha hacia arriba.')+row('2','Añadir a pantalla de inicio','Busca esa opción en el menú y confirma “Añadir”.')+row('3','Listo','Pocket aparecerá junto a tus demás apps.');
+        if(needsSafari){
+          browserNotice.classList.add('show');
+          noticeTitle.textContent=isKnownInApp?'Estás dentro de otra app':'Necesitas Safari para instalarlo';
+          noticeText.textContent='En iPhone, “Añadir a pantalla de inicio” solo aparece al abrir esta página en Safari.';
+          installLabel.textContent='Abrir en Safari primero';
+          installSub.textContent='WhatsApp y otros navegadores internos no muestran la opción de instalación';
+          steps.innerHTML=row('1','Abre esta página en Safari','Pulsa Compartir y busca “Abrir en Safari”. Si no aparece, copia el enlace y pégalo en Safari.')+row('share','Ya en Safari, pulsa Compartir','Usa el cuadrado con la flecha hacia arriba.')+row('3','Añadir a pantalla de inicio','Busca esa opción y confirma “Añadir”.');
+        }else{
+          steps.innerHTML=row('share','Pulsa Compartir','En Safari, toca el cuadrado con la flecha hacia arriba.')+row('2','Añadir a pantalla de inicio','Busca esa opción en el menú y confirma “Añadir”.')+row('3','Listo','Pocket aparecerá junto a tus demás apps.');
+        }
       }else if(isAndroid){
         platformLabel.textContent='Android';
         steps.innerHTML=row('1','Pulsa “Descargar Pocket”','Si tu navegador admite instalación, verás el aviso de instalar la app.')+row('2','Confirma Instalar','Pocket aparecerá en tu pantalla de inicio y en tus aplicaciones.');
@@ -114,32 +140,34 @@
 
       installBtn.addEventListener('click',async()=>{
         if(isStandalone){location.href='./';return;}
-        if(deferredPrompt){
-          deferredPrompt.prompt();
-          try{await deferredPrompt.userChoice;}catch(e){}
-          deferredPrompt=null;
-          return;
-        }
+        if(deferredPrompt){deferredPrompt.prompt();try{await deferredPrompt.userChoice;}catch(e){}deferredPrompt=null;return;}
         if(isIOS){
+          if(needsSafari){
+            dialogTitle.textContent='Primero, abre Pocket en Safari';
+            dialogLead.textContent='Desde WhatsApp u otros navegadores internos, iPhone oculta la opción “Añadir a pantalla de inicio”.';
+            dialogSteps.innerHTML=dialogRow('↥','1. Pulsa Compartir','En esta misma pantalla.')+dialogRow('🧭','2. Busca “Abrir en Safari”','Puede estar más abajo en la lista de acciones.')+dialogRow('⧉','Si no aparece','Pulsa “Copiar enlace”, abre Safari y pega la dirección.');
+          }else{
+            dialogTitle.textContent='Añadir Pocket al iPhone';
+            dialogLead.textContent='Apple no permite que una web pulse este botón por ti. Son dos toques.';
+            dialogSteps.innerHTML=dialogRow('↥','1. Pulsa Compartir','El icono de cuadrado con una flecha hacia arriba.')+dialogRow('＋','2. Añadir a pantalla de inicio','Confirma “Añadir” y aparecerá Pocket con su icono.');
+          }
           if(typeof dialog.showModal==='function')dialog.showModal();
-          else alert('Pulsa Compartir y después “Añadir a pantalla de inicio”.');
+          else alert(needsSafari?'Abre esta página en Safari. Después pulsa Compartir y “Añadir a pantalla de inicio”.':'Pulsa Compartir y después “Añadir a pantalla de inicio”.');
           return;
         }
-        if(isAndroid){
-          alert('Abre el menú del navegador (⋮) y elige “Instalar aplicación” o “Añadir a pantalla de inicio”.');
-          return;
-        }
+        if(isAndroid){alert('Abre el menú del navegador (⋮) y elige “Instalar aplicación” o “Añadir a pantalla de inicio”.');return;}
         location.href='./';
       });
 
       document.getElementById('closeDialog').addEventListener('click',()=>dialog.close());
       document.getElementById('gotIt').addEventListener('click',()=>dialog.close());
+      document.getElementById('copyLink').addEventListener('click',async()=>{const ok=await copyUrl();if(ok&&dialog.open)setTimeout(()=>dialog.close(),450)});
       dialog.addEventListener('click',e=>{if(e.target===dialog)dialog.close()});
 
       document.getElementById('shareBtn').addEventListener('click',async()=>{
         const data={title:'Pocket',text:'Añade Pocket a tu móvil',url:location.href};
         if(navigator.share){try{await navigator.share(data);return}catch(e){if(e.name==='AbortError')return}}
-        try{await navigator.clipboard.writeText(location.href);showToast('Enlace copiado ✓')}catch(e){showToast('Copia la dirección del navegador')}
+        const ok=await copyUrl();if(!ok)showToast('Copia la dirección del navegador');
       });
 
       if('serviceWorker' in navigator){navigator.serviceWorker.register('./sw.js').catch(()=>{});}
