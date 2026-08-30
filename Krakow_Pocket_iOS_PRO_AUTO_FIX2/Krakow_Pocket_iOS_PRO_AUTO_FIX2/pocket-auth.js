@@ -7,19 +7,23 @@
     code: "POCKET-USERS-2026",
     secret: "pocket-profiles-2026-5f78b4e1c2"
   };
-  const SESSION_KEY = "pocketSessionV2";
-  const LEGACY_SESSION_KEY = "pocketSessionV1";
+
+  const SESSION_KEY = "pocketSessionV3";
+  const LEGACY_SESSION_KEYS = ["pocketSessionV1", "pocketSessionV2"];
   const LEGACY_ADMIN_KEY = "pocketAdminDeviceKeyV1";
+  const PENDING_KEY = "pocketPendingProfileV1";
   const RECENTS_KEY = "pocketRecentNamesV1";
   const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
-  const LAST_TOUCH_KEY = "pocketLastRemoteTouchV1";
   const TOUCH_EVERY_MS = 6 * 60 * 60 * 1000;
   const PIN_ITERATIONS = 120000;
+  const PENDING_POLL_MS = 15000;
 
   let registryCache = null;
   let session = null;
   let adminCapable = false;
   let gateEl = null;
+  let pendingTimer = null;
+  let lastRemoteTouch = 0;
   let resolveReady;
   const ready = new Promise(resolve => { resolveReady = resolve; });
 
@@ -101,7 +105,7 @@
   }
 
   const emptyRegistry = () => ({
-    schema: 2,
+    schema: 3,
     users: [],
     adminUserId: null,
     adminPinHash: null,
@@ -121,7 +125,11 @@
     value.users.forEach(user => {
       const isAdmin = !!value.adminUserId && user.id === value.adminUserId;
       user.role = isAdmin ? "admin" : "user";
-      if (isAdmin) user.active = true;
+      if (isAdmin) {
+        user.active = true;
+        user.status = "approved";
+        user.allowedPages = ["*"];
+      }
     });
     return value;
   }
@@ -129,20 +137,31 @@
   function normalizeRegistry(raw) {
     const value = raw && typeof raw === "object" ? raw : emptyRegistry();
     if (!Array.isArray(value.users)) value.users = [];
-    value.schema = 2;
+    value.schema = 3;
     value.adminPinHash = value.adminPinHash || null;
     value.adminPinSalt = value.adminPinSalt || null;
     value.adminDeviceHash = value.adminDeviceHash || null;
-    value.users = value.users.map(user => ({
-      id: user.id || uid("usr"),
-      key: user.key || normalizeKey(user.name),
-      name: titleName(user.name),
-      role: user.role === "admin" ? "admin" : "user",
-      active: user.active !== false,
-      sessionVersion: Number.isFinite(+user.sessionVersion) ? +user.sessionVersion : 1,
-      createdAt: user.createdAt || nowIso(),
-      lastSeenAt: user.lastSeenAt || null
-    })).filter(user => user.key && user.name);
+    value.users = value.users.map((user, index) => {
+      const adminByOldData = user.role === "admin" || (!!value.adminUserId && user.id === value.adminUserId) || (!value.adminUserId && index === 0);
+      let status = user.status;
+      if (!status) status = adminByOldData ? "approved" : "pending";
+      if (!['pending','approved','blocked'].includes(status)) status = "pending";
+      const allowedPages = Array.isArray(user.allowedPages) ? [...new Set(user.allowedPages.filter(Boolean))] : [];
+      return {
+        id: user.id || uid("usr"),
+        key: user.key || normalizeKey(user.name),
+        name: titleName(user.name),
+        role: adminByOldData ? "admin" : "user",
+        active: adminByOldData ? true : status === "approved",
+        status,
+        allowedPages: adminByOldData ? ["*"] : allowedPages,
+        sessionVersion: Number.isFinite(+user.sessionVersion) ? +user.sessionVersion : 1,
+        createdAt: user.createdAt || nowIso(),
+        requestedAt: user.requestedAt || user.createdAt || nowIso(),
+        approvedAt: user.approvedAt || (status === "approved" ? user.createdAt || nowIso() : null),
+        lastSeenAt: user.lastSeenAt || null
+      };
+    }).filter(user => user.key && user.name);
     return enforcePermanentAdmin(value);
   }
 
@@ -188,10 +207,14 @@
       next.adminPinSalt = current.adminPinSalt;
       next.adminDeviceHash = current.adminDeviceHash;
       const adminAfter = next.users.find(user => user.id === current.adminUserId);
-      if (adminAfter && adminBefore) {
-        adminAfter.role = "admin";
-        adminAfter.active = true;
-        adminAfter.sessionVersion = adminBefore.sessionVersion;
+      if (!adminAfter && adminBefore) next.users.unshift(clone(adminBefore));
+      const protectedAdmin = next.users.find(user => user.id === current.adminUserId);
+      if (protectedAdmin && adminBefore) {
+        protectedAdmin.role = "admin";
+        protectedAdmin.active = true;
+        protectedAdmin.status = "approved";
+        protectedAdmin.allowedPages = ["*"];
+        protectedAdmin.sessionVersion = adminBefore.sessionVersion;
       }
     }
     enforcePermanentAdmin(next);
@@ -199,8 +222,12 @@
     return {registry: clone(next), result};
   }
 
+  function clearLegacySessions() {
+    LEGACY_SESSION_KEYS.forEach(key => localStorage.removeItem(key));
+  }
+
   function readSession() {
-    localStorage.removeItem(LEGACY_SESSION_KEY);
+    clearLegacySessions();
     const value = parse(localStorage.getItem(SESSION_KEY), null);
     if (!value || !value.userId || !value.expiresAt || Date.now() >= +value.expiresAt) {
       localStorage.removeItem(SESSION_KEY);
@@ -214,14 +241,28 @@
       userId: user.id,
       name: user.name,
       role: user.role,
+      status: user.status,
+      allowedPages: Array.isArray(user.allowedPages) ? [...user.allowedPages] : [],
       sessionVersion: user.sessionVersion,
       adminVerified: user.role === "admin" ? !!adminVerified : false,
       createdAt: Date.now(),
       expiresAt: Date.now() + SESSION_MS
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+    localStorage.removeItem(PENDING_KEY);
     rememberName(user.name);
     return session;
+  }
+
+  function readPending() {
+    return parse(localStorage.getItem(PENDING_KEY), null);
+  }
+
+  function writePending(user) {
+    const pending = {userId:user.id, name:user.name, key:user.key, requestedAt:user.requestedAt || nowIso()};
+    localStorage.setItem(PENDING_KEY, JSON.stringify(pending));
+    rememberName(user.name);
+    return pending;
   }
 
   function rememberName(name) {
@@ -243,12 +284,26 @@
     catch { return false; }
   }
 
+  function canAccessPage(pageId) {
+    if (!pageId) return true;
+    if (!session) return false;
+    if (adminCapable || session.role === "admin") return true;
+    return session.status === "approved" && Array.isArray(session.allowedPages) && session.allowedPages.includes(pageId);
+  }
+
+  function currentPageId() {
+    const file = location.pathname.split("/").pop() || "index.html";
+    if (file === "krakow-pocket.html") return "krakow-pocket";
+    if (file === "varsovia-ultimo-dia.html") return "varsovia-ultimo-dia";
+    return null;
+  }
+
   async function validateSessionRemote() {
     if (!session) return false;
     try {
       const registry = await getRegistry({fresh: true});
       const user = registry.users.find(item => item.id === session.userId);
-      if (!user || !user.active || user.sessionVersion !== session.sessionVersion) {
+      if (!user || user.status !== "approved" || !user.active || user.sessionVersion !== session.sessionVersion) {
         localStorage.removeItem(SESSION_KEY);
         session = null;
         adminCapable = false;
@@ -262,17 +317,23 @@
           return false;
         }
         user.role = "admin";
+        user.allowedPages = ["*"];
         adminCapable = true;
       } else {
         user.role = "user";
         adminCapable = false;
       }
+      const beforePages = JSON.stringify(session.allowedPages || []);
       session.name = user.name;
       session.role = user.role;
+      session.status = user.status;
+      session.allowedPages = [...(user.allowedPages || [])];
       localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-      const lastTouch = +(localStorage.getItem(LAST_TOUCH_KEY) || 0);
-      if (Date.now() - lastTouch > TOUCH_EVERY_MS) {
-        localStorage.setItem(LAST_TOUCH_KEY, String(Date.now()));
+      if (beforePages !== JSON.stringify(session.allowedPages)) {
+        window.dispatchEvent(new CustomEvent("pocket:permissionschange", {detail:{allowedPages:[...session.allowedPages]}}));
+      }
+      if (Date.now() - lastRemoteTouch > TOUCH_EVERY_MS) {
+        lastRemoteTouch = Date.now();
         mutateRegistry(next => {
           const found = next.users.find(item => item.id === user.id);
           if (found) found.lastSeenAt = nowIso();
@@ -305,13 +366,19 @@
 
     const outcome = await mutateRegistry(async next => {
       let user = next.users.find(item => item.key === key);
-      if (user && user.id !== next.adminUserId && !user.active) throw authError("USER_BLOCKED", "Este perfil está desactivado");
 
       if (!user) {
         const becomingAdmin = next.users.length === 0;
         user = {
-          id: uid("usr"), key, name, role: becomingAdmin ? "admin" : "user", active: true,
-          sessionVersion: 1, createdAt: nowIso(), lastSeenAt: nowIso()
+          id: uid("usr"), key, name,
+          role: becomingAdmin ? "admin" : "user",
+          active: becomingAdmin,
+          status: becomingAdmin ? "approved" : "pending",
+          allowedPages: becomingAdmin ? ["*"] : [],
+          sessionVersion: 1,
+          createdAt: nowIso(), requestedAt: nowIso(),
+          approvedAt: becomingAdmin ? nowIso() : null,
+          lastSeenAt: becomingAdmin ? nowIso() : null
         };
         next.users.push(user);
         if (becomingAdmin) {
@@ -323,7 +390,6 @@
         }
       } else {
         user.name = name;
-        user.lastSeenAt = nowIso();
         if (user.id === next.adminUserId && !next.adminPinHash) {
           if (!(await legacyDeviceCanSetPin(next))) throw authError("PIN_MIGRATION_DEVICE", "Configura primero el PIN desde el dispositivo donde se creó el administrador");
           const pinRecord = await createPinRecord(pin);
@@ -337,30 +403,57 @@
 
     const user = outcome.result;
     const isAdmin = user.id === outcome.registry.adminUserId;
+
     if (isAdmin) {
       const ok = await verifyPin(pin, outcome.registry);
       if (!ok) throw authError("PIN_WRONG", "Ese PIN no es correcto");
+      user.status = "approved";
+      user.active = true;
+      user.allowedPages = ["*"];
+      writeSession(user, {adminVerified: true});
+      adminCapable = true;
+      hideGate();
+      mountAccount();
+      applyCurrentPageAccess();
+      window.dispatchEvent(new CustomEvent("pocket:authchange", {detail:{session:clone(session), admin:true}}));
+      return {session: clone(session), pending:false};
     }
 
-    writeSession(user, {adminVerified: isAdmin});
-    adminCapable = isAdmin;
+    if (user.status === "blocked" || user.active === false && user.status !== "pending") {
+      throw authError("USER_BLOCKED", "Tu acceso a Pocket está bloqueado");
+    }
+
+    if (user.status !== "approved") {
+      writePending(user);
+      showPending(user);
+      return {session:null, pending:true, user:clone(user)};
+    }
+
+    user.active = true;
+    user.lastSeenAt = nowIso();
+    writeSession(user);
+    adminCapable = false;
     hideGate();
     mountAccount();
-    window.dispatchEvent(new CustomEvent("pocket:authchange", {detail: {session: clone(session), admin: adminCapable}}));
-    return clone(session);
+    applyCurrentPageAccess();
+    window.dispatchEvent(new CustomEvent("pocket:authchange", {detail:{session:clone(session), admin:false}}));
+    return {session: clone(session), pending:false};
   }
 
   function logout({show = true} = {}) {
     localStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem(PENDING_KEY);
     session = null;
     adminCapable = false;
+    clearPendingTimer();
     closeAccountSheet();
+    removeAccessOverlay();
     if (show) showGate();
-    window.dispatchEvent(new CustomEvent("pocket:authchange", {detail: {session: null, admin: false}}));
+    window.dispatchEvent(new CustomEvent("pocket:authchange", {detail:{session:null, admin:false}}));
   }
 
   function switchUser() {
-    logout({show: true});
+    logout({show:true});
     setTimeout(() => gateEl?.querySelector('input[name="fullName"]')?.focus(), 80);
   }
 
@@ -374,7 +467,7 @@
     gateEl.dataset.pinMode = mode || "admin";
     pinText.textContent = mode === "create" || mode === "migrate" ? "El administrador usará este PIN siempre que inicie sesión en un dispositivo nuevo." : "Este perfil es el administrador permanente de Pocket.";
     if (message) gateEl.querySelector(".pa-error").textContent = message;
-    trust.textContent = "Usuarios: nombre y apellidos · Administrador: nombre + PIN de 4 dígitos";
+    trust.textContent = "Usuarios: solicitud de acceso · Administrador: nombre + PIN de 4 dígitos";
     setTimeout(() => pinInput.focus(), 50);
   }
 
@@ -386,7 +479,7 @@
     if (wrap) wrap.hidden = true;
     if (pin) pin.value = "";
     const trust = gateEl.querySelector(".pa-trust");
-    if (trust) trust.textContent = "Acceso sencillo · los usuarios no necesitan contraseña";
+    if (trust) trust.textContent = "El administrador decide quién entra y qué páginas puede ver";
   }
 
   function buildGate() {
@@ -398,18 +491,18 @@
         <div class="pa-logo" aria-hidden="true">P</div>
         <div class="pa-kicker">POCKET</div>
         <h1 id="paLoginTitle">¿Quién eres?</h1>
-        <p class="pa-lead">Escribe tu nombre y apellidos. Pocket te recordará durante 30 días.</p>
+        <p class="pa-lead">Escribe tu nombre y apellidos. Si eres nuevo, enviaremos una solicitud al administrador.</p>
         <form class="pa-login-form" autocomplete="off">
           <label class="pa-field"><span>Nombre y apellidos</span><input name="fullName" type="text" maxlength="90" autocomplete="name" autocapitalize="words" placeholder="Ej. Alex Bruma Norte" required></label>
           <div class="pa-pin-wrap" hidden>
             <label class="pa-field pa-pin-field"><span>PIN de administrador</span><input name="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••"></label>
             <p class="pa-pin-copy"></p>
           </div>
-          <button class="pa-primary" type="submit">Entrar</button>
+          <button class="pa-primary" type="submit">Continuar</button>
           <div class="pa-error" role="status" aria-live="polite"></div>
         </form>
         <div class="pa-recents"></div>
-        <p class="pa-trust">Acceso sencillo · los usuarios no necesitan contraseña</p>
+        <p class="pa-trust">El administrador decide quién entra y qué páginas puede ver</p>
       </div>`;
     document.body.appendChild(gateEl);
     const form = gateEl.querySelector("form");
@@ -431,19 +524,19 @@
       const button = form.querySelector("button");
       error.textContent = "";
       button.disabled = true;
-      button.textContent = "Entrando…";
+      button.textContent = "Comprobando…";
       try {
-        await loginWithName(input.value, pinInput.value);
-        resetPinStep();
+        const result = await loginWithName(input.value, pinInput.value);
+        if (!result?.pending) button.textContent = "Entrar";
       } catch (err) {
-        const code = err?.code || "";
-        if (["PIN_CREATE", "PIN_ADMIN", "PIN_MIGRATE", "PIN_WRONG"].includes(code)) {
-          const mode = code === "PIN_CREATE" ? "create" : code === "PIN_MIGRATE" ? "migrate" : "admin";
-          showPinStep(mode, err?.message || "Introduce el PIN");
-        } else error.textContent = err?.message || "No se ha podido entrar";
+        if (["PIN_CREATE","PIN_ADMIN","PIN_MIGRATE"].includes(err?.code)) {
+          showPinStep(err.code === "PIN_ADMIN" ? "admin" : err.code === "PIN_MIGRATE" ? "migrate" : "create", err.message);
+        } else {
+          error.textContent = err?.message || "No se ha podido continuar";
+        }
       } finally {
         button.disabled = false;
-        button.textContent = gateEl.dataset.pinMode === "create" || gateEl.dataset.pinMode === "migrate" ? "Guardar PIN y entrar" : "Entrar";
+        if (!gateEl.querySelector(".pa-waiting")) button.textContent = "Continuar";
       }
     });
     renderRecents();
@@ -463,17 +556,138 @@
     }));
   }
 
-  function showGate() {
+  function clearPendingTimer() {
+    if (pendingTimer) clearInterval(pendingTimer);
+    pendingTimer = null;
+  }
+
+  function showPending(user) {
+    buildGate();
+    clearPendingTimer();
+    gateEl.hidden = false;
+    document.documentElement.classList.add("pa-locked");
+    const card = gateEl.querySelector(".pa-login-card");
+    card.innerHTML = `
+      <div class="pa-logo" aria-hidden="true">P</div>
+      <div class="pa-status-badge">Solicitud enviada</div>
+      <h1>Esperando aprobación</h1>
+      <p class="pa-lead"><strong>${esc(user.name)}</strong>, el administrador tiene que aceptar tu perfil y elegir qué páginas puedes ver.</p>
+      <div class="pa-waiting">
+        <div class="pa-waiting-icon"><span></span></div>
+        <div><strong>Pendiente</strong><span>Comprobamos automáticamente si ya tienes acceso.</span></div>
+      </div>
+      <button class="pa-primary pa-check-now" type="button">Comprobar ahora</button>
+      <button class="pa-text-action pa-change-user" type="button">Usar otro nombre</button>
+      <p class="pa-trust">No necesitas volver a solicitar acceso.</p>`;
+    card.querySelector(".pa-check-now").addEventListener("click", () => checkPendingApproval(user.id, true));
+    card.querySelector(".pa-change-user").addEventListener("click", () => {
+      localStorage.removeItem(PENDING_KEY);
+      clearPendingTimer();
+      gateEl.remove();
+      gateEl = null;
+      showGate();
+    });
+    pendingTimer = setInterval(() => checkPendingApproval(user.id, false), PENDING_POLL_MS);
+  }
+
+  async function checkPendingApproval(userId, manual = false) {
+    try {
+      const registry = await getRegistry({fresh:true});
+      const user = registry.users.find(item => item.id === userId);
+      if (!user) {
+        localStorage.removeItem(PENDING_KEY);
+        clearPendingTimer();
+        gateEl?.remove(); gateEl = null;
+        showGate("Tu solicitud ya no existe. Puedes enviar una nueva.");
+        return false;
+      }
+      if (user.status === "blocked") {
+        localStorage.removeItem(PENDING_KEY);
+        clearPendingTimer();
+        showPendingDenied(user);
+        return false;
+      }
+      if (user.status === "approved" && user.active) {
+        clearPendingTimer();
+        writeSession(user);
+        adminCapable = false;
+        location.reload();
+        return true;
+      }
+      if (manual) {
+        const button = gateEl?.querySelector(".pa-check-now");
+        if (button) {
+          button.textContent = "Aún pendiente";
+          setTimeout(() => { if (button.isConnected) button.textContent = "Comprobar ahora"; }, 1500);
+        }
+      }
+    } catch {
+      if (manual) {
+        const button = gateEl?.querySelector(".pa-check-now");
+        if (button) {
+          button.textContent = "Sin conexión";
+          setTimeout(() => { if (button.isConnected) button.textContent = "Comprobar ahora"; }, 1500);
+        }
+      }
+    }
+    return false;
+  }
+
+  function showPendingDenied(user) {
+    buildGate();
+    gateEl.hidden = false;
+    document.documentElement.classList.add("pa-locked");
+    const card = gateEl.querySelector(".pa-login-card");
+    card.innerHTML = `
+      <div class="pa-logo" aria-hidden="true">P</div>
+      <div class="pa-status-badge muted">Acceso no disponible</div>
+      <h1>Solicitud no activa</h1>
+      <p class="pa-lead">El perfil <strong>${esc(user.name)}</strong> no tiene acceso a Pocket en este momento.</p>
+      <button class="pa-primary pa-change-user" type="button">Usar otro nombre</button>`;
+    card.querySelector(".pa-change-user").addEventListener("click", () => {
+      localStorage.removeItem(PENDING_KEY);
+      gateEl.remove(); gateEl = null;
+      showGate();
+    });
+  }
+
+  function showGate(message = "") {
+    if (gateEl) gateEl.remove();
+    gateEl = null;
     buildGate();
     renderRecents();
     gateEl.hidden = false;
     document.documentElement.classList.add("pa-locked");
+    if (message) gateEl.querySelector(".pa-error").textContent = message;
     setTimeout(() => gateEl.querySelector('input[name="fullName"]')?.focus(), 60);
   }
 
   function hideGate() {
+    clearPendingTimer();
     if (gateEl) gateEl.hidden = true;
     document.documentElement.classList.remove("pa-locked");
+  }
+
+  function removeAccessOverlay() {
+    document.getElementById("paAccessDenied")?.remove();
+  }
+
+  function showAccessDenied(pageId) {
+    removeAccessOverlay();
+    const page = (window.POCKET_PAGES || []).find(item => item.id === pageId);
+    const overlay = document.createElement("div");
+    overlay.id = "paAccessDenied";
+    overlay.className = "pa-access-denied";
+    overlay.innerHTML = `<div class="pa-access-card"><div class="pa-lock-icon">⌁</div><div class="pa-status-badge muted">Sin acceso</div><h1>Esta página no está habilitada</h1><p>${page ? `Tu perfil no tiene acceso a <strong>${esc(page.title)}</strong>.` : "Tu perfil no tiene acceso a esta página."} El administrador puede cambiar tus permisos.</p><a href="./" class="pa-primary pa-link-button">Volver a Pocket</a></div>`;
+    document.body.appendChild(overlay);
+  }
+
+  function applyCurrentPageAccess() {
+    const pageId = currentPageId();
+    if (!pageId || !session) { removeAccessOverlay(); return true; }
+    if (canAccessPage(pageId)) { removeAccessOverlay(); return true; }
+    showAccessDenied(pageId);
+    return false;
   }
 
   function accountSheet() {
@@ -494,13 +708,14 @@
     if (!session) return showGate();
     const sheet = accountSheet();
     const body = sheet.querySelector(".pa-sheet-body");
+    const accessText = adminCapable ? "Acceso completo" : `${(session.allowedPages || []).length} ${(session.allowedPages || []).length === 1 ? "página" : "páginas"} habilitadas`;
     body.innerHTML = `
-      <div class="pa-account-hero"><div class="pa-avatar large">${esc(initials(session.name))}</div><div><div class="pa-account-name">${esc(session.name)}</div><div class="pa-account-role">${adminCapable ? "Administrador permanente" : "Perfil de Pocket"}</div></div></div>
+      <div class="pa-account-hero"><div class="pa-avatar large">${esc(initials(session.name))}</div><div><div class="pa-account-name">${esc(session.name)}</div><div class="pa-account-role">${adminCapable ? "Administrador permanente" : accessText}</div></div></div>
       ${adminCapable ? `<a class="pa-admin-link" href="./administrar.html"><span>Administrar Pocket</span><b>›</b></a>` : ""}
       <div class="pa-sheet-actions"><button type="button" data-action="switch">Cambiar de usuario</button><button type="button" data-action="logout" class="danger">Cerrar sesión</button></div>
       <p class="pa-session-note">La sesión caduca automáticamente 30 días después de iniciar sesión.</p>`;
     body.querySelector('[data-action="switch"]')?.addEventListener("click", switchUser);
-    body.querySelector('[data-action="logout"]')?.addEventListener("click", () => logout({show: true}));
+    body.querySelector('[data-action="logout"]')?.addEventListener("click", () => logout({show:true}));
     sheet.hidden = false;
     requestAnimationFrame(() => sheet.classList.add("show"));
   }
@@ -521,39 +736,73 @@
   }
 
   async function boot() {
-    buildGate();
+    const pending = readPending();
     session = readSession();
+
+    if (!session && pending?.userId) {
+      try {
+        const registry = await getRegistry({fresh:true});
+        const user = registry.users.find(item => item.id === pending.userId);
+        if (user?.status === "approved" && user.active) {
+          writeSession(user);
+          session = readSession();
+        } else if (user) {
+          showPending(user);
+          resolveReady({session:null, admin:false, pending:true});
+          return;
+        } else {
+          localStorage.removeItem(PENDING_KEY);
+        }
+      } catch {
+        showPending({id:pending.userId, name:pending.name, key:pending.key, status:"pending"});
+        resolveReady({session:null, admin:false, pending:true});
+        return;
+      }
+    }
+
     if (!session) {
       showGate();
-      resolveReady({session: null, admin: false});
+      resolveReady({session:null, admin:false, pending:false});
       return;
     }
+
     hideGate();
     mountAccount();
     const valid = await validateSessionRemote();
     if (!valid) showGate();
-    else { hideGate(); mountAccount(); }
-    resolveReady({session: session ? clone(session) : null, admin: adminCapable});
+    else {
+      hideGate();
+      mountAccount();
+      applyCurrentPageAccess();
+    }
+    resolveReady({session:session ? clone(session) : null, admin:adminCapable, pending:false});
+
     setInterval(() => {
       if (!session) return;
-      validateSessionRemote().then(valid => { if (!valid) showGate(); else { hideGate(); mountAccount(); } }).catch(() => {});
-    }, 10 * 60 * 1000);
+      validateSessionRemote().then(validNow => {
+        if (!validNow) showGate("Tu acceso ha cambiado. Vuelve a identificarte.");
+        else { hideGate(); mountAccount(); applyCurrentPageAccess(); }
+      }).catch(() => {});
+    }, 5 * 60 * 1000);
   }
 
   window.PocketAuth = {
     ready,
     getSession: () => session ? clone(session) : null,
     isAdmin: () => !!adminCapable,
+    canAccessPage,
+    getAllowedPages: () => adminCapable ? ["*"] : [...(session?.allowedPages || [])],
     loginWithName,
     logout,
     switchUser,
     openAccount: openAccountSheet,
     getRegistry,
-    mutateRegistry: mutator => mutateRegistry(mutator, {allowAdminSecurityChange:false}),
-    refresh: async () => { const ok = await validateSessionRemote(); mountAccount(); return ok; },
+    mutateRegistry,
+    applyCurrentPageAccess,
+    refresh: async () => { const ok = await validateSessionRemote(); mountAccount(); applyCurrentPageAccess(); return ok; },
     sessionDays: 30
   };
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, {once: true});
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, {once:true});
   else boot();
 })();
