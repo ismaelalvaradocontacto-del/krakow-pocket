@@ -1,21 +1,24 @@
 (() => {
-  const STORAGE_KEY = "pocket.casita.v2";
+  const STORAGE_KEY = "pocket.casita.v3";
   const emptyState = {
     mode: "disconnected",
     electricityPrice: null,
-    indoor: { temp: null, humidity: null },
-    corner: { temp: null, humidity: null },
-    patio: { temp: null, humidity: null },
-    tank: { liters: null, capacity: null },
-    water: { today: null, week: null, rate: null },
-    energy: { todayKwh: null, dehumidifierKwh: null },
-    washer: { litersPerCycle: null },
-    devices: {
-      dehumidifier: { connected: false, on: null, controllable: false },
-      pump: { connected: false, on: null, controllable: false }
+    environment: { value: null, unit: "%", state: null },
+    zones: [],
+    water: {
+      availableLiters: null,
+      capacityLiters: null,
+      todayLiters: null,
+      weekLiters: null,
+      rateLitersHour: null
     },
+    energy: {
+      todayKwh: null,
+      devices: []
+    },
+    devices: [],
     cameras: [],
-    access: { doorbellConnected: false, doorReleaseConnected: false },
+    access: [],
     updatedAt: null
   };
 
@@ -54,23 +57,6 @@
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
   }
 
-  function humidityDescriptor(humidity) {
-    if (!hasNumber(humidity)) return null;
-    if (humidity < 40) return { label: "Muy seco", className: "danger" };
-    if (humidity < 45) return { label: "Seco", className: "warning" };
-    if (humidity <= 60) return { label: "En rango", className: "good" };
-    if (humidity <= 65) return { label: "Algo húmedo", className: "warning" };
-    return { label: "Humedad alta", className: "danger" };
-  }
-
-  function patioDescriptor(humidity) {
-    if (!hasNumber(humidity)) return "Sin datos";
-    if (humidity >= 70) return "Humedad alta";
-    if (humidity >= 60) return "Humedad media-alta";
-    if (humidity >= 50) return "Humedad media";
-    return "Humedad baja";
-  }
-
   function timeAgo(timestamp) {
     if (!hasNumber(timestamp)) return "Sin datos";
     const seconds = Math.max(0, Math.floor((Date.now() - timestamp) / 1000));
@@ -82,159 +68,182 @@
     return new Date(timestamp).toLocaleString("es-ES", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
   }
 
-  function setDot(node, descriptor) {
-    if (!node) return;
-    node.classList.remove("good", "warning", "danger");
-    if (descriptor?.className) node.classList.add(descriptor.className);
-    node.setAttribute("aria-label", descriptor?.label || "Sin datos");
+  function statusClass(status) {
+    if (["ok", "good", "normal", "online"].includes(status)) return "good";
+    if (["warning", "attention"].includes(status)) return "warning";
+    if (["danger", "alert", "offline"].includes(status)) return "danger";
+    return "";
   }
 
-  function renderClimateCards() {
-    const mount = el("climateCards");
+  function showEmpty(emptyNode, hasItems) {
+    if (emptyNode) emptyNode.hidden = hasItems;
+  }
+
+  function renderSummary() {
+    const mount = el("summaryCards");
+    const empty = el("summaryEmpty");
     if (!mount) return;
-    const zones = [
-      ["Habitáculo", state.indoor],
-      ["Esquina húmeda", state.corner],
-      ["Patio", state.patio]
-    ];
-    mount.innerHTML = zones.map(([name, zone]) => {
-      const descriptor = humidityDescriptor(zone.humidity);
-      const humidity = hasNumber(zone.humidity) ? `${fmt(zone.humidity, 0)} %` : "Sin datos";
-      const temp = hasNumber(zone.temp) ? `${fmt(zone.temp, 1)} °C` : "—";
-      return `<article class="detail-card"><span>${name}</span><strong>${humidity}</strong><small>${temp}${descriptor ? ` · ${descriptor.label}` : ""}</small></article>`;
-    }).join("");
+
+    const items = [];
+    for (const zone of Array.isArray(state.zones) ? state.zones : []) {
+      if (!zone?.name) continue;
+      const bits = [];
+      if (hasNumber(zone.temperature)) bits.push(`${fmt(zone.temperature, 1)} °C`);
+      if (hasNumber(zone.humidity)) bits.push(`${fmt(zone.humidity, 0)} %`);
+      items.push({ name: zone.name, meta: bits.join(" · ") || "Sin datos", status: zone.status });
+    }
+    for (const device of Array.isArray(state.devices) ? state.devices : []) {
+      if (!device?.name) continue;
+      const meta = device.connected === false
+        ? "Sin conexión"
+        : typeof device.on === "boolean"
+          ? device.on ? "Encendido" : "Apagado"
+          : device.connected === true ? "En línea" : "Sin datos";
+      items.push({ name: device.name, meta, status: device.connected === false ? "offline" : device.status });
+    }
+
+    mount.innerHTML = items.map(item => `
+      <article class="status-row">
+        <div class="status-copy">
+          <strong>${String(item.name)}</strong>
+          <span>${String(item.meta)}</span>
+        </div>
+        <span class="dot ${statusClass(item.status)}" aria-hidden="true"></span>
+      </article>
+    `).join("");
+    showEmpty(empty, items.length > 0);
   }
 
-  function renderCameraCards() {
+  function renderClimate() {
+    const mount = el("climateCards");
+    const empty = el("climateEmpty");
+    if (!mount) return;
+    const zones = (Array.isArray(state.zones) ? state.zones : []).filter(zone => zone?.name);
+    mount.innerHTML = zones.map(zone => {
+      const humidity = hasNumber(zone.humidity) ? `${fmt(zone.humidity, 0)} %` : "—";
+      const temperature = hasNumber(zone.temperature) ? `${fmt(zone.temperature, 1)} °C` : "Sin datos";
+      return `<article class="detail-card"><span>${String(zone.name)}</span><strong>${humidity}</strong><small>${temperature}</small></article>`;
+    }).join("");
+    showEmpty(empty, zones.length > 0);
+  }
+
+  function renderDevices() {
+    const mount = el("deviceControls");
+    if (!mount) return;
+    const devices = (Array.isArray(state.devices) ? state.devices : []).filter(device => device?.name);
+    mount.innerHTML = devices.map(device => {
+      const connected = device.connected === true;
+      const controllable = connected && device.controllable === true && typeof device.on === "boolean";
+      const on = device.on === true;
+      const stateText = !connected ? "Sin conexión" : typeof device.on === "boolean" ? on ? "Encendido" : "Apagado" : "En línea";
+      return `
+        <button class="control-card" type="button" data-device-id="${String(device.id || "")}" ${controllable ? "" : "disabled"} aria-disabled="${String(!controllable)}" aria-pressed="${String(controllable && on)}">
+          <span class="control-copy"><strong>${String(device.name)}</strong><span>${stateText}</span></span>
+          <span class="switch ${on && connected ? "on" : ""}" aria-hidden="true"><i></i></span>
+        </button>`;
+    }).join("");
+
+    mount.querySelectorAll("[data-device-id]").forEach(button => {
+      button.addEventListener("click", () => {
+        const device = devices.find(item => String(item.id || "") === button.dataset.deviceId);
+        if (!device || device.controllable !== true || typeof device.on !== "boolean") return;
+        runCommand(device.id, device.on ? "turn_off" : "turn_on");
+      });
+    });
+  }
+
+  function renderEnergy() {
+    const mount = el("energyDevices");
+    const empty = el("energyEmpty");
+    if (!mount) return;
+    const devices = (Array.isArray(state.energy?.devices) ? state.energy.devices : []).filter(device => device?.name);
+    mount.innerHTML = devices.map(device => `
+      <div class="device-row"><span>${String(device.name)}</span><strong>${hasNumber(device.kwh) ? `${fmt(device.kwh, 2)} kWh` : "Sin datos"}</strong></div>
+    `).join("");
+    showEmpty(empty, devices.length > 0);
+  }
+
+  function renderCameras() {
     const mount = el("cameraCards");
     const empty = el("cameraEmpty");
     if (!mount) return;
-    const cameras = Array.isArray(state.cameras) ? state.cameras.filter(camera => camera && camera.name) : [];
-    if (!cameras.length) {
-      mount.innerHTML = "";
-      if (empty) empty.hidden = false;
-      return;
-    }
-    if (empty) empty.hidden = true;
+    const cameras = (Array.isArray(state.cameras) ? state.cameras : []).filter(camera => camera?.name);
     mount.innerHTML = cameras.map(camera => `
       <article class="detail-card">
-        <span>${String(camera.location || "Cámara")}</span>
+        <span>${camera.label ? String(camera.label) : "Cámara"}</span>
         <strong>${String(camera.name)}</strong>
         <small>${camera.online === true ? "En línea" : camera.online === false ? "Sin conexión" : "Sin datos"}</small>
-      </article>`).join("");
+      </article>
+    `).join("");
+    showEmpty(empty, cameras.length > 0);
   }
 
-  function setDeviceUI(name, disconnectedLabel) {
-    const device = state.devices?.[name] || {};
-    const connected = device.connected === true;
-    const controllable = connected && device.controllable === true;
-    const on = device.on === true;
-    const button = el(`${name}Button`);
-    const switchNode = el(`${name}Switch`);
-    const hint = el(`${name}Hint`);
+  function renderAccess() {
+    const mount = el("accessCards");
+    const empty = el("accessEmpty");
+    if (!mount) return;
+    const items = (Array.isArray(state.access) ? state.access : []).filter(item => item?.name);
+    mount.innerHTML = items.map(item => `
+      <div class="device-row"><span>${String(item.name)}</span><strong>${item.online === true ? (item.state ? String(item.state) : "En línea") : item.online === false ? "Sin conexión" : item.state ? String(item.state) : "Sin datos"}</strong></div>
+    `).join("");
+    showEmpty(empty, items.length > 0);
+  }
 
-    if (button) {
-      button.disabled = !controllable;
-      button.setAttribute("aria-disabled", String(!controllable));
-      button.setAttribute("aria-pressed", connected && typeof device.on === "boolean" ? String(on) : "false");
-    }
-    switchNode?.classList.toggle("on", connected && on);
-    if (hint) hint.textContent = !connected ? disconnectedLabel : typeof device.on !== "boolean" ? "Sin datos" : on ? "Encendido" : "Apagado";
+  function renderOverview() {
+    const environmentValue = hasNumber(state.environment?.value) ? fmt(state.environment.value, 0) : null;
+    el("environmentValue").textContent = environmentValue ?? "—";
+    el("environmentUnit").textContent = environmentValue ? String(state.environment.unit || "") : "";
+    el("environmentState").textContent = state.environment?.state || "Sin datos";
+
+    const waterValue = hasNumber(state.water?.availableLiters) ? fmt(state.water.availableLiters, 0) : null;
+    el("waterValue").textContent = waterValue ?? "—";
+    el("waterUnit").textContent = waterValue ? "L" : "";
+    el("waterState").textContent = hasNumber(state.water?.capacityLiters) ? `de ${fmt(state.water.capacityLiters, 0)} L` : "Sin datos";
+
+    const energyCost = hasNumber(state.energy?.todayKwh) && hasNumber(state.electricityPrice)
+      ? state.energy.todayKwh * state.electricityPrice
+      : null;
+    el("energyValue").textContent = hasNumber(energyCost) ? fmt(energyCost, 2) : "—";
+    el("energyUnit").textContent = hasNumber(energyCost) ? "€" : "";
+    el("energyState").textContent = hasNumber(state.energy?.todayKwh) ? `${fmt(state.energy.todayKwh, 1)} kWh` : "Sin datos";
+
+    const available = state.zones?.length || state.devices?.length || state.cameras?.length || state.access?.length || hasNumber(state.water?.availableLiters) || hasNumber(state.energy?.todayKwh);
+    el("homeSummary").textContent = state.mode === "live" && available ? "Todo en orden." : "Sin datos disponibles.";
+    el("modeBadge").textContent = state.mode === "live" ? "En línea" : "Sin conexión";
+    el("lastUpdated").textContent = timeAgo(state.updatedAt);
+  }
+
+  function renderWater() {
+    const available = state.water?.availableLiters;
+    const capacity = state.water?.capacityLiters;
+    el("waterDetailValue").textContent = hasNumber(available) ? fmt(available, 0) : "—";
+    el("waterDetailUnit").textContent = hasNumber(available) ? "L" : "";
+    el("waterToday").textContent = hasNumber(state.water?.todayLiters) ? `${fmt(state.water.todayLiters, 1)} L` : "Sin datos";
+    el("waterWeek").textContent = hasNumber(state.water?.weekLiters) ? `${fmt(state.water.weekLiters, 1)} L` : "Sin datos";
+    el("waterRate").textContent = hasNumber(state.water?.rateLitersHour) ? `${fmt(state.water.rateLitersHour, 2)} L/h` : "Sin datos";
+    el("waterCapacity").textContent = hasNumber(capacity) ? `${fmt(capacity, 0)} L` : "Sin datos";
+    const pct = hasNumber(available) && hasNumber(capacity) && capacity > 0 ? Math.max(0, Math.min(100, available / capacity * 100)) : 0;
+    el("waterProgress").style.width = `${pct}%`;
+  }
+
+  function renderEnergySummary() {
+    const kwh = state.energy?.todayKwh;
+    const cost = hasNumber(kwh) && hasNumber(state.electricityPrice) ? kwh * state.electricityPrice : null;
+    el("energyDetailValue").textContent = hasNumber(cost) ? fmt(cost, 2) : "—";
+    el("energyDetailUnit").textContent = hasNumber(cost) ? "€" : "";
+    el("energyDetailKwh").textContent = hasNumber(kwh) ? `${fmt(kwh, 1)} kWh` : "Sin datos.";
   }
 
   function render() {
-    const indoorStatus = humidityDescriptor(state.indoor.humidity);
-    const cornerStatus = humidityDescriptor(state.corner.humidity);
-
-    el("indoorHumidity").textContent = hasNumber(state.indoor.humidity) ? fmt(state.indoor.humidity, 0) : "—";
-    el("indoorHumidityUnit").textContent = hasNumber(state.indoor.humidity) ? "%" : "";
-    el("humidityState").textContent = indoorStatus?.label || "Sin datos";
-    el("humidityState").className = `metric-state${indoorStatus ? ` ${indoorStatus.className}` : ""}`;
-
-    el("tankLiters").textContent = hasNumber(state.tank.liters) ? fmt(state.tank.liters, 0) : "—";
-    el("tankLitersUnit").textContent = hasNumber(state.tank.liters) ? "L" : "";
-    el("tankState").textContent = hasNumber(state.tank.capacity) ? `de ${fmt(state.tank.capacity, 0)} L` : "Sin datos";
-
-    const energyCost = hasNumber(state.energy.todayKwh) && hasNumber(state.electricityPrice)
-      ? state.energy.todayKwh * state.electricityPrice
-      : null;
-    el("energyCost").textContent = hasNumber(energyCost) ? fmt(energyCost, 2) : "—";
-    el("energyCostUnit").textContent = hasNumber(energyCost) ? "€" : "";
-    el("energyKwh").textContent = hasNumber(state.energy.todayKwh) ? `${fmt(state.energy.todayKwh, 1)} kWh` : "Sin datos";
-
-    el("indoorTemp").textContent = hasNumber(state.indoor.temp) ? `${fmt(state.indoor.temp, 1)} °C` : "Sin datos";
-    el("indoorHumidityInline").textContent = hasNumber(state.indoor.humidity) ? ` · ${fmt(state.indoor.humidity, 0)} %` : "";
-    el("cornerTemp").textContent = hasNumber(state.corner.temp) ? `${fmt(state.corner.temp, 1)} °C` : "Sin datos";
-    el("cornerHumidity").textContent = hasNumber(state.corner.humidity) ? ` · ${fmt(state.corner.humidity, 0)} %` : "";
-    el("patioTemp").textContent = hasNumber(state.patio.temp) ? `${fmt(state.patio.temp, 1)} °C` : "Sin datos";
-    el("patioHumidity").textContent = hasNumber(state.patio.humidity) ? ` · ${fmt(state.patio.humidity, 0)} %` : "";
-    el("patioProduction").textContent = patioDescriptor(state.patio.humidity);
-    setDot(el("indoorDot"), indoorStatus);
-    setDot(el("cornerDot"), cornerStatus);
-
-    el("todayLiters").textContent = hasNumber(state.water.today) ? fmt(state.water.today, 1) : "—";
-    el("todayLitersUnit").textContent = hasNumber(state.water.today) ? "L hoy" : "Sin datos";
-    el("productionRate").textContent = hasNumber(state.water.rate) ? `${fmt(state.water.rate, 2)} L/h` : "Sin datos";
-
-    const costPerLiter = hasNumber(energyCost) && hasNumber(state.water.today) && state.water.today > 0
-      ? energyCost / state.water.today
-      : null;
-    el("costPerLiter").textContent = hasNumber(costPerLiter) ? `${fmt(costPerLiter, 2)} €/L` : "Sin datos";
-
-    const tankPct = hasNumber(state.tank.liters) && hasNumber(state.tank.capacity) && state.tank.capacity > 0
-      ? Math.max(0, Math.min(100, (state.tank.liters / state.tank.capacity) * 100))
-      : 0;
-    el("tankProgress").style.width = `${tankPct}%`;
-    el("waterDetailProgress").style.width = `${tankPct}%`;
-    el("waterDetailLiters").textContent = hasNumber(state.tank.liters) ? fmt(state.tank.liters, 0) : "—";
-    el("waterDetailCapacity").textContent = hasNumber(state.tank.capacity) ? `/ ${fmt(state.tank.capacity, 0)} L` : " Sin datos";
-    el("waterToday").textContent = hasNumber(state.water.today) ? `${fmt(state.water.today, 1)} L` : "Sin datos";
-    el("waterWeek").textContent = hasNumber(state.water.week) ? `${fmt(state.water.week, 1)} L` : "Sin datos";
-    el("waterRate").textContent = hasNumber(state.water.rate) ? `${fmt(state.water.rate, 2)} L/h` : "Sin datos";
-
-    const washes = hasNumber(state.tank.liters) && hasNumber(state.washer?.litersPerCycle) && state.washer.litersPerCycle > 0
-      ? Math.floor(state.tank.liters / state.washer.litersPerCycle)
-      : null;
-    el("washEstimate").textContent = hasNumber(washes) ? String(washes) : "Sin datos";
-
-    el("energyDetailCost").textContent = hasNumber(energyCost) ? fmt(energyCost, 2) : "—";
-    el("energyDetailCostUnit").textContent = hasNumber(energyCost) ? "€" : "";
-    el("energyDetailKwh").textContent = hasNumber(state.energy.todayKwh) ? `${fmt(state.energy.todayKwh, 1)} kWh` : "Sin datos.";
-    el("dehumidifierEnergy").textContent = hasNumber(state.energy.dehumidifierKwh) ? `${fmt(state.energy.dehumidifierKwh, 1)} kWh` : "Sin datos";
-
-    const efficiency = hasNumber(state.energy.dehumidifierKwh) && state.energy.dehumidifierKwh > 0 && hasNumber(state.water.today)
-      ? state.water.today / state.energy.dehumidifierKwh
-      : null;
-    el("efficiencyValue").textContent = hasNumber(efficiency) ? `${fmt(efficiency, 2)} L/kWh` : "Sin datos";
-
-    setDeviceUI("dehumidifier", "Sin conexión");
-    setDeviceUI("pump", "Sin conexión");
-
-    const dehumidifier = state.devices?.dehumidifier || {};
-    const dehumidifierState = el("dehumidifierState");
-    dehumidifierState?.classList.toggle("on", dehumidifier.connected === true && dehumidifier.on === true);
-    if (dehumidifierState) {
-      dehumidifierState.innerHTML = `<i></i> ${dehumidifier.connected !== true ? "Sin conexión" : typeof dehumidifier.on !== "boolean" ? "Sin datos" : dehumidifier.on ? "Produciendo" : "Parado"}`;
-    }
-
-    el("doorbellStatus").textContent = state.access?.doorbellConnected === true ? "En línea" : "Sin conexión";
-    el("doorReleaseStatus").textContent = state.access?.doorReleaseConnected === true ? "Disponible" : "Sin conexión";
-
-    el("lastUpdated").textContent = timeAgo(state.updatedAt);
-    el("modeBadge").textContent = state.mode === "live" ? "En línea" : "Sin conexión";
-
-    if (state.mode !== "live") {
-      el("homeSummary").textContent = "Sin datos disponibles.";
-    } else if (indoorStatus?.className === "danger" && hasNumber(state.indoor.humidity) && state.indoor.humidity < 40) {
-      el("homeSummary").textContent = "Ambiente muy seco.";
-    } else if (cornerStatus?.className === "danger") {
-      el("homeSummary").textContent = "Humedad alta en la esquina.";
-    } else {
-      el("homeSummary").textContent = "Todo en orden.";
-    }
-
-    renderClimateCards();
-    renderCameraCards();
+    renderOverview();
+    renderSummary();
+    renderClimate();
+    renderDevices();
+    renderWater();
+    renderEnergySummary();
+    renderEnergy();
+    renderCameras();
+    renderAccess();
   }
 
   function setTab(name) {
@@ -252,20 +261,6 @@
     if (typeof commandHandler !== "function") return;
     commandHandler({ device, action, requestedAt: Date.now() });
   }
-
-  el("dehumidifierButton")?.addEventListener("click", () => {
-    const device = state.devices?.dehumidifier;
-    if (device?.connected === true && device?.controllable === true && typeof device.on === "boolean") {
-      runCommand("dehumidifier", device.on ? "turn_off" : "turn_on");
-    }
-  });
-
-  el("pumpButton")?.addEventListener("click", () => {
-    const device = state.devices?.pump;
-    if (device?.connected === true && device?.controllable === true && typeof device.on === "boolean") {
-      runCommand("pump", device.on ? "turn_off" : "turn_on");
-    }
-  });
 
   window.PocketHomeAdapter = {
     getState() { return clone(state); },
