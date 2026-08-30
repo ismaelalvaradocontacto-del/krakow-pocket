@@ -9,96 +9,51 @@
   <meta name="apple-mobile-web-app-title" content="Pocket">
   <title>Instalar Pocket</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg?v=20260830d">
-  <link rel="icon" href="./pocket-icon-v2-192.svg?v=20260830d" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg?v=20260830e">
+  <link rel="icon" href="./pocket-icon-v2-192.svg?v=20260830e" type="image/svg+xml">
   <style>
-    :root{--bg:#f6f6f2;--card:#fff;--text:#172019;--muted:#68716b;--line:#dfe3de;--soft:#e9eee9;--green:#315d43;--shadow:0 18px 50px rgba(23,32,25,.09)}
-    *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
-    a,button{font:inherit;-webkit-tap-highlight-color:transparent}.wrap{width:min(620px,100%);margin:auto;padding:max(28px,env(safe-area-inset-top)) 16px calc(34px + env(safe-area-inset-bottom))}
-    .top{display:flex;align-items:center;justify-content:space-between;gap:12px}.back{color:var(--muted);text-decoration:none;font-size:15px;font-weight:750}.share{width:46px;height:46px;border:1px solid var(--line);border-radius:16px;background:#fff;display:grid;place-items:center;color:var(--text)}.share svg,.btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-    .hero{text-align:center;padding:48px 6px 24px}.app-icon{width:124px;height:124px;border-radius:30px;margin:0 auto 24px;background:#172019;color:#fff;display:grid;place-items:center;font-size:66px;font-weight:800;letter-spacing:-.05em;box-shadow:0 20px 44px rgba(23,32,25,.17)}
-    .eyebrow{font-size:11px;font-weight:850;letter-spacing:.09em;text-transform:uppercase;color:var(--green)}h1{margin:8px 0 0;font-size:46px;line-height:.98;letter-spacing:-.055em}.lead{margin:15px auto 0;max-width:460px;color:var(--muted);font-size:15px;line-height:1.55}
-    .panel{margin-top:12px;padding:18px;border:1px solid var(--line);border-radius:24px;background:var(--card);box-shadow:var(--shadow)}.btn{width:100%;min-height:58px;border:0;border-radius:18px;background:var(--text);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;font-size:17px;font-weight:800}.sub{text-align:center;margin-top:10px;color:var(--muted);font-size:12px;line-height:1.4}
-    .how{margin-top:28px}.how-head{display:flex;justify-content:space-between;align-items:end;gap:12px;margin-bottom:12px}.how h2{margin:0;font-size:22px;letter-spacing:-.035em}.platform{font-size:12px;color:var(--muted);font-weight:750}.steps{display:grid;gap:10px}.step{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.7)}.num{width:44px;height:44px;border-radius:14px;background:var(--soft);display:grid;place-items:center;color:var(--green);font-weight:850}.step strong{display:block;font-size:14px}.step span{display:block;margin-top:3px;color:var(--muted);font-size:12.5px;line-height:1.42}.tip{margin-top:12px;padding:13px 14px;border-radius:16px;background:var(--soft);color:#465149;font-size:12.5px;line-height:1.5}.tip strong{color:var(--text)}
-    .toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(14px);padding:11px 15px;border-radius:999px;background:#172019;color:#fff;font-size:13px;font-weight:750;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-    @media(max-width:430px){.hero{padding-top:38px}.app-icon{width:112px;height:112px;border-radius:27px;font-size:60px}h1{font-size:40px}.panel{padding:16px}}
+    :root{--bg:#f6f6f2;--card:#fff;--text:#172019;--muted:#69736c;--line:#dfe4de;--soft:#edf1ed;--green:#315d43;--shadow:0 18px 50px rgba(23,32,25,.09)}
+    *{box-sizing:border-box}html{background:var(--bg)}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}a,button{font:inherit;-webkit-tap-highlight-color:transparent}.wrap{width:min(620px,100%);margin:auto;padding:max(26px,env(safe-area-inset-top)) 16px calc(36px + env(safe-area-inset-bottom))}.top{display:flex;align-items:center;justify-content:space-between;gap:12px}.back{color:var(--muted);text-decoration:none;font-size:15px;font-weight:750}.share{width:46px;height:46px;border:1px solid var(--line);border-radius:16px;background:#fff;display:grid;place-items:center;color:var(--text);cursor:pointer}.share svg,.btn svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}.hero{text-align:center;padding:42px 6px 24px}.app-icon{width:124px;height:124px;border-radius:30px;margin:0 auto 24px;background:#172019;color:#fff;display:grid;place-items:center;font-size:66px;font-weight:800;letter-spacing:-.05em;box-shadow:0 20px 44px rgba(23,32,25,.17)}.eyebrow{font-size:11px;font-weight:850;letter-spacing:.09em;text-transform:uppercase;color:var(--green)}h1,h2,p{margin:0}h1{margin-top:8px;font-size:46px;line-height:.98;letter-spacing:-.055em}.lead{margin:15px auto 0;max-width:470px;color:var(--muted);font-size:15px;line-height:1.55}.panel{margin-top:12px;padding:18px;border:1px solid var(--line);border-radius:24px;background:var(--card);box-shadow:var(--shadow)}.btn{width:100%;min-height:60px;border:0;border-radius:18px;background:var(--text);color:#fff;display:flex;align-items:center;justify-content:center;gap:10px;padding:0 18px;text-decoration:none;font-size:17px;font-weight:800;cursor:pointer}.sub{text-align:center;margin-top:10px;color:var(--muted);font-size:12px;line-height:1.45}.after{display:none;margin-top:13px;padding:13px 14px;border-radius:16px;background:var(--soft);color:#465149;font-size:12.5px;line-height:1.45}.after.show{display:block}.after strong{display:block;color:var(--text);font-size:13px;margin-bottom:2px}.how{margin-top:30px}.how-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:12px}.how h2{font-size:22px;letter-spacing:-.035em}.platform{font-size:12px;color:var(--muted);font-weight:750}.steps{display:grid;gap:10px}.step{display:grid;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center;padding:14px;border:1px solid var(--line);border-radius:18px;background:rgba(255,255,255,.72)}.num{width:44px;height:44px;border-radius:14px;background:var(--soft);display:grid;place-items:center;color:var(--green);font-weight:850}.step strong{display:block;font-size:14px}.step span{display:block;margin-top:3px;color:var(--muted);font-size:12.5px;line-height:1.42}.safe{display:grid;grid-template-columns:36px minmax(0,1fr);gap:11px;align-items:center;margin-top:14px;padding:13px 14px;border:1px solid var(--line);border-radius:17px;background:#fff}.safe-icon{width:36px;height:36px;border-radius:12px;background:var(--soft);display:grid;place-items:center;font-size:17px}.safe strong{display:block;font-size:12.5px}.safe span{display:block;margin-top:2px;color:var(--muted);font-size:11.5px;line-height:1.4}.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%) translateY(14px);padding:11px 15px;border-radius:999px;background:#172019;color:#fff;font-size:13px;font-weight:750;opacity:0;pointer-events:none;transition:.2s}.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}@media(max-width:430px){.hero{padding-top:34px}.app-icon{width:112px;height:112px;border-radius:27px;font-size:60px}h1{font-size:40px}.panel{padding:16px}}
   </style>
 </head>
 <body>
   <main class="wrap">
-    <div class="top">
-      <a class="back" href="./">← Pocket</a>
-      <button class="share" id="shareBtn" type="button" aria-label="Compartir esta página"><svg viewBox="0 0 24 24"><path d="M12 16V3m0 0L7.5 7.5M12 3l4.5 4.5"/><path d="M6 10H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1"/></svg></button>
-    </div>
+    <div class="top"><a class="back" href="./">← Pocket</a><button class="share" id="shareBtn" type="button" aria-label="Compartir esta página"><svg viewBox="0 0 24 24"><path d="M12 16V3m0 0L7.5 7.5M12 3l4.5 4.5"/><path d="M6 10H5a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7a2 2 0 0 0-2-2h-1"/></svg></button></div>
 
     <section class="hero">
       <div class="app-icon">P</div>
-      <div class="eyebrow">Instalar Pocket</div>
-      <h1>Pocket en tu móvil</h1>
-      <p class="lead">Añádelo a la pantalla de inicio y se abrirá como una app, sin App Store ni archivos que descargar.</p>
+      <div class="eyebrow">Instalación guiada</div>
+      <h1>Pocket en tu iPhone</h1>
+      <p class="lead">Pulsa una vez y descarga el perfil de Pocket. Después iPhone te pedirá confirmarlo en Ajustes.</p>
     </section>
 
     <section class="panel">
-      <button class="btn" id="installBtn" type="button"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg><span id="installLabel">Instalar Pocket</span></button>
-      <div class="sub" id="installSub">En iPhone, Apple requiere hacerlo desde el menú Compartir.</div>
+      <a class="btn" id="profileBtn" href="./pocket.mobileconfig"><svg viewBox="0 0 24 24"><path d="M12 3v12m0 0 4-4m-4 4-4-4"/><path d="M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2"/></svg><span>Instalar Pocket</span></a>
+      <div class="sub">iPhone te preguntará si permites descargar el perfil.</div>
+      <div class="after" id="after"><strong>✓ Perfil descargado</strong>Ahora abre <b>Ajustes</b> y toca <b>Perfil descargado</b> → <b>Pocket</b> → <b>Instalar</b>.</div>
     </section>
 
     <section class="how">
-      <div class="how-head"><h2>Cómo se instala</h2><span class="platform" id="platform">iPhone</span></div>
-      <div class="steps" id="steps"></div>
-      <div class="tip" id="tip"></div>
+      <div class="how-head"><h2>Son 3 pasos</h2><span class="platform">iPhone / iPad</span></div>
+      <div class="steps">
+        <div class="step"><div class="num">1</div><div><strong>Pulsa “Instalar Pocket”</strong><span>Acepta “Permitir” cuando Safari pregunte por el perfil.</span></div></div>
+        <div class="step"><div class="num">2</div><div><strong>Abre Ajustes</strong><span>Toca “Perfil descargado”. Si no aparece arriba, ve a General → VPN y gestión de dispositivos.</span></div></div>
+        <div class="step"><div class="num">3</div><div><strong>Pulsa Instalar</strong><span>Confirma y Pocket aparecerá en tu pantalla de inicio con la P blanca.</span></div></div>
+      </div>
+      <div class="safe"><div class="safe-icon">✓</div><div><strong>Este perfil solo crea el acceso directo de Pocket.</strong><span>No instala MDM, no administra el iPhone y no cambia otros ajustes. iOS puede mostrar “perfil sin firmar” porque es un perfil privado creado para Pocket.</span></div></div>
     </section>
   </main>
   <div class="toast" id="toast"></div>
-
   <script>
     (()=>{
-      const ua=navigator.userAgent||'';
-      const isIOS=/iPhone|iPad|iPod/.test(ua)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-      const isAndroid=/Android/i.test(ua);
-      const isStandalone=matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
-      const steps=document.getElementById('steps');
-      const platform=document.getElementById('platform');
-      const tip=document.getElementById('tip');
-      const installBtn=document.getElementById('installBtn');
-      const installLabel=document.getElementById('installLabel');
-      const installSub=document.getElementById('installSub');
       const toast=document.getElementById('toast');
-      let deferredPrompt=null;
-      const row=(n,title,text)=>`<div class="step"><div class="num">${n}</div><div><strong>${title}</strong><span>${text}</span></div></div>`;
-      const showToast=t=>{toast.textContent=t;toast.classList.add('show');clearTimeout(showToast.t);showToast.t=setTimeout(()=>toast.classList.remove('show'),1800)};
-
-      if(isStandalone){installLabel.textContent='Abrir Pocket';installSub.textContent='Pocket ya está instalado en este dispositivo';}
-
-      if(isIOS){
-        platform.textContent='iPhone / iPad';
-        steps.innerHTML=row('1','Pulsa Compartir','Toca el cuadrado con la flecha hacia arriba.')+row('2','Desliza esta hoja hacia arriba','“Añadir a pantalla de inicio” está en la lista vertical de acciones, más abajo; no en la fila de iconos.')+row('3','Añadir a pantalla de inicio','Activa “Abrir como app web” si aparece y pulsa “Añadir”.');
-        tip.innerHTML='<strong>¿No aparece?</strong> Baja hasta el final de la lista → <strong>Editar acciones</strong> → añade <strong>“Añadir a pantalla de inicio”</strong>. Después vuelve a Compartir.';
-      }else if(isAndroid){
-        platform.textContent='Android';
-        steps.innerHTML=row('1','Pulsa Instalar Pocket','El navegador mostrará la instalación si está disponible.')+row('2','Confirma Instalar','Pocket aparecerá junto a tus demás apps.');
-        tip.textContent='Si no aparece el aviso, abre el menú ⋮ del navegador y busca “Instalar aplicación” o “Añadir a pantalla de inicio”.';
-      }else{
-        platform.textContent='Navegador';
-        steps.innerHTML=row('1','Abre este enlace en tu móvil','Pocket se instala desde iPhone, iPad o Android.')+row('2','Sigue las instrucciones','El propio navegador te indicará cómo añadirlo.');
-        tip.textContent='En iPhone, usa Safari.';
-      }
-
-      window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e});
-      installBtn.addEventListener('click',async()=>{
-        if(isStandalone){location.href='./';return}
-        if(deferredPrompt){deferredPrompt.prompt();try{await deferredPrompt.userChoice}catch(e){}deferredPrompt=null;return}
-        if(isIOS){
-          if(navigator.share){try{await navigator.share({title:'Pocket',url:location.href});return}catch(e){if(e.name==='AbortError')return}}
-          showToast('Pulsa Compartir en Safari');return;
-        }
-        if(isAndroid){showToast('Abre el menú ⋮ y pulsa Instalar');return}
-      });
-      document.getElementById('shareBtn').addEventListener('click',async()=>{
-        if(navigator.share){try{await navigator.share({title:'Pocket',text:'Instala Pocket en tu móvil',url:location.href});return}catch(e){if(e.name==='AbortError')return}}
-        try{await navigator.clipboard.writeText(location.href);showToast('Enlace copiado ✓')}catch(e){}
-      });
-      if('serviceWorker' in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
+      const show=t=>{toast.textContent=t;toast.classList.add('show');clearTimeout(show.t);show.t=setTimeout(()=>toast.classList.remove('show'),1800)};
+      const installed=matchMedia('(display-mode:standalone)').matches||navigator.standalone===true;
+      if(installed){const b=document.getElementById('profileBtn');b.href='./';b.querySelector('span').textContent='Abrir Pocket';document.querySelector('.sub').textContent='Pocket ya está abierto como app.';}
+      document.getElementById('profileBtn').addEventListener('click',()=>{if(!installed){localStorage.setItem('pocketProfileStarted','1');setTimeout(()=>document.getElementById('after').classList.add('show'),900)}});
+      if(localStorage.getItem('pocketProfileStarted')==='1'&&!installed)document.getElementById('after').classList.add('show');
+      document.getElementById('shareBtn').addEventListener('click',async()=>{const data={title:'Pocket',text:'Instala Pocket en tu iPhone',url:location.href};if(navigator.share){try{await navigator.share(data);return}catch(e){if(e.name==='AbortError')return}}try{await navigator.clipboard.writeText(location.href);show('Enlace copiado ✓')}catch(e){}});
+      if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js').catch(()=>{});
     })();
   </script>
 </body>
