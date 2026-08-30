@@ -9,8 +9,8 @@
   <meta name="format-detection" content="telephone=no">
   <title>Casita · Pocket</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg?v=20260830casa2">
-  <link rel="icon" href="./pocket-icon-v2-192.svg?v=20260830casa2" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg?v=20260830casa3">
+  <link rel="icon" href="./pocket-icon-v2-192.svg?v=20260830casa3" type="image/svg+xml">
   <link rel="stylesheet" href="./casita.css?v=20260830casa1">
 </head>
 <body>
@@ -21,13 +21,12 @@
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"></path></svg>
           <span>Pocket</span>
         </a>
-        <span class="mode-badge" id="modeBadge">Sin conectar</span>
+        <span class="mode-badge" id="modeBadge">Sin conexión</span>
       </div>
-
       <div class="hero-copy">
         <div class="eyebrow">AGÜIMES · CASITA</div>
         <h1>Tu casa, en un vistazo.</h1>
-        <p id="homeSummary">Todavía no hay dispositivos conectados. Pocket mostrará únicamente datos reales.</p>
+        <p id="homeSummary">Sin datos disponibles.</p>
       </div>
     </header>
 
@@ -69,7 +68,7 @@
           <div class="status-icon climate" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M12 3v10"></path><path d="M9 6a3 3 0 0 1 6 0v7.4a5 5 0 1 1-6 0Z"></path></svg>
           </div>
-          <div class="status-copy"><strong>Habitáculo</strong><span><b id="indoorTemp">Sin datos</b> <span id="indoorHumidityInline"></span></span></div>
+          <div class="status-copy"><strong>Habitáculo</strong><span><b id="indoorTemp">Sin datos</b><span id="indoorHumidityInline"></span></span></div>
           <span class="dot" id="indoorDot" aria-label="Sin datos"></span>
         </article>
 
@@ -77,7 +76,7 @@
           <div class="status-icon corner" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M4 4v16h16"></path><path d="M8 16c2.5-4.8 5.1-6.9 10-8"></path></svg>
           </div>
-          <div class="status-copy"><strong>Esquina húmeda</strong><span><b id="cornerTemp">Sin datos</b> <span id="cornerHumidity"></span></span></div>
+          <div class="status-copy"><strong>Esquina húmeda</strong><span><b id="cornerTemp">Sin datos</b><span id="cornerHumidity"></span></span></div>
           <span class="dot" id="cornerDot" aria-label="Sin datos"></span>
         </article>
 
@@ -85,7 +84,7 @@
           <div class="status-icon patio" aria-hidden="true">
             <svg viewBox="0 0 24 24"><path d="M12 3v18"></path><path d="M5 8h14"></path><path d="M7 18h10"></path><path d="M8 8v10"></path><path d="M16 8v10"></path></svg>
           </div>
-          <div class="status-copy"><strong>Patio</strong><span><b id="patioTemp">Sin datos</b> <span id="patioHumidity"></span></span></div>
+          <div class="status-copy"><strong>Patio</strong><span><b id="patioTemp">Sin datos</b><span id="patioHumidity"></span></span></div>
           <span class="pill" id="patioProduction">Sin datos</span>
         </article>
       </div>
@@ -93,7 +92,7 @@
       <article class="production-card">
         <div class="production-head">
           <div><span class="metric-label">Producción de agua</span><strong><span id="todayLiters">—</span> <small id="todayLitersUnit">Sin datos</small></strong></div>
-          <span class="live-state" id="dehumidifierState"><i></i> No conectado</span>
+          <span class="live-state" id="dehumidifierState"><i></i> Sin conexión</span>
         </div>
         <div class="progress" aria-label="Nivel del depósito"><span id="tankProgress" style="width:0%"></span></div>
         <div class="production-foot">
@@ -104,25 +103,19 @@
 
       <div class="quick-controls">
         <button class="control-card" id="dehumidifierButton" type="button" disabled aria-disabled="true">
-          <span class="control-copy"><small>Patio</small><strong>Deshumidificador</strong><span id="dehumidifierHint">No conectado</span></span>
+          <span class="control-copy"><small>Patio</small><strong>Deshumidificador</strong><span id="dehumidifierHint">Sin conexión</span></span>
           <span class="switch" id="dehumidifierSwitch" aria-hidden="true"><i></i></span>
         </button>
         <button class="control-card" id="pumpButton" type="button" disabled aria-disabled="true">
-          <span class="control-copy"><small>Agua</small><strong>Bomba</strong><span id="pumpHint">No conectada</span></span>
+          <span class="control-copy"><small>Agua</small><strong>Bomba</strong><span id="pumpHint">Sin conexión</span></span>
           <span class="switch" id="pumpSwitch" aria-hidden="true"><i></i></span>
         </button>
-      </div>
-
-      <div class="safety-note">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4.5 6v5.4c0 4.8 3.1 8.1 7.5 9.6 4.4-1.5 7.5-4.8 7.5-9.6V6Z"></path><path d="m9 12 2 2 4-4"></path></svg>
-        <div><strong>Sin datos inventados</strong><span>Los indicadores permanecerán vacíos hasta recibir una lectura real de un sensor o dispositivo configurado.</span></div>
       </div>
     </section>
 
     <section class="tab-panel" data-panel="ambiente" hidden>
       <div class="section-title"><div><div class="eyebrow">MICROCLIMA</div><h2>Ambiente</h2></div></div>
       <div class="detail-grid" id="climateCards"></div>
-      <article class="info-card"><span class="metric-label">Protección de la casa</span><p>Cuando instalemos los sensores podremos definir el rango objetivo y las alertas con datos reales del habitáculo, la esquina húmeda y el patio.</p></article>
     </section>
 
     <section class="tab-panel" data-panel="agua" hidden>
@@ -133,12 +126,12 @@
         <div class="progress large"><span id="waterDetailProgress" style="width:0%"></span></div>
       </article>
       <div class="detail-grid two">
-        <article class="detail-card"><span>Hoy</span><strong id="waterToday">Sin datos</strong><small>producción</small></article>
-        <article class="detail-card"><span>Semana</span><strong id="waterWeek">Sin datos</strong><small>producción</small></article>
-        <article class="detail-card"><span>Ritmo</span><strong id="waterRate">Sin datos</strong><small>producción actual</small></article>
-        <article class="detail-card"><span>Lavados</span><strong id="washEstimate">Sin datos</strong><small>se calculará al configurar la lavadora</small></article>
+        <article class="detail-card"><span>Hoy</span><strong id="waterToday">Sin datos</strong><small>Producción</small></article>
+        <article class="detail-card"><span>Semana</span><strong id="waterWeek">Sin datos</strong><small>Producción</small></article>
+        <article class="detail-card"><span>Ritmo</span><strong id="waterRate">Sin datos</strong><small>Actual</small></article>
+        <article class="detail-card"><span>Lavados</span><strong id="washEstimate">Sin datos</strong><small>Disponibles</small></article>
       </div>
-      <article class="info-card subtle"><span class="metric-label">Uso previsto</span><p>El agua del deshumidificador se registrará como <b>no potable</b>. Los usos concretos podrán configurarse cuando montemos el sistema real.</p></article>
+      <article class="info-card subtle"><span class="metric-label">Agua no potable</span><p>Lavadora · obra · limpieza · riego</p></article>
     </section>
 
     <section class="tab-panel" data-panel="energia" hidden>
@@ -146,42 +139,31 @@
       <article class="big-value-card energy">
         <span class="metric-label">Hoy</span>
         <strong><span id="energyDetailCost">—</span><small id="energyDetailCostUnit"></small></strong>
-        <p id="energyDetailKwh">Sin datos de consumo.</p>
+        <p id="energyDetailKwh">Sin datos.</p>
       </article>
       <div class="device-list">
         <div class="device-row"><span>Deshumidificador</span><strong id="dehumidifierEnergy">Sin datos</strong></div>
-        <div class="device-row"><span>Lavadora</span><strong>Sin conectar</strong></div>
-        <div class="device-row"><span>Otros</span><strong>Sin conectar</strong></div>
+        <div class="device-row"><span>Lavadora</span><strong>Sin conexión</strong></div>
+        <div class="device-row"><span>Otros</span><strong>Sin conexión</strong></div>
       </div>
-      <article class="info-card"><span class="metric-label">Eficiencia</span><strong id="efficiencyValue">Sin datos</strong><p>Se calculará únicamente cuando existan mediciones reales de electricidad y producción de agua.</p></article>
+      <article class="info-card"><span class="metric-label">Eficiencia</span><strong id="efficiencyValue">Sin datos</strong></article>
     </section>
 
     <section class="tab-panel" data-panel="camaras" hidden>
       <div class="section-title"><div><div class="eyebrow">VÍDEO</div><h2>Cámaras</h2></div></div>
-      <article class="info-card">
-        <span class="metric-label">Sin cámaras conectadas</span>
-        <strong>Monitorización en directo</strong>
-        <p>Pocket podrá mostrar las cámaras compatibles mediante el sistema domótico de la casa. No se guardarán credenciales de cámara directamente en esta página.</p>
-      </article>
       <div class="detail-grid two" id="cameraCards"></div>
+      <article class="info-card" id="cameraEmpty"><strong>Sin cámaras</strong></article>
     </section>
 
     <section class="tab-panel" data-panel="accesos" hidden>
       <div class="section-title"><div><div class="eyebrow">ENTRADAS</div><h2>Accesos</h2></div></div>
-      <article class="info-card">
-        <span class="metric-label">Portero y puerta</span>
-        <strong>Sin dispositivos conectados</strong>
-        <p>Cuando elijamos el portero podremos mostrar llamadas, imagen de la entrada y, si el hardware lo permite, acciones como abrir la puerta o activar un relé.</p>
-      </article>
       <div class="device-list">
-        <div class="device-row"><span>Portero</span><strong>Sin conectar</strong></div>
-        <div class="device-row"><span>Apertura de puerta</span><strong>Sin conectar</strong></div>
+        <div class="device-row"><span>Portero</span><strong id="doorbellStatus">Sin conexión</strong></div>
+        <div class="device-row"><span>Apertura de puerta</span><strong id="doorReleaseStatus">Sin conexión</strong></div>
       </div>
     </section>
-
-    <footer class="home-footer"><span>Pocket no mostrará telemetría hasta que exista una fuente real configurada.</span></footer>
   </main>
 
-  <script src="./casita.js?v=20260830casa2"></script>
+  <script src="./casita.js?v=20260830casa3"></script>
 </body>
 </html>
