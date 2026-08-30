@@ -5,27 +5,23 @@
   <key>PayloadContent</key>
   <array>
     <dict>
-      <key>FullScreen</key><true/>
-      <key>Icon</key><data>iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAAAFmUlEQVR4nO3cb0zUdQDHceBgyplcsuSgtrjqmdoMU6ZgZlitPz6qrbLF0kUmc+qT2rTM1dqc/XlSaTJUmlMcq9kTd9lWMxRQU4tQ8AGaf1ATDrV5wgF33OxBT5rzo973vr/7cfJ+PYXv7z5z7513v/1Gpj9QlAHcTJbbAzByEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQMp2e0BSpkya/EvwZ4cuHhuODQ0NRaPRcDgc6u0N9YbOXzjfebKz80Rn+/GOwcFBh1535EjvOByVk52Tk52TMS4jf0J+oDjw/x/FYrHWtj9bDrYEdwfbj3e4NNBxmf5AkdsbzDn6znGH/jp9qr5hx7Yd2671XXN3iXV85kjWIw89vGbV6j8OHFn17spx3nFuz7GJOOwYf8/4FUuXt+xpnv/8fLe3WEMcNhX6/Zu/qf187Wdjxoxxe4sFxGFf5YI3vt/+Xd74PLeHJIs4HFE6fcYPDTt9eendB3E4ZcqkybUbarM9aXyzgDgc9OTsOaveW+n2CnPE4awlVe9MfXSq2ysMEYezPB7Puk/Wur3CEHE4rmRqScXcCrdXmEjjj0vGzpw9M3Nu2S1+wev1+vJ8hf7CaY+VlM0se/bpZ3Kyc5J5xeqqJXsa9yRzBVfwznETkUjkYvfF1rbWLVvr3qqumjG7dMvWuuvXrxtfsHxWmb/Ab3FhahDH7XX39Hzw0eoFb77e199ndoWsrKwXn3vB7qoUII471di0t6r67eH4sNnxspmz7O5JAeJIQGPT3k11m83Olk4vtTsmBYgjMV9vXB+JRAwOFkws8Pl81vc4ijgSc+WfK80HWszOFj9YbHeM04gjYU0tTWYHHyi63+4SpxFHwrrOdZkd9Hq9dpc4jTgSdvnKZbOD3lziuNtlZRn+oyVzG80VxJGw/An5ZgcHBgfsLnEacSTM+EtHf3+/3SVOI46EzSl/wuzghYt/213iNOJIzMT7JpbPKjc729V11u4YpxFHYlYsXT527FiDg909PVfDYet7HEUcCZj31LxFlQvNzh7+/ZDVLalAHHeqYm5F7foaj8djdnz/bwft7kmB0fgkWKKKCguXVS9bVLkwMzPT7ArxeDy4O2h3VQoQx03k5ube6/P5CwofL5lm5THB5gMtod6QrXkpMxrjCBQHuk+n9FtlzaaaVL6cLXzmcFxrW+uv+xrdXmGCOJwVj8dXfvi+2ysMEYezNm6qaTvW5vYKQ8ThoL3N+9Z98anbK8wRh1Paj3csXrrY+Gn1kYA4HHHoyOGXXns57e6X34A47NveUP9K5avha+ldRsbovM/hnJ5Qz+qP1+z6cZfbQ+wgDjv6+vvqtn775Yav+iNp9kTPLRBHsk6dOV3fUL9tx/a74P+RGxCHidhwrO3o0eb9zcGfgsc62t2e4xTikIbjw9GhaDQavRq+2nvpUqg3dO78uRMnT3Se7DzW0T4wkGZPCxsYjXHc9o+34D98lYVEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQCIOSMQBiTggEQck4oBEHJCIAxJxQCIOSP8CENE7+oDh1R4AAAAASUVORK5CYII=</data>
-      <key>IsRemovable</key><true/>
+      <key>Icon</key>
+      <data>iVBORw0KGgoAAAANSUhEUgAAALQAAAC0CAIAAACyr5FlAAAEkUlEQVR42u3c309TVwDA8bWXhJRCb/owFbGFPcxkc+AkCig6/4C5yHAjW7K4ZAlOYFJ+sy1Gk2XJFt0ENobLpjESfXDyw83Gvexh0qJTBw4Q3VqMom3HL0lEWmihxRdfJHdjOcKSe/x+3s9tz+03p/ceejEsT0t+BtBi5BSAOEAcIA4QB4gDxAHiAHGAOEAcAHGAOEAcIA4QB4gDxAHiAHGAOADiAHGAOEAcIA4QB4gDxAHiAHEAxAHiAHGAOEAcIA4QB4gDxAHiAHEAxAHiAHGAOEAcIA4QB4gDxAHiAIgDC4uTYA77P95XVLh70Q8bi8XC4XAkEgmGgqNjoyOjI/5AwOP1eG96e3p7Jx5MEMdTvKgajSaTyWQyqaq6MnnlvG76b1x3X3CfPefs/qObrxU81k36mpeKCnefa3de7viteFexJclCHJjPbrPv+2hv98XfK/aUx8fHEwfmSzQn1lRUu3/pyN2YSxzQYFtlO33iVJWj0mAwEAc0LkeqyioPff6loijcrUDD2wVvKYqxtKqMlQMaCnYUOEpKiQPaaitqMl/OJA5oX3/UHzgUp8QRBzSsfn71G/k7uCDVE1en+813Cv7xpChxqqparda16RlZ67Pytm1XVVX4tRwljlMtP8zNzbFyyGA2Ontv/N7AzYHWM221ez/M3LT+k88+jUQiYkd7LjUtJyuHrxU5BUPBpu+aXs3fNjQ8LHaE/O2vE4fM+vqv7Sx8d2pqSmDs1s2vEIfkevt6G5q+Ehhot9mTV6wgDskdOXb0/oTIz3xefGENcUhuMjh53vWrwMBUm5045Nd58YLAqFUpKcQhv7t+n8AoszmROOQ3Pj4uMCohIYE45Gc0ipw0dkifLarVWCU2AYJceiMXei+IxicJA755eZsEhjl8/uJQ3KWJMvWLSJ74YN37xCH5Ha9V5iUmCQwsP/6NeKQ2bq16/YUfSCybNwZFP6LLnHoQEZ6xvHvj4k903be3aHLm3Y+9QWZE8wl7xc7W35a9uwysSO0/diux4nz3IoGRVFUy6OfCWZvyM57LU+1iD8nfWvw9qUrl4hDN7bkbh66Ffh/XqvhmwY9bo/ytbLkPF5PS1urTt88cSyhWCxWXls5G50lDsx3sO6Lrqtd+n3/xLFUWs+01TXW63oKxLEkTre3lFY59D4L4lj864y6xvrSSkc0GtX7XNjnWEyBvwNl1eUdnS45pkMciyMUCh0+8u3Xhxunp6elmRRxPCmf33f8ZHPzyWax51mIQ8ILixt//enqdDl/dnZd7dbpBihxPFEBMzMz0+FwKBQcGxsbGR3xBfzeAa/H6+np65FvnSCOR/79/3OAW1kQB4gDxAHiAHGAOEAcIA4QB4gDIA4QB4gDxAHiAHGAOEAcIA4QB0Ac+K8My9OSOQtg5QBxgDhAHCAOEAeIA8QB4gBxAMQB4gBxgDhAHCAOEAeIA8QB4gCIA8QB4gBxgDhAHCAOEAeIA8QB4gCIA8QB4gBxgDhAHCAOEAeIA8QBEAeIA8QB4gBxgDhAHCAOEAeIAyAOEAeIA8QB4gBxgDigSw8B/nE4DlIQiMcAAAAASUVORK5CYII=</data>
       <key>Label</key><string>Pocket</string>
-      <key>PayloadDescription</key><string>Añade Pocket a la pantalla de inicio.</string>
-      <key>PayloadDisplayName</key><string>Pocket</string>
-      <key>PayloadIdentifier</key><string>dev.pages.krakow-pocket.webclip</string>
-      <key>PayloadType</key><string>com.apple.webClip.managed</string>
-      <key>PayloadUUID</key><string>49FAC338-897F-4817-BB09-0542ACC964E9</string>
-      <key>PayloadVersion</key><integer>1</integer>
-      <key>Precomposed</key><true/>
       <key>URL</key><string>https://krakow-pocket.pages.dev/</string>
+      <key>PayloadDisplayName</key><string>Pocket</string>
+      <key>PayloadIdentifier</key><string>dev.pages.krakow-pocket.webclip.v2</string>
+      <key>PayloadType</key><string>com.apple.webClip.managed</string>
+      <key>PayloadUUID</key><string>940BC7E8-77FA-4F87-A1ED-AB723E92D1B7</string>
+      <key>PayloadVersion</key><integer>1</integer>
     </dict>
   </array>
-  <key>PayloadDescription</key><string>Instala Pocket como acceso directo en la pantalla de inicio del iPhone.</string>
+  <key>PayloadDescription</key><string>Añade Pocket como acceso directo a la pantalla de inicio.</string>
   <key>PayloadDisplayName</key><string>Pocket</string>
-  <key>PayloadIdentifier</key><string>dev.pages.krakow-pocket.profile</string>
+  <key>PayloadIdentifier</key><string>dev.pages.krakow-pocket.profile.v2</string>
   <key>PayloadOrganization</key><string>Pocket</string>
-  <key>PayloadRemovalDisallowed</key><false/>
   <key>PayloadType</key><string>Configuration</string>
-  <key>PayloadUUID</key><string>3C62F712-0027-4F25-BAF4-9058E97D2AEF</string>
+  <key>PayloadUUID</key><string>FE764C2F-A9D5-4161-98D9-66E48099FE90</string>
   <key>PayloadVersion</key><integer>1</integer>
 </dict>
 </plist>
