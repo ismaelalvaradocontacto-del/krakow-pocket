@@ -9,9 +9,9 @@
   <meta name="format-detection" content="telephone=no">
   <title>Casita · Pocket</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg?v=20260830casa4">
-  <link rel="icon" href="./pocket-icon-v2-192.svg?v=20260830casa4" type="image/svg+xml">
-  <link rel="stylesheet" href="./casita.css?v=20260830casa1">
+  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg?v=20260830casa5">
+  <link rel="icon" href="./pocket-icon-v2-192.svg?v=20260830casa5" type="image/svg+xml">
+  <link rel="stylesheet" href="./casita.css?v=20260830casa5">
 </head>
 <body>
   <main class="home-shell">
@@ -31,21 +31,9 @@
     </header>
 
     <section class="overview" aria-label="Estado general">
-      <article class="metric metric-primary">
-        <span class="metric-label">Ambiente</span>
-        <strong><span id="environmentValue">—</span><small id="environmentUnit"></small></strong>
-        <span class="metric-state" id="environmentState">Sin datos</span>
-      </article>
-      <article class="metric">
-        <span class="metric-label">Agua</span>
-        <strong><span id="waterValue">—</span><small id="waterUnit"></small></strong>
-        <span class="metric-state" id="waterState">Sin datos</span>
-      </article>
-      <article class="metric">
-        <span class="metric-label">Energía</span>
-        <strong><span id="energyValue">—</span><small id="energyUnit"></small></strong>
-        <span class="metric-state" id="energyState">Sin datos</span>
-      </article>
+      <article class="metric metric-primary"><span class="metric-label">Ambiente</span><strong><span id="environmentValue">—</span><small id="environmentUnit"></small></strong><span class="metric-state" id="environmentState">Sin datos</span></article>
+      <article class="metric"><span class="metric-label">Agua</span><strong><span id="waterValue">—</span><small id="waterUnit"></small></strong><span class="metric-state" id="waterState">Sin datos</span></article>
+      <article class="metric"><span class="metric-label">Energía</span><strong><span id="energyValue">—</span><small id="energyUnit"></small></strong><span class="metric-state" id="energyState">Sin datos</span></article>
     </section>
 
     <nav class="section-tabs" aria-label="Secciones de Casita">
@@ -58,10 +46,7 @@
     </nav>
 
     <section class="tab-panel active" data-panel="resumen">
-      <div class="section-title">
-        <div><div class="eyebrow">AHORA</div><h2>Estado</h2></div>
-        <span class="updated" id="lastUpdated">Sin datos</span>
-      </div>
+      <div class="section-title"><div><div class="eyebrow">AHORA</div><h2>Estado</h2></div><span class="updated" id="lastUpdated">Sin datos</span></div>
       <div class="status-list" id="summaryCards"></div>
       <article class="info-card" id="summaryEmpty"><strong>Sin dispositivos</strong></article>
       <div class="quick-controls" id="deviceControls"></div>
@@ -75,11 +60,7 @@
 
     <section class="tab-panel" data-panel="agua" hidden>
       <div class="section-title"><div><div class="eyebrow">AGUA</div><h2>Agua</h2></div></div>
-      <article class="big-value-card">
-        <span class="metric-label">Disponible</span>
-        <strong><span id="waterDetailValue">—</span><small id="waterDetailUnit"></small></strong>
-        <div class="progress large"><span id="waterProgress" style="width:0%"></span></div>
-      </article>
+      <article class="big-value-card"><span class="metric-label">Disponible</span><strong><span id="waterDetailValue">—</span><small id="waterDetailUnit"></small></strong><div class="progress large"><span id="waterProgress" style="width:0%"></span></div></article>
       <div class="detail-grid two">
         <article class="detail-card"><span>Hoy</span><strong id="waterToday">Sin datos</strong></article>
         <article class="detail-card"><span>Semana</span><strong id="waterWeek">Sin datos</strong></article>
@@ -90,18 +71,14 @@
 
     <section class="tab-panel" data-panel="energia" hidden>
       <div class="section-title"><div><div class="eyebrow">ENERGÍA</div><h2>Consumo</h2></div></div>
-      <article class="big-value-card energy">
-        <span class="metric-label">Hoy</span>
-        <strong><span id="energyDetailValue">—</span><small id="energyDetailUnit"></small></strong>
-        <p id="energyDetailKwh">Sin datos.</p>
-      </article>
+      <article class="big-value-card energy"><span class="metric-label">Hoy</span><strong><span id="energyDetailValue">—</span><small id="energyDetailUnit"></small></strong><p id="energyDetailKwh">Sin datos.</p></article>
       <div class="device-list" id="energyDevices"></div>
       <article class="info-card" id="energyEmpty"><strong>Sin dispositivos</strong></article>
     </section>
 
     <section class="tab-panel" data-panel="camaras" hidden>
       <div class="section-title"><div><div class="eyebrow">VÍDEO</div><h2>Cámaras</h2></div></div>
-      <div class="detail-grid two" id="cameraCards"></div>
+      <div class="detail-grid" id="cameraCards"></div>
       <article class="info-card" id="cameraEmpty"><strong>Sin cámaras</strong></article>
     </section>
 
@@ -112,6 +89,6 @@
     </section>
   </main>
 
-  <script src="./casita.js?v=20260830casa4"></script>
+  <script src="./casita.js?v=20260830casa5"></script>
 </body>
 </html>
