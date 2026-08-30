@@ -1,21 +1,12 @@
 (() => {
-  const STORAGE_KEY = "pocket.casita.v3";
+  const STORAGE_KEY = "pocket.casita.v4";
   const emptyState = {
     mode: "disconnected",
     electricityPrice: null,
     environment: { value: null, unit: "%", state: null },
     zones: [],
-    water: {
-      availableLiters: null,
-      capacityLiters: null,
-      todayLiters: null,
-      weekLiters: null,
-      rateLitersHour: null
-    },
-    energy: {
-      todayKwh: null,
-      devices: []
-    },
+    water: { availableLiters: null, capacityLiters: null, todayLiters: null, weekLiters: null, rateLitersHour: null },
+    energy: { todayKwh: null, devices: [] },
     devices: [],
     cameras: [],
     access: [],
@@ -28,34 +19,34 @@
   const fmt = (value, digits = 1) => hasNumber(value)
     ? Number(value).toLocaleString("es-ES", { maximumFractionDigits: digits, minimumFractionDigits: digits })
     : null;
+  const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#039;"}[char]));
+  const safeMediaUrl = value => {
+    if (typeof value !== "string" || !value.trim()) return null;
+    const raw = value.trim();
+    try {
+      const url = new URL(raw, window.location.href);
+      return ["http:", "https:", "blob:"].includes(url.protocol) ? url.href : null;
+    } catch (_) { return null; }
+  };
 
   function merge(base, incoming) {
     if (!incoming || typeof incoming !== "object") return base;
     for (const [key, value] of Object.entries(incoming)) {
-      if (value && typeof value === "object" && !Array.isArray(value) && base[key] && typeof base[key] === "object" && !Array.isArray(base[key])) {
-        merge(base[key], value);
-      } else {
-        base[key] = value;
-      }
+      if (value && typeof value === "object" && !Array.isArray(value) && base[key] && typeof base[key] === "object" && !Array.isArray(base[key])) merge(base[key], value);
+      else base[key] = value;
     }
     return base;
   }
 
   function loadState() {
-    try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-      return merge(clone(emptyState), stored);
-    } catch (_) {
-      return clone(emptyState);
-    }
+    try { return merge(clone(emptyState), JSON.parse(localStorage.getItem(STORAGE_KEY) || "null")); }
+    catch (_) { return clone(emptyState); }
   }
 
   let state = loadState();
   let commandHandler = null;
 
-  function saveState() {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {}
-  }
+  function saveState() { try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (_) {} }
 
   function timeAgo(timestamp) {
     if (!hasNumber(timestamp)) return "Sin datos";
@@ -75,15 +66,12 @@
     return "";
   }
 
-  function showEmpty(emptyNode, hasItems) {
-    if (emptyNode) emptyNode.hidden = hasItems;
-  }
+  function showEmpty(node, hasItems) { if (node) node.hidden = hasItems; }
 
   function renderSummary() {
     const mount = el("summaryCards");
     const empty = el("summaryEmpty");
     if (!mount) return;
-
     const items = [];
     for (const zone of Array.isArray(state.zones) ? state.zones : []) {
       if (!zone?.name) continue;
@@ -94,23 +82,10 @@
     }
     for (const device of Array.isArray(state.devices) ? state.devices : []) {
       if (!device?.name) continue;
-      const meta = device.connected === false
-        ? "Sin conexión"
-        : typeof device.on === "boolean"
-          ? device.on ? "Encendido" : "Apagado"
-          : device.connected === true ? "En línea" : "Sin datos";
+      const meta = device.connected === false ? "Sin conexión" : typeof device.on === "boolean" ? (device.on ? "Encendido" : "Apagado") : device.connected === true ? "En línea" : "Sin datos";
       items.push({ name: device.name, meta, status: device.connected === false ? "offline" : device.status });
     }
-
-    mount.innerHTML = items.map(item => `
-      <article class="status-row">
-        <div class="status-copy">
-          <strong>${String(item.name)}</strong>
-          <span>${String(item.meta)}</span>
-        </div>
-        <span class="dot ${statusClass(item.status)}" aria-hidden="true"></span>
-      </article>
-    `).join("");
+    mount.innerHTML = items.map(item => `<article class="status-row"><div class="status-copy"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.meta)}</span></div><span class="dot ${statusClass(item.status)}" aria-hidden="true"></span></article>`).join("");
     showEmpty(empty, items.length > 0);
   }
 
@@ -119,12 +94,13 @@
     const empty = el("climateEmpty");
     if (!mount) return;
     const zones = (Array.isArray(state.zones) ? state.zones : []).filter(zone => zone?.name);
-    mount.innerHTML = zones.map(zone => {
-      const humidity = hasNumber(zone.humidity) ? `${fmt(zone.humidity, 0)} %` : "—";
-      const temperature = hasNumber(zone.temperature) ? `${fmt(zone.temperature, 1)} °C` : "Sin datos";
-      return `<article class="detail-card"><span>${String(zone.name)}</span><strong>${humidity}</strong><small>${temperature}</small></article>`;
-    }).join("");
+    mount.innerHTML = zones.map(zone => `<article class="detail-card"><span>${escapeHtml(zone.name)}</span><strong>${hasNumber(zone.humidity) ? `${fmt(zone.humidity, 0)} %` : "—"}</strong><small>${hasNumber(zone.temperature) ? `${fmt(zone.temperature, 1)} °C` : "Sin datos"}</small></article>`).join("");
     showEmpty(empty, zones.length > 0);
+  }
+
+  function runCommand(device, action, data = {}) {
+    if (typeof commandHandler !== "function") return;
+    commandHandler({ device, action, data, requestedAt: Date.now() });
   }
 
   function renderDevices() {
@@ -135,21 +111,13 @@
       const connected = device.connected === true;
       const controllable = connected && device.controllable === true && typeof device.on === "boolean";
       const on = device.on === true;
-      const stateText = !connected ? "Sin conexión" : typeof device.on === "boolean" ? on ? "Encendido" : "Apagado" : "En línea";
-      return `
-        <button class="control-card" type="button" data-device-id="${String(device.id || "")}" ${controllable ? "" : "disabled"} aria-disabled="${String(!controllable)}" aria-pressed="${String(controllable && on)}">
-          <span class="control-copy"><strong>${String(device.name)}</strong><span>${stateText}</span></span>
-          <span class="switch ${on && connected ? "on" : ""}" aria-hidden="true"><i></i></span>
-        </button>`;
+      const text = !connected ? "Sin conexión" : typeof device.on === "boolean" ? (on ? "Encendido" : "Apagado") : "En línea";
+      return `<button class="control-card" type="button" data-device-id="${escapeHtml(device.id || "")}" ${controllable ? "" : "disabled"} aria-disabled="${String(!controllable)}" aria-pressed="${String(controllable && on)}"><span class="control-copy"><strong>${escapeHtml(device.name)}</strong><span>${text}</span></span><span class="switch ${on && connected ? "on" : ""}" aria-hidden="true"><i></i></span></button>`;
     }).join("");
-
-    mount.querySelectorAll("[data-device-id]").forEach(button => {
-      button.addEventListener("click", () => {
-        const device = devices.find(item => String(item.id || "") === button.dataset.deviceId);
-        if (!device || device.controllable !== true || typeof device.on !== "boolean") return;
-        runCommand(device.id, device.on ? "turn_off" : "turn_on");
-      });
-    });
+    mount.querySelectorAll("[data-device-id]").forEach(button => button.addEventListener("click", () => {
+      const device = devices.find(item => String(item.id || "") === button.dataset.deviceId);
+      if (device?.controllable === true && typeof device.on === "boolean") runCommand(device.id, device.on ? "turn_off" : "turn_on");
+    }));
   }
 
   function renderEnergy() {
@@ -157,10 +125,69 @@
     const empty = el("energyEmpty");
     if (!mount) return;
     const devices = (Array.isArray(state.energy?.devices) ? state.energy.devices : []).filter(device => device?.name);
-    mount.innerHTML = devices.map(device => `
-      <div class="device-row"><span>${String(device.name)}</span><strong>${hasNumber(device.kwh) ? `${fmt(device.kwh, 2)} kWh` : "Sin datos"}</strong></div>
-    `).join("");
+    mount.innerHTML = devices.map(device => `<div class="device-row"><span>${escapeHtml(device.name)}</span><strong>${hasNumber(device.kwh) ? `${fmt(device.kwh, 2)} kWh` : "Sin datos"}</strong></div>`).join("");
     showEmpty(empty, devices.length > 0);
+  }
+
+  function cameraMarkup(camera) {
+    const id = escapeHtml(camera.id || "");
+    const name = escapeHtml(camera.name);
+    const label = escapeHtml(camera.label || "Cámara");
+    const streamUrl = safeMediaUrl(camera.streamUrl);
+    const snapshotUrl = safeMediaUrl(camera.snapshotUrl);
+    const online = camera.online === true;
+    const ptz = online && camera.ptz === true;
+    let media = `<div class="camera-stage camera-stage-empty"><span>${online ? "Sin vídeo" : "Sin conexión"}</span></div>`;
+    if (streamUrl) media = `<div class="camera-stage"><video class="camera-video" src="${escapeHtml(streamUrl)}" autoplay playsinline muted controls preload="metadata"></video></div>`;
+    else if (snapshotUrl) media = `<div class="camera-stage"><img class="camera-image" src="${escapeHtml(snapshotUrl)}" alt="Vista de ${name}"></div>`;
+
+    const controls = ptz ? `<div class="ptz-wrap" aria-label="Mover ${name}">
+      <div class="ptz-grid">
+        <span></span><button type="button" class="ptz-btn" data-camera-id="${id}" data-ptz="up" aria-label="Mover arriba">↑</button><span></span>
+        <button type="button" class="ptz-btn" data-camera-id="${id}" data-ptz="left" aria-label="Mover izquierda">←</button><button type="button" class="ptz-btn ptz-home" data-camera-id="${id}" data-ptz="home" aria-label="Posición central">•</button><button type="button" class="ptz-btn" data-camera-id="${id}" data-ptz="right" aria-label="Mover derecha">→</button>
+        <span></span><button type="button" class="ptz-btn" data-camera-id="${id}" data-ptz="down" aria-label="Mover abajo">↓</button><span></span>
+      </div>
+    </div>` : "";
+
+    return `<article class="camera-card">
+      <div class="camera-head"><div><span>${label}</span><strong>${name}</strong></div><small class="camera-status ${online ? "online" : ""}">${online ? "En línea" : camera.online === false ? "Sin conexión" : "Sin datos"}</small></div>
+      ${media}
+      ${controls}
+    </article>`;
+  }
+
+  function bindPtz(cameras) {
+    document.querySelectorAll("[data-ptz][data-camera-id]").forEach(button => {
+      const camera = cameras.find(item => String(item.id || "") === button.dataset.cameraId);
+      if (!camera || camera.ptz !== true || camera.online !== true) return;
+      const direction = button.dataset.ptz;
+      if (direction === "home") {
+        button.addEventListener("click", () => runCommand(camera.id, "ptz_home"));
+        return;
+      }
+      let active = false;
+      const start = event => {
+        if (event.pointerType === "mouse" && event.button !== 0) return;
+        active = true;
+        try { button.setPointerCapture(event.pointerId); } catch (_) {}
+        runCommand(camera.id, "ptz_start", { direction });
+      };
+      const stop = () => {
+        if (!active) return;
+        active = false;
+        runCommand(camera.id, "ptz_stop", { direction });
+      };
+      button.addEventListener("pointerdown", start);
+      button.addEventListener("pointerup", stop);
+      button.addEventListener("pointercancel", stop);
+      button.addEventListener("lostpointercapture", stop);
+      button.addEventListener("keydown", event => {
+        if ((event.key === "Enter" || event.key === " ") && !active) { event.preventDefault(); active = true; runCommand(camera.id, "ptz_start", { direction }); }
+      });
+      button.addEventListener("keyup", event => {
+        if ((event.key === "Enter" || event.key === " ") && active) { event.preventDefault(); stop(); }
+      });
+    });
   }
 
   function renderCameras() {
@@ -168,14 +195,10 @@
     const empty = el("cameraEmpty");
     if (!mount) return;
     const cameras = (Array.isArray(state.cameras) ? state.cameras : []).filter(camera => camera?.name);
-    mount.innerHTML = cameras.map(camera => `
-      <article class="detail-card">
-        <span>${camera.label ? String(camera.label) : "Cámara"}</span>
-        <strong>${String(camera.name)}</strong>
-        <small>${camera.online === true ? "En línea" : camera.online === false ? "Sin conexión" : "Sin datos"}</small>
-      </article>
-    `).join("");
+    mount.classList.toggle("two", false);
+    mount.innerHTML = cameras.map(cameraMarkup).join("");
     showEmpty(empty, cameras.length > 0);
+    bindPtz(cameras);
   }
 
   function renderAccess() {
@@ -183,9 +206,7 @@
     const empty = el("accessEmpty");
     if (!mount) return;
     const items = (Array.isArray(state.access) ? state.access : []).filter(item => item?.name);
-    mount.innerHTML = items.map(item => `
-      <div class="device-row"><span>${String(item.name)}</span><strong>${item.online === true ? (item.state ? String(item.state) : "En línea") : item.online === false ? "Sin conexión" : item.state ? String(item.state) : "Sin datos"}</strong></div>
-    `).join("");
+    mount.innerHTML = items.map(item => `<div class="device-row"><span>${escapeHtml(item.name)}</span><strong>${item.online === true ? escapeHtml(item.state || "En línea") : item.online === false ? "Sin conexión" : escapeHtml(item.state || "Sin datos")}</strong></div>`).join("");
     showEmpty(empty, items.length > 0);
   }
 
@@ -200,9 +221,7 @@
     el("waterUnit").textContent = waterValue ? "L" : "";
     el("waterState").textContent = hasNumber(state.water?.capacityLiters) ? `de ${fmt(state.water.capacityLiters, 0)} L` : "Sin datos";
 
-    const energyCost = hasNumber(state.energy?.todayKwh) && hasNumber(state.electricityPrice)
-      ? state.energy.todayKwh * state.electricityPrice
-      : null;
+    const energyCost = hasNumber(state.energy?.todayKwh) && hasNumber(state.electricityPrice) ? state.energy.todayKwh * state.electricityPrice : null;
     el("energyValue").textContent = hasNumber(energyCost) ? fmt(energyCost, 2) : "—";
     el("energyUnit").textContent = hasNumber(energyCost) ? "€" : "";
     el("energyState").textContent = hasNumber(state.energy?.todayKwh) ? `${fmt(state.energy.todayKwh, 1)} kWh` : "Sin datos";
@@ -235,15 +254,7 @@
   }
 
   function render() {
-    renderOverview();
-    renderSummary();
-    renderClimate();
-    renderDevices();
-    renderWater();
-    renderEnergySummary();
-    renderEnergy();
-    renderCameras();
-    renderAccess();
+    renderOverview(); renderSummary(); renderClimate(); renderDevices(); renderWater(); renderEnergySummary(); renderEnergy(); renderCameras(); renderAccess();
   }
 
   function setTab(name) {
@@ -254,35 +265,15 @@
       panel.hidden = !active;
     });
   }
-
   document.querySelectorAll(".tab").forEach(button => button.addEventListener("click", () => setTab(button.dataset.tab)));
-
-  function runCommand(device, action) {
-    if (typeof commandHandler !== "function") return;
-    commandHandler({ device, action, requestedAt: Date.now() });
-  }
 
   window.PocketHomeAdapter = {
     getState() { return clone(state); },
-    update(payload) {
-      state = merge(state, payload || {});
-      state.updatedAt = Date.now();
-      saveState();
-      render();
-    },
-    setCommandHandler(handler) {
-      commandHandler = typeof handler === "function" ? handler : null;
-    },
-    clear() {
-      state = clone(emptyState);
-      try { localStorage.removeItem(STORAGE_KEY); } catch (_) {}
-      render();
-    }
+    update(payload) { state = merge(state, payload || {}); state.updatedAt = Date.now(); saveState(); render(); },
+    setCommandHandler(handler) { commandHandler = typeof handler === "function" ? handler : null; },
+    clear() { state = clone(emptyState); try { localStorage.removeItem(STORAGE_KEY); } catch (_) {} render(); }
   };
 
   render();
-  setInterval(() => {
-    const node = el("lastUpdated");
-    if (node) node.textContent = timeAgo(state.updatedAt);
-  }, 30000);
+  setInterval(() => { const node = el("lastUpdated"); if (node) node.textContent = timeAgo(state.updatedAt); }, 30000);
 })();
