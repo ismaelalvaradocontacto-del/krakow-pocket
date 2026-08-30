@@ -7,6 +7,7 @@
   const search = document.getElementById("pageSearch");
   const filters = document.getElementById("categoryFilters");
   const empty = document.getElementById("emptyState");
+  const SESSION_KEY = "pocketSessionV3";
   let activeCategory = "Todo";
 
   const clean = value => String(value || "").trim();
@@ -20,12 +21,23 @@
 
   allPages.sort((a,b) => safeDate(b.createdAt) - safeDate(a.createdAt));
 
-  function accessiblePages() {
-    const auth = window.PocketAuth;
-    const session = auth?.getSession?.();
+  function cachedSession() {
+    try {
+      const value = JSON.parse(localStorage.getItem(SESSION_KEY) || "null");
+      if (!value?.userId || !value?.expiresAt || Date.now() >= +value.expiresAt) return null;
+      return value;
+    } catch { return null; }
+  }
+
+  function activeSession() {
+    return window.PocketAuth?.getSession?.() || cachedSession();
+  }
+
+  function accessiblePages(session = activeSession()) {
     if (!session) return [];
-    if (auth.isAdmin()) return [...allPages];
-    return allPages.filter(page => auth.canAccessPage(page.id));
+    if (session.role === "admin" || window.PocketAuth?.isAdmin?.()) return [...allPages];
+    const allowed = Array.isArray(session.allowedPages) ? session.allowedPages : [];
+    return allPages.filter(page => allowed.includes(page.id));
   }
 
   function createFilter(label) {
@@ -48,9 +60,9 @@
   }
 
   function render() {
-    const session = window.PocketAuth?.getSession?.();
+    const session = activeSession();
     if (!session) return;
-    const pages = accessiblePages();
+    const pages = accessiblePages(session);
     renderFilters(pages);
     const query = normalize(search.value);
     const visible = pages.filter(page => {
@@ -122,6 +134,9 @@
   search.addEventListener("input", render);
 
   async function boot() {
+    // Instant first paint from the 30-day local session.
+    render();
+    // Then silently reconcile with the backend. Permission/auth events repaint if needed.
     if (window.PocketAuth?.ready) await window.PocketAuth.ready;
     render();
   }
