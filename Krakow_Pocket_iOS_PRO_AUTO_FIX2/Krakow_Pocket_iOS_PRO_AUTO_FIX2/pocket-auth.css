@@ -1,0 +1,45 @@
+:root{--pa-bg:#f6f6f2;--pa-card:#fff;--pa-text:#172019;--pa-muted:#6c756e;--pa-line:#dfe3de;--pa-soft:#edf1ed;--pa-green:#315d43;--pa-shadow:0 20px 60px rgba(23,32,25,.12)}
+html.pa-locked,html.pa-locked body{overflow:hidden!important}
+.pa-gate[hidden],.pa-sheet-backdrop[hidden]{display:none!important}
+.pa-gate{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom));background:var(--pa-bg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;color:var(--pa-text);overflow:auto}
+.pa-login-card{width:min(420px,100%);margin:auto;text-align:center}
+.pa-logo{width:82px;height:82px;margin:0 auto 22px;border-radius:24px;background:var(--pa-text);color:#fff;display:grid;place-items:center;font-size:45px;font-weight:800;letter-spacing:-.05em;box-shadow:0 16px 38px rgba(23,32,25,.17)}
+.pa-kicker{font-size:11px;font-weight:850;letter-spacing:.11em;color:var(--pa-green)}
+.pa-login-card h1{margin:8px 0 0;font-size:clamp(36px,10vw,50px);line-height:.98;letter-spacing:-.055em;font-weight:800}
+.pa-lead{max-width:350px;margin:14px auto 0;color:var(--pa-muted);font-size:15px;line-height:1.5}
+.pa-login-form{margin-top:28px;padding:16px;border:1px solid var(--pa-line);border-radius:24px;background:var(--pa-card);box-shadow:var(--pa-shadow);text-align:left}
+.pa-field span{display:block;margin:0 4px 7px;font-size:12px;font-weight:800;color:#4c5650}
+.pa-field input{width:100%;height:56px;border:1px solid var(--pa-line);border-radius:16px;background:#fbfcfa;color:var(--pa-text);padding:0 15px;font:650 16px/1 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;outline:none;transition:.16s ease}
+.pa-field input:focus{border-color:rgba(49,93,67,.55);box-shadow:0 0 0 4px rgba(49,93,67,.08);background:#fff}
+.pa-primary{width:100%;height:56px;margin-top:10px;border:0;border-radius:16px;background:var(--pa-text);color:#fff;font:800 16px/1 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;cursor:pointer}
+.pa-primary:disabled{opacity:.55;cursor:default}
+.pa-error{min-height:18px;margin:9px 5px 0;color:#a33d32;font-size:12px;font-weight:700;line-height:1.4;text-align:center}
+.pa-recents{margin-top:18px}
+.pa-recents-label{margin-bottom:8px;color:#8b938e;font-size:11px;font-weight:750}
+.pa-recent-list{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.pa-recent-list button{min-height:39px;border:1px solid var(--pa-line);border-radius:999px;background:rgba(255,255,255,.72);color:#465149;padding:5px 12px 5px 6px;display:flex;align-items:center;gap:7px;font:700 12px/1 -apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;cursor:pointer}
+.pa-recent-list button span{width:28px;height:28px;border-radius:50%;background:var(--pa-soft);display:grid;place-items:center;color:var(--pa-green);font-size:10px;font-weight:850}
+.pa-trust{margin:17px auto 0;color:#999f9b;font-size:11px;line-height:1.45}
+#pocketAccountMount{display:flex;align-items:center}
+.pa-account-button{height:46px;border:1px solid var(--pa-line);border-radius:16px;background:#fff;color:var(--pa-text);padding:0 11px 0 7px;display:flex;align-items:center;gap:8px;box-shadow:0 5px 18px rgba(23,32,25,.04);cursor:pointer}
+.pa-avatar{width:32px;height:32px;border-radius:11px;display:grid;place-items:center;background:var(--pa-text);color:#fff;font-size:11px;font-weight:850;letter-spacing:-.02em;flex:0 0 auto}
+.pa-avatar.large{width:54px;height:54px;border-radius:17px;font-size:17px}
+.pa-account-button-copy{display:grid;text-align:left;gap:1px;max-width:80px}
+.pa-account-button-copy b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:1.15}
+.pa-account-button-copy small{font-size:9px;line-height:1.1;color:var(--pa-muted);font-weight:700}
+.pa-sheet-backdrop{position:fixed;inset:0;z-index:2147482000;background:rgba(23,32,25,0);display:flex;align-items:flex-end;justify-content:center;padding:12px;transition:background .18s ease;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif}
+.pa-sheet-backdrop.show{background:rgba(23,32,25,.28)}
+.pa-sheet{position:relative;width:min(520px,100%);padding:22px;border-radius:28px;background:#fff;color:var(--pa-text);box-shadow:0 28px 90px rgba(0,0,0,.24);transform:translateY(18px);opacity:0;transition:.18s ease;padding-bottom:calc(22px + env(safe-area-inset-bottom))}
+.pa-sheet-backdrop.show .pa-sheet{transform:translateY(0);opacity:1}
+.pa-sheet-close{position:absolute;right:16px;top:16px;width:38px;height:38px;border:0;border-radius:13px;background:var(--pa-soft);color:var(--pa-text);font-size:22px;line-height:1;cursor:pointer}
+.pa-account-hero{display:flex;align-items:center;gap:13px;padding-right:46px}
+.pa-account-name{font-size:19px;font-weight:800;letter-spacing:-.025em}
+.pa-account-role{margin-top:3px;color:var(--pa-muted);font-size:12px;font-weight:700}
+.pa-admin-link{margin-top:20px;min-height:54px;border-radius:17px;background:var(--pa-soft);color:var(--pa-text);text-decoration:none;padding:0 15px;display:flex;align-items:center;justify-content:space-between;font-size:14px;font-weight:800}
+.pa-admin-link b{font-size:22px;color:var(--pa-green)}
+.pa-sheet-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:16px}
+.pa-sheet-actions button{min-height:48px;border:1px solid var(--pa-line);border-radius:15px;background:#fff;color:var(--pa-text);font-size:13px;font-weight:750;cursor:pointer}
+.pa-sheet-actions button.danger{color:#a33d32}
+.pa-session-note{margin:13px 3px 0;color:#969d98;font-size:10.5px;line-height:1.4;text-align:center}
+@media(max-width:520px){.pa-account-button-copy{display:none}.pa-account-button{width:46px;padding:0;justify-content:center}.pa-avatar{width:32px;height:32px}.pa-login-form{border-radius:22px}.pa-sheet{border-radius:25px}.pa-sheet-actions{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){.pa-sheet-backdrop,.pa-sheet,.pa-field input{transition:none!important}}
