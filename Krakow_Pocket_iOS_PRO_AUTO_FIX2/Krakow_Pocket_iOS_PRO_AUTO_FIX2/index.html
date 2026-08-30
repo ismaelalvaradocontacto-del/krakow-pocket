@@ -10,9 +10,10 @@
   <meta name="format-detection" content="telephone=no">
   <title>Pocket · Tus páginas</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg?v=20260830b">
-  <link rel="icon" href="./pocket-icon-v2-192.svg?v=20260830b" type="image/svg+xml">
-  <link rel="stylesheet" href="./hub.css?v=20260830c">
+  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg?v=20260830g">
+  <link rel="icon" href="./pocket-icon-v2-192.svg?v=20260830g" type="image/svg+xml">
+  <link rel="stylesheet" href="./hub.css?v=20260830g">
+  <link rel="stylesheet" href="./pocket-auth.css?v=20260830g">
 </head>
 <body>
   <main class="hub-shell">
@@ -25,10 +26,13 @@
             <h1>Pocket</h1>
           </div>
         </div>
-        <a class="share-pocket" href="./instalar.html" aria-label="Compartir o instalar Pocket">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"></path><path d="m8 8 4-4 4 4"></path><path d="M6 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1"></path></svg>
-          <span>Compartir</span>
-        </a>
+        <div class="brand-actions">
+          <div id="pocketAccountMount"></div>
+          <a class="share-pocket" href="./instalar.html" aria-label="Compartir o instalar Pocket">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"></path><path d="m8 8 4-4 4 4"></path><path d="M6 11H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-6a2 2 0 0 0-2-2h-1"></path></svg>
+            <span>Compartir</span>
+          </a>
+        </div>
       </div>
       <p class="intro">Páginas útiles, siempre a mano. Viajes, planes, herramientas o cualquier cosa que quieras convertir en algo práctico.</p>
     </header>
@@ -59,7 +63,8 @@
     <footer class="hub-footer">Lo último que añadamos aparecerá automáticamente arriba.</footer>
   </main>
 
-  <script src="./pages.js?v=20260830c"></script>
-  <script src="./hub.js?v=20260830a"></script>
+  <script src="./pocket-auth.js?v=20260830g"></script>
+  <script src="./pages.js?v=20260830g"></script>
+  <script src="./hub.js?v=20260830g"></script>
 </body>
 </html>
