@@ -35,15 +35,15 @@
       $("metricLast").textContent = users[0]?.lastSeenAt ? when(users[0].lastSeenAt) : "—";
       $("userList").innerHTML = users.map(user => {
         const self = user.id === session.userId;
-        const admin = user.id === registry.adminUserId && user.role === "admin";
+        const admin = user.id === registry.adminUserId;
         return `<article class="au-card ${user.active === false ? "disabled" : ""}" data-user="${esc(user.id)}">
           <div class="au-user-main">
             <div class="au-avatar">${esc(initials(user.name))}</div>
-            <div class="au-user-copy"><div class="au-user-top"><strong>${esc(user.name)}</strong>${admin ? '<span class="au-badge">Admin</span>' : ''}${self ? '<span class="au-badge soft">Tú</span>' : ''}</div><span>${user.active === false ? "Acceso bloqueado" : `Última actividad · ${esc(when(user.lastSeenAt))}`}</span></div>
+            <div class="au-user-copy"><div class="au-user-top"><strong>${esc(user.name)}</strong>${admin ? '<span class="au-badge">Admin permanente</span>' : ''}${self ? '<span class="au-badge soft">Tú</span>' : ''}</div><span>${admin ? "Administrador de Pocket para siempre" : user.active === false ? "Acceso bloqueado" : `Última actividad · ${esc(when(user.lastSeenAt))}`}</span></div>
           </div>
           <div class="au-actions">
-            <button type="button" data-action="toggle" ${self ? "disabled" : ""}>${user.active === false ? "Activar" : "Bloquear"}</button>
-            <button type="button" data-action="sessions" ${self ? "disabled" : ""}>Cerrar sesiones</button>
+            <button type="button" data-action="toggle" ${self || admin ? "disabled" : ""}>${admin ? "No se puede bloquear" : user.active === false ? "Activar" : "Bloquear"}</button>
+            <button type="button" data-action="sessions" ${self || admin ? "disabled" : ""}>${admin ? "Sesión protegida" : "Cerrar sesiones"}</button>
           </div>
         </article>`;
       }).join("") || '<div class="au-empty">Todavía no hay perfiles.</div>';
@@ -65,6 +65,7 @@
       await window.PocketAuth.mutateRegistry(registry => {
         const user = registry.users.find(item => item.id === userId);
         if (!user) throw new Error("El perfil ya no existe");
+        if (user.id === registry.adminUserId) throw new Error("El administrador permanente no se puede modificar desde aquí");
         if (action === "toggle") {
           user.active = user.active === false;
           user.sessionVersion = (user.sessionVersion || 1) + 1;
