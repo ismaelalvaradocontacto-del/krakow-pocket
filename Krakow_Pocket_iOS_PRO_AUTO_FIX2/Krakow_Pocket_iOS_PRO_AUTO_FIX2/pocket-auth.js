@@ -16,7 +16,7 @@
   const SESSION_MS = 30 * 24 * 60 * 60 * 1000;
   const TOUCH_EVERY_MS = 6 * 60 * 60 * 1000;
   const PIN_ITERATIONS = 120000;
-  const PENDING_POLL_MS = 15000;
+  const PENDING_POLL_MS = 12000;
 
   let registryCache = null;
   let session = null;
@@ -70,7 +70,7 @@
     if (!validPin(pin)) throw authError("PIN_INVALID", "El PIN debe tener exactamente 4 números");
     const salt = crypto.getRandomValues(new Uint8Array(16));
     const saltBase64 = bytesToBase64(salt);
-    return {salt: saltBase64, hash: await derivePinHash(pin, saltBase64)};
+    return {salt:saltBase64, hash:await derivePinHash(pin, saltBase64)};
   }
 
   async function verifyPin(pin, registry) {
@@ -81,13 +81,13 @@
 
   async function rpc(name, body) {
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 12000);
+    const timer = setTimeout(() => controller.abort(), 18000);
     try {
       const response = await fetch(`${CLOUD.url}/rest/v1/rpc/${name}`, {
-        method: "POST",
-        headers: {"Content-Type": "application/json", "apikey": CLOUD.key},
-        body: JSON.stringify(body),
-        signal: controller.signal
+        method:"POST",
+        headers:{"Content-Type":"application/json", "apikey":CLOUD.key},
+        body:JSON.stringify(body),
+        signal:controller.signal
       });
       const text = await response.text();
       if (!response.ok) {
@@ -97,22 +97,14 @@
       }
       return text ? JSON.parse(text) : null;
     } catch (error) {
-      if (error?.name === "AbortError") throw new Error("La conexión está tardando demasiado");
+      if (error?.name === "AbortError") throw new Error("No hemos podido conectar con Pocket. Inténtalo de nuevo.");
       throw error;
-    } finally {
-      clearTimeout(timer);
-    }
+    } finally { clearTimeout(timer); }
   }
 
   const emptyRegistry = () => ({
-    schema: 3,
-    users: [],
-    adminUserId: null,
-    adminPinHash: null,
-    adminPinSalt: null,
-    adminDeviceHash: null,
-    createdAt: nowIso(),
-    updatedAt: nowIso()
+    schema:3, users:[], adminUserId:null, adminPinHash:null, adminPinSalt:null, adminDeviceHash:null,
+    createdAt:nowIso(), updatedAt:nowIso()
   });
 
   function enforcePermanentAdmin(value) {
@@ -145,41 +137,39 @@
       const adminByOldData = user.role === "admin" || (!!value.adminUserId && user.id === value.adminUserId) || (!value.adminUserId && index === 0);
       let status = user.status;
       if (!status) status = adminByOldData ? "approved" : "pending";
-      if (!['pending','approved','blocked'].includes(status)) status = "pending";
+      if (!["pending","approved","blocked"].includes(status)) status = "pending";
       const allowedPages = Array.isArray(user.allowedPages) ? [...new Set(user.allowedPages.filter(Boolean))] : [];
       return {
-        id: user.id || uid("usr"),
-        key: user.key || normalizeKey(user.name),
-        name: titleName(user.name),
-        role: adminByOldData ? "admin" : "user",
-        active: adminByOldData ? true : status === "approved",
+        id:user.id || uid("usr"), key:user.key || normalizeKey(user.name), name:titleName(user.name),
+        role:adminByOldData ? "admin" : "user",
+        active:adminByOldData ? true : status === "approved",
         status,
-        allowedPages: adminByOldData ? ["*"] : allowedPages,
-        sessionVersion: Number.isFinite(+user.sessionVersion) ? +user.sessionVersion : 1,
-        createdAt: user.createdAt || nowIso(),
-        requestedAt: user.requestedAt || user.createdAt || nowIso(),
-        approvedAt: user.approvedAt || (status === "approved" ? user.createdAt || nowIso() : null),
-        lastSeenAt: user.lastSeenAt || null
+        allowedPages:adminByOldData ? ["*"] : allowedPages,
+        sessionVersion:Number.isFinite(+user.sessionVersion) ? +user.sessionVersion : 1,
+        createdAt:user.createdAt || nowIso(), requestedAt:user.requestedAt || user.createdAt || nowIso(),
+        approvedAt:user.approvedAt || (status === "approved" ? user.createdAt || nowIso() : null),
+        lastSeenAt:user.lastSeenAt || null
       };
     }).filter(user => user.key && user.name);
     return enforcePermanentAdmin(value);
   }
 
-  async function getRegistry({fresh = false} = {}) {
+  async function getRegistry({fresh=false} = {}) {
     if (registryCache && !fresh) return clone(registryCache);
     try {
-      const raw = await rpc("adventure_get", {p_code: CLOUD.code, p_secret: CLOUD.secret});
+      const raw = await rpc("adventure_get", {p_code:CLOUD.code, p_secret:CLOUD.secret});
       registryCache = normalizeRegistry(raw);
       return clone(registryCache);
     } catch (firstError) {
+      if (registryCache) return clone(registryCache);
       const freshRegistry = emptyRegistry();
       try {
-        await rpc("adventure_create", {p_code: CLOUD.code, p_secret: CLOUD.secret, p_state: freshRegistry});
+        await rpc("adventure_create", {p_code:CLOUD.code, p_secret:CLOUD.secret, p_state:freshRegistry});
         registryCache = freshRegistry;
         return clone(registryCache);
       } catch {
         try {
-          const raw = await rpc("adventure_get", {p_code: CLOUD.code, p_secret: CLOUD.secret});
+          const raw = await rpc("adventure_get", {p_code:CLOUD.code, p_secret:CLOUD.secret});
           registryCache = normalizeRegistry(raw);
           return clone(registryCache);
         } catch { throw firstError; }
@@ -190,41 +180,40 @@
   async function putRegistry(registry) {
     const normalized = enforcePermanentAdmin(normalizeRegistry(registry));
     normalized.updatedAt = nowIso();
-    await rpc("adventure_put", {p_code: CLOUD.code, p_secret: CLOUD.secret, p_state: normalized});
+    await rpc("adventure_put", {p_code:CLOUD.code, p_secret:CLOUD.secret, p_state:normalized});
     registryCache = normalized;
     return clone(normalized);
   }
 
-  async function mutateRegistry(mutator, {allowAdminSecurityChange = false} = {}) {
-    const current = await getRegistry({fresh: true});
-    const next = clone(current);
+  function protectAdmin(next, current) {
+    if (!current.adminUserId) return;
     const adminBefore = current.users.find(user => user.id === current.adminUserId);
-    const result = await mutator(next);
-
-    if (current.adminUserId && !allowAdminSecurityChange) {
-      next.adminUserId = current.adminUserId;
-      next.adminPinHash = current.adminPinHash;
-      next.adminPinSalt = current.adminPinSalt;
-      next.adminDeviceHash = current.adminDeviceHash;
-      const adminAfter = next.users.find(user => user.id === current.adminUserId);
-      if (!adminAfter && adminBefore) next.users.unshift(clone(adminBefore));
-      const protectedAdmin = next.users.find(user => user.id === current.adminUserId);
-      if (protectedAdmin && adminBefore) {
-        protectedAdmin.role = "admin";
-        protectedAdmin.active = true;
-        protectedAdmin.status = "approved";
-        protectedAdmin.allowedPages = ["*"];
-        protectedAdmin.sessionVersion = adminBefore.sessionVersion;
-      }
+    next.adminUserId = current.adminUserId;
+    next.adminPinHash = current.adminPinHash;
+    next.adminPinSalt = current.adminPinSalt;
+    next.adminDeviceHash = current.adminDeviceHash;
+    if (!next.users.some(user => user.id === current.adminUserId) && adminBefore) next.users.unshift(clone(adminBefore));
+    const admin = next.users.find(user => user.id === current.adminUserId);
+    if (admin && adminBefore) {
+      admin.role = "admin";
+      admin.active = true;
+      admin.status = "approved";
+      admin.allowedPages = ["*"];
+      admin.sessionVersion = adminBefore.sessionVersion;
     }
-    enforcePermanentAdmin(next);
-    await putRegistry(next);
-    return {registry: clone(next), result};
   }
 
-  function clearLegacySessions() {
-    LEGACY_SESSION_KEYS.forEach(key => localStorage.removeItem(key));
+  async function mutateRegistry(mutator, {allowAdminSecurityChange=false, baseRegistry=null} = {}) {
+    const current = baseRegistry ? normalizeRegistry(clone(baseRegistry)) : await getRegistry({fresh:true});
+    const next = clone(current);
+    const result = await mutator(next);
+    if (current.adminUserId && !allowAdminSecurityChange) protectAdmin(next, current);
+    enforcePermanentAdmin(next);
+    const saved = await putRegistry(next);
+    return {registry:saved, result};
   }
+
+  function clearLegacySessions() { LEGACY_SESSION_KEYS.forEach(key => localStorage.removeItem(key)); }
 
   function readSession() {
     clearLegacySessions();
@@ -236,17 +225,13 @@
     return value;
   }
 
-  function writeSession(user, {adminVerified = false} = {}) {
+  function writeSession(user, {adminVerified=false} = {}) {
     session = {
-      userId: user.id,
-      name: user.name,
-      role: user.role,
-      status: user.status,
-      allowedPages: Array.isArray(user.allowedPages) ? [...user.allowedPages] : [],
-      sessionVersion: user.sessionVersion,
-      adminVerified: user.role === "admin" ? !!adminVerified : false,
-      createdAt: Date.now(),
-      expiresAt: Date.now() + SESSION_MS
+      userId:user.id, name:user.name, role:user.role, status:user.status,
+      allowedPages:Array.isArray(user.allowedPages) ? [...user.allowedPages] : [],
+      sessionVersion:user.sessionVersion,
+      adminVerified:user.role === "admin" ? !!adminVerified : false,
+      createdAt:Date.now(), expiresAt:Date.now() + SESSION_MS
     };
     localStorage.setItem(SESSION_KEY, JSON.stringify(session));
     localStorage.removeItem(PENDING_KEY);
@@ -254,9 +239,7 @@
     return session;
   }
 
-  function readPending() {
-    return parse(localStorage.getItem(PENDING_KEY), null);
-  }
+  const readPending = () => parse(localStorage.getItem(PENDING_KEY), null);
 
   function writePending(user) {
     const pending = {userId:user.id, name:user.name, key:user.key, requestedAt:user.requestedAt || nowIso()};
@@ -268,13 +251,10 @@
   function rememberName(name) {
     const recents = parse(localStorage.getItem(RECENTS_KEY), []) || [];
     const key = normalizeKey(name);
-    const next = [titleName(name), ...recents.filter(item => normalizeKey(item) !== key)].slice(0, 4);
-    localStorage.setItem(RECENTS_KEY, JSON.stringify(next));
+    localStorage.setItem(RECENTS_KEY, JSON.stringify([titleName(name), ...recents.filter(item => normalizeKey(item) !== key)].slice(0, 4)));
   }
 
-  function recentNames() {
-    return (parse(localStorage.getItem(RECENTS_KEY), []) || []).filter(Boolean).slice(0, 4);
-  }
+  const recentNames = () => (parse(localStorage.getItem(RECENTS_KEY), []) || []).filter(Boolean).slice(0, 4);
 
   async function legacyDeviceCanSetPin(registry) {
     if (!registry.adminDeviceHash) return true;
@@ -298,10 +278,21 @@
     return null;
   }
 
+  function touchUserLater(userId) {
+    if (Date.now() - lastRemoteTouch <= TOUCH_EVERY_MS) return;
+    lastRemoteTouch = Date.now();
+    setTimeout(() => {
+      mutateRegistry(next => {
+        const found = next.users.find(item => item.id === userId);
+        if (found) found.lastSeenAt = nowIso();
+      }).catch(() => {});
+    }, 0);
+  }
+
   async function validateSessionRemote() {
     if (!session) return false;
     try {
-      const registry = await getRegistry({fresh: true});
+      const registry = await getRegistry({fresh:true});
       const user = registry.users.find(item => item.id === session.userId);
       if (!user || user.status !== "approved" || !user.active || user.sessionVersion !== session.sessionVersion) {
         localStorage.removeItem(SESSION_KEY);
@@ -332,27 +323,20 @@
       if (beforePages !== JSON.stringify(session.allowedPages)) {
         window.dispatchEvent(new CustomEvent("pocket:permissionschange", {detail:{allowedPages:[...session.allowedPages]}}));
       }
-      if (Date.now() - lastRemoteTouch > TOUCH_EVERY_MS) {
-        lastRemoteTouch = Date.now();
-        mutateRegistry(next => {
-          const found = next.users.find(item => item.id === user.id);
-          if (found) found.lastSeenAt = nowIso();
-        }).catch(() => {});
-      }
+      touchUserLater(user.id);
       return true;
-    } catch {
-      return !!session;
-    }
+    } catch { return !!session; }
   }
 
-  async function loginWithName(rawName, rawPin = "") {
+  async function loginWithName(rawName, rawPin="", onStatus=null) {
     const name = titleName(rawName);
     const key = normalizeKey(name);
     const pin = String(rawPin || "").trim();
     if (name.length < 3 || !name.includes(" ")) throw authError("NAME_INVALID", "Escribe tu nombre y al menos un apellido");
 
-    const registry = await getRegistry({fresh: true});
-    let existing = registry.users.find(item => item.key === key);
+    onStatus?.("Buscando perfil…");
+    const registry = await getRegistry({fresh:true});
+    const existing = registry.users.find(item => item.key === key);
     const first = registry.users.length === 0;
     const isExistingAdmin = !!existing && existing.id === registry.adminUserId;
 
@@ -364,21 +348,54 @@
       throw authError("PIN_MIGRATE", "Crea ahora un PIN de 4 números para mantener el administrador protegido");
     }
 
+    // Existing profiles never need a write just to sign in/check status.
+    if (existing && !isExistingAdmin) {
+      if (existing.status === "blocked" || (existing.active === false && existing.status !== "pending")) {
+        throw authError("USER_BLOCKED", "Tu acceso a Pocket está bloqueado");
+      }
+      if (existing.status !== "approved") {
+        writePending(existing);
+        showPending(existing);
+        return {session:null, pending:true, user:clone(existing)};
+      }
+      writeSession(existing);
+      adminCapable = false;
+      hideGate();
+      mountAccount();
+      applyCurrentPageAccess();
+      touchUserLater(existing.id);
+      window.dispatchEvent(new CustomEvent("pocket:authchange", {detail:{session:clone(session), admin:false}}));
+      return {session:clone(session), pending:false};
+    }
+
+    if (isExistingAdmin && registry.adminPinHash) {
+      onStatus?.("Verificando PIN…");
+      if (!(await verifyPin(pin, registry))) throw authError("PIN_WRONG", "Ese PIN no es correcto");
+      writeSession(existing, {adminVerified:true});
+      adminCapable = true;
+      hideGate();
+      mountAccount();
+      applyCurrentPageAccess();
+      window.dispatchEvent(new CustomEvent("pocket:authchange", {detail:{session:clone(session), admin:true}}));
+      return {session:clone(session), pending:false};
+    }
+
+    // Only a brand-new profile or legacy admin PIN migration needs a write.
+    onStatus?.(first ? "Creando administrador…" : isExistingAdmin ? "Guardando PIN…" : "Enviando solicitud…");
     const outcome = await mutateRegistry(async next => {
       let user = next.users.find(item => item.key === key);
-
       if (!user) {
         const becomingAdmin = next.users.length === 0;
         user = {
-          id: uid("usr"), key, name,
-          role: becomingAdmin ? "admin" : "user",
-          active: becomingAdmin,
-          status: becomingAdmin ? "approved" : "pending",
-          allowedPages: becomingAdmin ? ["*"] : [],
-          sessionVersion: 1,
-          createdAt: nowIso(), requestedAt: nowIso(),
-          approvedAt: becomingAdmin ? nowIso() : null,
-          lastSeenAt: becomingAdmin ? nowIso() : null
+          id:uid("usr"), key, name,
+          role:becomingAdmin ? "admin" : "user",
+          active:becomingAdmin,
+          status:becomingAdmin ? "approved" : "pending",
+          allowedPages:becomingAdmin ? ["*"] : [],
+          sessionVersion:1,
+          createdAt:nowIso(), requestedAt:nowIso(),
+          approvedAt:becomingAdmin ? nowIso() : null,
+          lastSeenAt:becomingAdmin ? nowIso() : null
         };
         next.users.push(user);
         if (becomingAdmin) {
@@ -388,59 +405,38 @@
           next.adminPinHash = pinRecord.hash;
           next.adminDeviceHash = null;
         }
-      } else {
-        user.name = name;
-        if (user.id === next.adminUserId && !next.adminPinHash) {
-          if (!(await legacyDeviceCanSetPin(next))) throw authError("PIN_MIGRATION_DEVICE", "Configura primero el PIN desde el dispositivo donde se creó el administrador");
-          const pinRecord = await createPinRecord(pin);
-          next.adminPinSalt = pinRecord.salt;
-          next.adminPinHash = pinRecord.hash;
-          next.adminDeviceHash = null;
-        }
+      } else if (user.id === next.adminUserId && !next.adminPinHash) {
+        if (!(await legacyDeviceCanSetPin(next))) throw authError("PIN_MIGRATION_DEVICE", "Configura primero el PIN desde el dispositivo donde se creó el administrador");
+        const pinRecord = await createPinRecord(pin);
+        next.adminPinSalt = pinRecord.salt;
+        next.adminPinHash = pinRecord.hash;
+        next.adminDeviceHash = null;
       }
       return clone(user);
-    }, {allowAdminSecurityChange: first || isExistingAdmin});
+    }, {allowAdminSecurityChange:first || isExistingAdmin, baseRegistry:registry});
 
     const user = outcome.result;
     const isAdmin = user.id === outcome.registry.adminUserId;
-
     if (isAdmin) {
-      const ok = await verifyPin(pin, outcome.registry);
-      if (!ok) throw authError("PIN_WRONG", "Ese PIN no es correcto");
+      if (!(await verifyPin(pin, outcome.registry))) throw authError("PIN_WRONG", "Ese PIN no es correcto");
       user.status = "approved";
       user.active = true;
       user.allowedPages = ["*"];
-      writeSession(user, {adminVerified: true});
+      writeSession(user, {adminVerified:true});
       adminCapable = true;
       hideGate();
       mountAccount();
       applyCurrentPageAccess();
       window.dispatchEvent(new CustomEvent("pocket:authchange", {detail:{session:clone(session), admin:true}}));
-      return {session: clone(session), pending:false};
+      return {session:clone(session), pending:false};
     }
 
-    if (user.status === "blocked" || user.active === false && user.status !== "pending") {
-      throw authError("USER_BLOCKED", "Tu acceso a Pocket está bloqueado");
-    }
-
-    if (user.status !== "approved") {
-      writePending(user);
-      showPending(user);
-      return {session:null, pending:true, user:clone(user)};
-    }
-
-    user.active = true;
-    user.lastSeenAt = nowIso();
-    writeSession(user);
-    adminCapable = false;
-    hideGate();
-    mountAccount();
-    applyCurrentPageAccess();
-    window.dispatchEvent(new CustomEvent("pocket:authchange", {detail:{session:clone(session), admin:false}}));
-    return {session: clone(session), pending:false};
+    writePending(user);
+    showPending(user);
+    return {session:null, pending:true, user:clone(user)};
   }
 
-  function logout({show = true} = {}) {
+  function logout({show=true} = {}) {
     localStorage.removeItem(SESSION_KEY);
     localStorage.removeItem(PENDING_KEY);
     session = null;
@@ -457,7 +453,7 @@
     setTimeout(() => gateEl?.querySelector('input[name="fullName"]')?.focus(), 80);
   }
 
-  function showPinStep(mode, message = "") {
+  function showPinStep(mode, message="") {
     if (!gateEl) return;
     const pinWrap = gateEl.querySelector(".pa-pin-wrap");
     const pinInput = gateEl.querySelector('input[name="pin"]');
@@ -524,10 +520,11 @@
       const button = form.querySelector("button");
       error.textContent = "";
       button.disabled = true;
-      button.textContent = "Comprobando…";
+      const status = text => { if (button.isConnected) button.textContent = text; };
+      status("Buscando perfil…");
       try {
-        const result = await loginWithName(input.value, pinInput.value);
-        if (!result?.pending) button.textContent = "Entrar";
+        const result = await loginWithName(input.value, pinInput.value, status);
+        if (!result?.pending) status("Entrar");
       } catch (err) {
         if (["PIN_CREATE","PIN_ADMIN","PIN_MIGRATE"].includes(err?.code)) {
           showPinStep(err.code === "PIN_ADMIN" ? "admin" : err.code === "PIN_MIGRATE" ? "migrate" : "create", err.message);
@@ -572,10 +569,7 @@
       <div class="pa-status-badge">Solicitud enviada</div>
       <h1>Esperando aprobación</h1>
       <p class="pa-lead"><strong>${esc(user.name)}</strong>, el administrador tiene que aceptar tu perfil y elegir qué páginas puedes ver.</p>
-      <div class="pa-waiting">
-        <div class="pa-waiting-icon"><span></span></div>
-        <div><strong>Pendiente</strong><span>Comprobamos automáticamente si ya tienes acceso.</span></div>
-      </div>
+      <div class="pa-waiting"><div class="pa-waiting-icon"><span></span></div><div><strong>Pendiente</strong><span>Comprobamos automáticamente si ya tienes acceso.</span></div></div>
       <button class="pa-primary pa-check-now" type="button">Comprobar ahora</button>
       <button class="pa-text-action pa-change-user" type="button">Usar otro nombre</button>
       <p class="pa-trust">No necesitas volver a solicitar acceso.</p>`;
@@ -590,7 +584,7 @@
     pendingTimer = setInterval(() => checkPendingApproval(user.id, false), PENDING_POLL_MS);
   }
 
-  async function checkPendingApproval(userId, manual = false) {
+  async function checkPendingApproval(userId, manual=false) {
     try {
       const registry = await getRegistry({fresh:true});
       const user = registry.users.find(item => item.id === userId);
@@ -618,7 +612,7 @@
         const button = gateEl?.querySelector(".pa-check-now");
         if (button) {
           button.textContent = "Aún pendiente";
-          setTimeout(() => { if (button.isConnected) button.textContent = "Comprobar ahora"; }, 1500);
+          setTimeout(() => { if (button.isConnected) button.textContent = "Comprobar ahora"; }, 1200);
         }
       }
     } catch {
@@ -626,7 +620,7 @@
         const button = gateEl?.querySelector(".pa-check-now");
         if (button) {
           button.textContent = "Sin conexión";
-          setTimeout(() => { if (button.isConnected) button.textContent = "Comprobar ahora"; }, 1500);
+          setTimeout(() => { if (button.isConnected) button.textContent = "Comprobar ahora"; }, 1200);
         }
       }
     }
@@ -638,12 +632,7 @@
     gateEl.hidden = false;
     document.documentElement.classList.add("pa-locked");
     const card = gateEl.querySelector(".pa-login-card");
-    card.innerHTML = `
-      <div class="pa-logo" aria-hidden="true">P</div>
-      <div class="pa-status-badge muted">Acceso no disponible</div>
-      <h1>Solicitud no activa</h1>
-      <p class="pa-lead">El perfil <strong>${esc(user.name)}</strong> no tiene acceso a Pocket en este momento.</p>
-      <button class="pa-primary pa-change-user" type="button">Usar otro nombre</button>`;
+    card.innerHTML = `<div class="pa-logo" aria-hidden="true">P</div><div class="pa-status-badge muted">Acceso no disponible</div><h1>Solicitud no activa</h1><p class="pa-lead">El perfil <strong>${esc(user.name)}</strong> no tiene acceso a Pocket en este momento.</p><button class="pa-primary pa-change-user" type="button">Usar otro nombre</button>`;
     card.querySelector(".pa-change-user").addEventListener("click", () => {
       localStorage.removeItem(PENDING_KEY);
       gateEl.remove(); gateEl = null;
@@ -651,7 +640,7 @@
     });
   }
 
-  function showGate(message = "") {
+  function showGate(message="") {
     if (gateEl) gateEl.remove();
     gateEl = null;
     buildGate();
@@ -668,9 +657,7 @@
     document.documentElement.classList.remove("pa-locked");
   }
 
-  function removeAccessOverlay() {
-    document.getElementById("paAccessDenied")?.remove();
-  }
+  function removeAccessOverlay() { document.getElementById("paAccessDenied")?.remove(); }
 
   function showAccessDenied(pageId) {
     removeAccessOverlay();
@@ -709,11 +696,7 @@
     const sheet = accountSheet();
     const body = sheet.querySelector(".pa-sheet-body");
     const accessText = adminCapable ? "Acceso completo" : `${(session.allowedPages || []).length} ${(session.allowedPages || []).length === 1 ? "página" : "páginas"} habilitadas`;
-    body.innerHTML = `
-      <div class="pa-account-hero"><div class="pa-avatar large">${esc(initials(session.name))}</div><div><div class="pa-account-name">${esc(session.name)}</div><div class="pa-account-role">${adminCapable ? "Administrador permanente" : accessText}</div></div></div>
-      ${adminCapable ? `<a class="pa-admin-link" href="./administrar.html"><span>Administrar Pocket</span><b>›</b></a>` : ""}
-      <div class="pa-sheet-actions"><button type="button" data-action="switch">Cambiar de usuario</button><button type="button" data-action="logout" class="danger">Cerrar sesión</button></div>
-      <p class="pa-session-note">La sesión caduca automáticamente 30 días después de iniciar sesión.</p>`;
+    body.innerHTML = `<div class="pa-account-hero"><div class="pa-avatar large">${esc(initials(session.name))}</div><div><div class="pa-account-name">${esc(session.name)}</div><div class="pa-account-role">${adminCapable ? "Administrador permanente" : accessText}</div></div></div>${adminCapable ? `<a class="pa-admin-link" href="./administrar.html"><span>Administrar Pocket</span><b>›</b></a>` : ""}<div class="pa-sheet-actions"><button type="button" data-action="switch">Cambiar de usuario</button><button type="button" data-action="logout" class="danger">Cerrar sesión</button></div><p class="pa-session-note">La sesión caduca automáticamente 30 días después de iniciar sesión.</p>`;
     body.querySelector('[data-action="switch"]')?.addEventListener("click", switchUser);
     body.querySelector('[data-action="logout"]')?.addEventListener("click", () => logout({show:true}));
     sheet.hidden = false;
@@ -750,9 +733,7 @@
           showPending(user);
           resolveReady({session:null, admin:false, pending:true});
           return;
-        } else {
-          localStorage.removeItem(PENDING_KEY);
-        }
+        } else localStorage.removeItem(PENDING_KEY);
       } catch {
         showPending({id:pending.userId, name:pending.name, key:pending.key, status:"pending"});
         resolveReady({session:null, admin:false, pending:true});
@@ -763,6 +744,8 @@
     if (!session) {
       showGate();
       resolveReady({session:null, admin:false, pending:false});
+      // Warm Supabase while the person types. This is deliberately not awaited.
+      setTimeout(() => getRegistry({fresh:true}).catch(() => {}), 80);
       return;
     }
 
@@ -770,11 +753,7 @@
     mountAccount();
     const valid = await validateSessionRemote();
     if (!valid) showGate();
-    else {
-      hideGate();
-      mountAccount();
-      applyCurrentPageAccess();
-    }
+    else { hideGate(); mountAccount(); applyCurrentPageAccess(); }
     resolveReady({session:session ? clone(session) : null, admin:adminCapable, pending:false});
 
     setInterval(() => {
@@ -788,19 +767,19 @@
 
   window.PocketAuth = {
     ready,
-    getSession: () => session ? clone(session) : null,
-    isAdmin: () => !!adminCapable,
+    getSession:() => session ? clone(session) : null,
+    isAdmin:() => !!adminCapable,
     canAccessPage,
-    getAllowedPages: () => adminCapable ? ["*"] : [...(session?.allowedPages || [])],
+    getAllowedPages:() => adminCapable ? ["*"] : [...(session?.allowedPages || [])],
     loginWithName,
     logout,
     switchUser,
-    openAccount: openAccountSheet,
+    openAccount:openAccountSheet,
     getRegistry,
     mutateRegistry,
     applyCurrentPageAccess,
-    refresh: async () => { const ok = await validateSessionRemote(); mountAccount(); applyCurrentPageAccess(); return ok; },
-    sessionDays: 30
+    refresh:async () => { const ok = await validateSessionRemote(); mountAccount(); applyCurrentPageAccess(); return ok; },
+    sessionDays:30
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot, {once:true});
