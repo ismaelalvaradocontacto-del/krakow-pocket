@@ -24,14 +24,12 @@
 
   async function resilientFetch(input, init = {}) {
     const base = {...init};
-    // Pocket's old 12 s AbortController is intentionally ignored here.
-    // Each attempt has its own mobile-friendly timeout instead.
+    // Ignore Pocket's old 12 s AbortController and use a mobile-friendly retry.
     delete base.signal;
 
     const plan = [
-      {timeout: 22000, wait: 0},
-      {timeout: 28000, wait: 650},
-      {timeout: 32000, wait: 1400}
+      {timeout: 14000, wait: 0},
+      {timeout: 22000, wait: 650}
     ];
     let lastError = null;
 
@@ -43,7 +41,6 @@
       try {
         const response = await nativeFetch(input, {...base, signal: controller.signal, cache: "no-store"});
         clearTimeout(timer);
-        // Retry transient server/gateway errors; return real application errors normally.
         if ([408, 425, 429, 500, 502, 503, 504].includes(response.status) && i < plan.length - 1) {
           lastError = new Error(`Backend temporalmente no disponible (${response.status})`);
           continue;
@@ -52,11 +49,14 @@
       } catch (error) {
         clearTimeout(timer);
         lastError = error;
-        if (i === plan.length - 1 || !retryable(error)) throw error;
+        if (!retryable(error)) throw error;
+        if (i === plan.length - 1) {
+          throw new Error("No hemos podido conectar con Pocket. Comprueba la conexión y vuelve a intentarlo.");
+        }
       }
     }
 
-    throw lastError || new Error("No se ha podido conectar con Pocket");
+    throw lastError || new Error("No hemos podido conectar con Pocket. Vuelve a intentarlo.");
   }
 
   window.fetch = function(input, init) {
