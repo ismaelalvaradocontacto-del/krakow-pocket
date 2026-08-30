@@ -11,10 +11,7 @@
 
   const clean = value => String(value || "").trim();
   const normalize = value => clean(value).toLocaleLowerCase("es").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-  const safeDate = value => {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? new Date(0) : date;
-  };
+  const safeDate = value => { const date = new Date(value); return Number.isNaN(date.getTime()) ? new Date(0) : date; };
   const formatDate = value => {
     const date = safeDate(value);
     if (!date.getTime()) return "";
@@ -24,9 +21,11 @@
   allPages.sort((a,b) => safeDate(b.createdAt) - safeDate(a.createdAt));
 
   function accessiblePages() {
-    if (window.PocketAuth?.isAdmin?.()) return [...allPages];
-    if (!window.PocketAccess?.isApproved?.()) return [];
-    return allPages.filter(page => window.PocketAccess.canAccessPage(page.id));
+    const auth = window.PocketAuth;
+    const session = auth?.getSession?.();
+    if (!session) return [];
+    if (auth.isAdmin()) return [...allPages];
+    return allPages.filter(page => auth.canAccessPage(page.id));
   }
 
   function createFilter(label) {
@@ -35,10 +34,7 @@
     button.className = "filter-btn" + (label === activeCategory ? " active" : "");
     button.textContent = label;
     button.setAttribute("aria-pressed", label === activeCategory ? "true" : "false");
-    button.addEventListener("click", () => {
-      activeCategory = label;
-      render();
-    });
+    button.addEventListener("click", () => { activeCategory = label; render(); });
     return button;
   }
 
@@ -52,6 +48,8 @@
   }
 
   function render() {
+    const session = window.PocketAuth?.getSession?.();
+    if (!session) return;
     const pages = accessiblePages();
     renderFilters(pages);
     const query = normalize(search.value);
@@ -101,7 +99,6 @@
       copy.append(meta, title);
       if (description.textContent) copy.appendChild(description);
       if (date.textContent) copy.appendChild(date);
-
       const arrow = document.createElement("div");
       arrow.className = "page-arrow";
       arrow.setAttribute("aria-hidden", "true");
@@ -111,12 +108,14 @@
     });
 
     count.textContent = `${visible.length} ${visible.length === 1 ? "página" : "páginas"}`;
-    if (!pages.length && window.PocketAccess?.isApproved?.()) {
+    if (!pages.length) {
       empty.hidden = false;
-      empty.innerHTML = "<strong>Aún no tienes páginas asignadas</strong><span>El administrador puede darte acceso cuando quiera.</span>";
+      empty.innerHTML = "<strong>No tienes páginas asignadas</strong><span>El administrador puede habilitarlas desde tu perfil.</span>";
+    } else if (!visible.length) {
+      empty.hidden = false;
+      empty.innerHTML = "<strong>No encuentro esa página</strong><span>Prueba con otro nombre o categoría.</span>";
     } else {
-      empty.hidden = visible.length !== 0;
-      if (visible.length === 0) empty.innerHTML = "<strong>No encuentro esa página</strong><span>Prueba con otro nombre o categoría.</span>";
+      empty.hidden = true;
     }
   }
 
@@ -124,13 +123,10 @@
 
   async function boot() {
     if (window.PocketAuth?.ready) await window.PocketAuth.ready;
-    if (window.PocketAccess?.refresh && window.PocketAuth?.getSession?.()) {
-      try { await window.PocketAccess.refresh(); } catch {}
-    }
     render();
   }
 
-  window.addEventListener("pocket:accesschange", render);
+  window.addEventListener("pocket:permissionschange", render);
   window.addEventListener("pocket:authchange", () => setTimeout(render, 0));
   boot();
 
