@@ -1,10 +1,9 @@
 (() => {
 "use strict";
-function loadPocketAuth(){if(!document.querySelector('link[data-pocket-auth]')){const l=document.createElement("link");l.rel="stylesheet";l.href="./pocket-auth.css?v=20260830h";l.dataset.pocketAuth="1";document.head.appendChild(l)}if(!document.querySelector('script[data-pocket-auth]')){const s=document.createElement("script");s.src="./pocket-auth.js?v=20260830h";s.async=false;s.dataset.pocketAuth="1";document.head.appendChild(s)}}
+function loadPocketAuth(){if(!document.querySelector('link[data-pocket-auth]')){const l=document.createElement("link");l.rel="stylesheet";l.href="./pocket-auth.css?v=20260830j";l.dataset.pocketAuth="1";document.head.appendChild(l)}if(!document.querySelector('script[data-pocket-auth]')){const s=document.createElement("script");s.src="./pocket-auth.js?v=20260830j";s.async=false;s.dataset.pocketAuth="1";document.head.appendChild(s)}if(!document.querySelector('script[data-pocket-access]')){const a=document.createElement("script");a.src="./pocket-access.js?v=20260830j";a.async=false;a.dataset.pocketAccess="1";document.head.appendChild(a)}}
 loadPocketAuth();
 const STORAGE="krakowPocketCoop",nativeSet=Storage.prototype.setItem,nativeInterval=window.setInterval.bind(window);
 const SUPABASE_URL="https://ahzmwkztlakejmrvgcdm.supabase.co",SUPABASE_KEY="sb_publishable_sf-RddHTp5jdFCQOfRBBsQ_PZGKOlxJ",nativeFetch=window.fetch.bind(window);
-/* The restored app had a one-character typo in its publishable Supabase key. Correct the transport header before app.js runs without changing the proven pre-cleanup core. */
 window.fetch=function(input,init){let next=init?{...init}:{};try{const url=typeof input==="string"?input:(input&&input.url)||"";if(url.startsWith(SUPABASE_URL)){const baseHeaders=next.headers||(typeof Request!=="undefined"&&input instanceof Request?input.headers:undefined),headers=new Headers(baseHeaders||{});headers.set("apikey",SUPABASE_KEY);next.headers=headers}}catch{}return nativeFetch(input,next)};
 window.setInterval=function(fn,delay,...args){let ms=Number(delay)||0;if(ms===900)ms=30000;else if(ms===1800)ms=30000;else if(ms===4000)ms=15000;return nativeInterval(fn,ms,...args)};
 window.addEventListener("load",()=>setTimeout(()=>{window.setInterval=nativeInterval},0),{once:true});
