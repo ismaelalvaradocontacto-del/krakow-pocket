@@ -1,5 +1,14 @@
 window.POCKET_PAGES = [
   {
+    id: "regreso-casa-31-agosto",
+    title: "Regreso a casa · 31 agosto",
+    description: "Varsovia → Barcelona → Gran Canaria → Agüimes, con vuelos, trabajo y traslados en un solo itinerario.",
+    category: "Viajes",
+    icon: "✈️",
+    href: "./regreso-casa-31-agosto.html",
+    createdAt: "2026-08-30T21:30:00+02:00"
+  },
+  {
     id: "varsovia-ultimo-dia",
     title: "Último día · Varsovia",
     description: "Plan de hoy: mercadillo de Koło, kayak en Kamionkowskie y final junto al Vístula.",
