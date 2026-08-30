@@ -9,8 +9,8 @@
   <meta name="format-detection" content="telephone=no">
   <title>Casita · Pocket</title>
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg?v=20260830casa3">
-  <link rel="icon" href="./pocket-icon-v2-192.svg?v=20260830casa3" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg?v=20260830casa4">
+  <link rel="icon" href="./pocket-icon-v2-192.svg?v=20260830casa4" type="image/svg+xml">
   <link rel="stylesheet" href="./casita.css?v=20260830casa1">
 </head>
 <body>
@@ -24,8 +24,8 @@
         <span class="mode-badge" id="modeBadge">Sin conexión</span>
       </div>
       <div class="hero-copy">
-        <div class="eyebrow">AGÜIMES · CASITA</div>
-        <h1>Tu casa, en un vistazo.</h1>
+        <div class="eyebrow">CASITA</div>
+        <h1>Todo, en un vistazo.</h1>
         <p id="homeSummary">Sin datos disponibles.</p>
       </div>
     </header>
@@ -33,18 +33,18 @@
     <section class="overview" aria-label="Estado general">
       <article class="metric metric-primary">
         <span class="metric-label">Ambiente</span>
-        <strong><span id="indoorHumidity">—</span><small id="indoorHumidityUnit"></small></strong>
-        <span class="metric-state" id="humidityState">Sin datos</span>
+        <strong><span id="environmentValue">—</span><small id="environmentUnit"></small></strong>
+        <span class="metric-state" id="environmentState">Sin datos</span>
       </article>
       <article class="metric">
         <span class="metric-label">Agua</span>
-        <strong><span id="tankLiters">—</span><small id="tankLitersUnit"></small></strong>
-        <span class="metric-state" id="tankState">Sin datos</span>
+        <strong><span id="waterValue">—</span><small id="waterUnit"></small></strong>
+        <span class="metric-state" id="waterState">Sin datos</span>
       </article>
       <article class="metric">
-        <span class="metric-label">Energía hoy</span>
-        <strong><span id="energyCost">—</span><small id="energyCostUnit"></small></strong>
-        <span class="metric-state" id="energyKwh">Sin datos</span>
+        <span class="metric-label">Energía</span>
+        <strong><span id="energyValue">—</span><small id="energyUnit"></small></strong>
+        <span class="metric-state" id="energyState">Sin datos</span>
       </article>
     </section>
 
@@ -59,94 +59,44 @@
 
     <section class="tab-panel active" data-panel="resumen">
       <div class="section-title">
-        <div><div class="eyebrow">AHORA</div><h2>La casita</h2></div>
+        <div><div class="eyebrow">AHORA</div><h2>Estado</h2></div>
         <span class="updated" id="lastUpdated">Sin datos</span>
       </div>
-
-      <div class="status-list">
-        <article class="status-row">
-          <div class="status-icon climate" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 3v10"></path><path d="M9 6a3 3 0 0 1 6 0v7.4a5 5 0 1 1-6 0Z"></path></svg>
-          </div>
-          <div class="status-copy"><strong>Habitáculo</strong><span><b id="indoorTemp">Sin datos</b><span id="indoorHumidityInline"></span></span></div>
-          <span class="dot" id="indoorDot" aria-label="Sin datos"></span>
-        </article>
-
-        <article class="status-row">
-          <div class="status-icon corner" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M4 4v16h16"></path><path d="M8 16c2.5-4.8 5.1-6.9 10-8"></path></svg>
-          </div>
-          <div class="status-copy"><strong>Esquina húmeda</strong><span><b id="cornerTemp">Sin datos</b><span id="cornerHumidity"></span></span></div>
-          <span class="dot" id="cornerDot" aria-label="Sin datos"></span>
-        </article>
-
-        <article class="status-row">
-          <div class="status-icon patio" aria-hidden="true">
-            <svg viewBox="0 0 24 24"><path d="M12 3v18"></path><path d="M5 8h14"></path><path d="M7 18h10"></path><path d="M8 8v10"></path><path d="M16 8v10"></path></svg>
-          </div>
-          <div class="status-copy"><strong>Patio</strong><span><b id="patioTemp">Sin datos</b><span id="patioHumidity"></span></span></div>
-          <span class="pill" id="patioProduction">Sin datos</span>
-        </article>
-      </div>
-
-      <article class="production-card">
-        <div class="production-head">
-          <div><span class="metric-label">Producción de agua</span><strong><span id="todayLiters">—</span> <small id="todayLitersUnit">Sin datos</small></strong></div>
-          <span class="live-state" id="dehumidifierState"><i></i> Sin conexión</span>
-        </div>
-        <div class="progress" aria-label="Nivel del depósito"><span id="tankProgress" style="width:0%"></span></div>
-        <div class="production-foot">
-          <span><b id="productionRate">Sin datos</b></span>
-          <span><b id="costPerLiter">Sin datos</b></span>
-        </div>
-      </article>
-
-      <div class="quick-controls">
-        <button class="control-card" id="dehumidifierButton" type="button" disabled aria-disabled="true">
-          <span class="control-copy"><small>Patio</small><strong>Deshumidificador</strong><span id="dehumidifierHint">Sin conexión</span></span>
-          <span class="switch" id="dehumidifierSwitch" aria-hidden="true"><i></i></span>
-        </button>
-        <button class="control-card" id="pumpButton" type="button" disabled aria-disabled="true">
-          <span class="control-copy"><small>Agua</small><strong>Bomba</strong><span id="pumpHint">Sin conexión</span></span>
-          <span class="switch" id="pumpSwitch" aria-hidden="true"><i></i></span>
-        </button>
-      </div>
+      <div class="status-list" id="summaryCards"></div>
+      <article class="info-card" id="summaryEmpty"><strong>Sin dispositivos</strong></article>
+      <div class="quick-controls" id="deviceControls"></div>
     </section>
 
     <section class="tab-panel" data-panel="ambiente" hidden>
-      <div class="section-title"><div><div class="eyebrow">MICROCLIMA</div><h2>Ambiente</h2></div></div>
+      <div class="section-title"><div><div class="eyebrow">AMBIENTE</div><h2>Zonas</h2></div></div>
       <div class="detail-grid" id="climateCards"></div>
+      <article class="info-card" id="climateEmpty"><strong>Sin datos</strong></article>
     </section>
 
     <section class="tab-panel" data-panel="agua" hidden>
-      <div class="section-title"><div><div class="eyebrow">RECURSO</div><h2>Agua</h2></div></div>
+      <div class="section-title"><div><div class="eyebrow">AGUA</div><h2>Agua</h2></div></div>
       <article class="big-value-card">
-        <span class="metric-label">Depósito</span>
-        <strong><span id="waterDetailLiters">—</span><small id="waterDetailCapacity"> Sin datos</small></strong>
-        <div class="progress large"><span id="waterDetailProgress" style="width:0%"></span></div>
+        <span class="metric-label">Disponible</span>
+        <strong><span id="waterDetailValue">—</span><small id="waterDetailUnit"></small></strong>
+        <div class="progress large"><span id="waterProgress" style="width:0%"></span></div>
       </article>
       <div class="detail-grid two">
-        <article class="detail-card"><span>Hoy</span><strong id="waterToday">Sin datos</strong><small>Producción</small></article>
-        <article class="detail-card"><span>Semana</span><strong id="waterWeek">Sin datos</strong><small>Producción</small></article>
-        <article class="detail-card"><span>Ritmo</span><strong id="waterRate">Sin datos</strong><small>Actual</small></article>
-        <article class="detail-card"><span>Lavados</span><strong id="washEstimate">Sin datos</strong><small>Disponibles</small></article>
+        <article class="detail-card"><span>Hoy</span><strong id="waterToday">Sin datos</strong></article>
+        <article class="detail-card"><span>Semana</span><strong id="waterWeek">Sin datos</strong></article>
+        <article class="detail-card"><span>Ritmo</span><strong id="waterRate">Sin datos</strong></article>
+        <article class="detail-card"><span>Capacidad</span><strong id="waterCapacity">Sin datos</strong></article>
       </div>
-      <article class="info-card subtle"><span class="metric-label">Agua no potable</span><p>Lavadora · obra · limpieza · riego</p></article>
     </section>
 
     <section class="tab-panel" data-panel="energia" hidden>
-      <div class="section-title"><div><div class="eyebrow">CONSUMO</div><h2>Energía</h2></div></div>
+      <div class="section-title"><div><div class="eyebrow">ENERGÍA</div><h2>Consumo</h2></div></div>
       <article class="big-value-card energy">
         <span class="metric-label">Hoy</span>
-        <strong><span id="energyDetailCost">—</span><small id="energyDetailCostUnit"></small></strong>
+        <strong><span id="energyDetailValue">—</span><small id="energyDetailUnit"></small></strong>
         <p id="energyDetailKwh">Sin datos.</p>
       </article>
-      <div class="device-list">
-        <div class="device-row"><span>Deshumidificador</span><strong id="dehumidifierEnergy">Sin datos</strong></div>
-        <div class="device-row"><span>Lavadora</span><strong>Sin conexión</strong></div>
-        <div class="device-row"><span>Otros</span><strong>Sin conexión</strong></div>
-      </div>
-      <article class="info-card"><span class="metric-label">Eficiencia</span><strong id="efficiencyValue">Sin datos</strong></article>
+      <div class="device-list" id="energyDevices"></div>
+      <article class="info-card" id="energyEmpty"><strong>Sin dispositivos</strong></article>
     </section>
 
     <section class="tab-panel" data-panel="camaras" hidden>
@@ -156,14 +106,12 @@
     </section>
 
     <section class="tab-panel" data-panel="accesos" hidden>
-      <div class="section-title"><div><div class="eyebrow">ENTRADAS</div><h2>Accesos</h2></div></div>
-      <div class="device-list">
-        <div class="device-row"><span>Portero</span><strong id="doorbellStatus">Sin conexión</strong></div>
-        <div class="device-row"><span>Apertura de puerta</span><strong id="doorReleaseStatus">Sin conexión</strong></div>
-      </div>
+      <div class="section-title"><div><div class="eyebrow">ACCESOS</div><h2>Accesos</h2></div></div>
+      <div class="device-list" id="accessCards"></div>
+      <article class="info-card" id="accessEmpty"><strong>Sin accesos</strong></article>
     </section>
   </main>
 
-  <script src="./casita.js?v=20260830casa3"></script>
+  <script src="./casita.js?v=20260830casa4"></script>
 </body>
 </html>
