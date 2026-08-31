@@ -117,14 +117,65 @@
   }
 
   function densePermitCrop(source){
-    const ratio=source.width/source.height;if(ratio>=1.12&&ratio<=1.82)return source;if(source.height<source.width*1.08)return source;
+    const ratio=source.width/source.height;
+    if(ratio>=1.12&&ratio<=1.82)return source;
+    if(source.height<source.width*1.08)return source;
+
     const workW=Math.min(620,source.width),scale=workW/source.width,workH=Math.round(source.height*scale);
-    const work=document.createElement('canvas');work.width=workW;work.height=workH;const ctx=work.getContext('2d',{alpha:false,willReadFrequently:true});ctx.drawImage(source,0,0,workW,workH);
-    const px=ctx.getImageData(0,0,workW,workH).data,score=new Float32Array(workH);
-    for(let y=1;y<workH;y+=1){let s=0;for(let x=1;x<workW;x+=2){const i=(y*workW+x)*4,j=(y*workW+x-1)*4;const p=.299*px[i]+.587*px[i+1]+.114*px[i+2],q=.299*px[j]+.587*px[j+1]+.114*px[j+2];if(Math.abs(p-q)>20)s+=1;if(p<190)s+=.12;}score[y]=s;}
-    const pref=new Float64Array(workH+1);for(let y=0;y<workH;y+=1)pref[y+1]=pref[y]+score[y];let best=null;
-    for(const r of [1.2,1.32,1.44,1.56,1.68,1.8]){const h=Math.round(workW/r);if(h>=workH)continue;for(let y=0;y+h<=workH;y+=Math.max(3,Math.round(h*.035))){const s=(pref[y+h]-pref[y])/h;if(!best||s>best.score)best={y,h,score:s};}}
-    if(!best)return source;const pad=source.width*.025,sy=Math.max(0,best.y/scale-pad),sh=Math.min(source.height-sy,best.h/scale+pad*2);const c=crop(source,0,sy,source.width,sh);const rr=c.width/c.height;return rr>=1.05&&rr<=1.95?c:source;
+    const work=document.createElement('canvas');work.width=workW;work.height=workH;
+    const ctx=work.getContext('2d',{alpha:false,willReadFrequently:true});ctx.drawImage(source,0,0,workW,workH);
+    const data=ctx.getImageData(0,0,workW,workH).data;
+    const centers=[];
+    const rows=[];
+    for(let y=1;y<workH;y+=1){
+      let edges=0,dark=0;
+      for(let x=1;x<workW;x+=1){
+        const i=(y*workW+x)*4,j=((y-1)*workW+x)*4;
+        const a=.299*data[i]+.587*data[i+1]+.114*data[i+2];
+        const b=.299*data[j]+.587*data[j+1]+.114*data[j+2];
+        if(Math.abs(a-b)>12)edges+=1;
+        if(a<190)dark+=1;
+      }
+      if(edges/workW+.2*dark/workW>.22)rows.push(y);
+    }
+    const groups=[];
+    for(const y of rows){
+      if(!groups.length||y-groups[groups.length-1][groups[groups.length-1].length-1]>3)groups.push([y]);
+      else groups[groups.length-1].push(y);
+    }
+    groups.forEach(g=>centers.push(g.reduce((a,b)=>a+b,0)/g.length));
+
+    let best=null;
+    const minGap=workW*.025,maxGap=workW*.065;
+    for(let i=0;i<centers.length-1;i+=1){
+      let j=i;
+      while(j+1<centers.length){
+        const gap=centers[j+1]-centers[j];
+        if(gap<minGap||gap>maxGap)break;
+        j+=1;
+      }
+      const count=j-i+1;
+      if(count>=5&&(!best||count>best.count))best={i,j,count};
+    }
+    if(best){
+      let last=best.j;
+      while(last+1<centers.length&&centers[last+1]-centers[last]<workW*.095)last+=1;
+      const pad=workW*.025;
+      const y0=Math.max(0,(centers[best.i]-pad)/scale);
+      const y1=Math.min(source.height,(centers[last]+pad*1.6)/scale);
+      const candidate=crop(source,0,y0,source.width,y1-y0);
+      const rr=candidate.width/candidate.height;
+      if(rr>=1.05&&rr<=1.95)return candidate;
+    }
+
+    const px=data,score=new Float32Array(workH);
+    for(let y=1;y<workH;y+=1){let s=0;for(let x=1;x<workW;x+=2){const i=(y*workW+x)*4,j=(y*workW+x-1)*4;const a=.299*px[i]+.587*px[i+1]+.114*px[i+2],b=.299*px[j]+.587*px[j+1]+.114*px[j+2];if(Math.abs(a-b)>20)s+=1;if(a<190)s+=.12;}score[y]=s;}
+    const pref=new Float64Array(workH+1);for(let y=0;y<workH;y+=1)pref[y+1]=pref[y]+score[y];let fallback=null;
+    for(const r of [1.2,1.32,1.44,1.56,1.68,1.8]){const h=Math.round(workW/r);if(h>=workH)continue;for(let y=0;y+h<=workH;y+=Math.max(3,Math.round(h*.035))){const sc=(pref[y+h]-pref[y])/h;if(!fallback||sc>fallback.score)fallback={y,h,score:sc};}}
+    if(!fallback)return source;
+    const pad=source.width*.025,sy=Math.max(0,fallback.y/scale-pad),sh=Math.min(source.height-sy,fallback.h/scale+pad*2);
+    const c=crop(source,0,sy,source.width,sh),rr=c.width/c.height;
+    return rr>=1.05&&rr<=1.95?c:source;
   }
 
   function detectLines(source,x0,x1){
