@@ -16,16 +16,10 @@
   scanScript.src = './vehicle-scan.js?v=20260831i';
   scanScript.defer = true;
   scanScript.addEventListener('load', () => {
-    const versionFix = document.createElement('script');
-    versionFix.src = './vehicle-version-fix.js?v=20260831l';
-    versionFix.defer = true;
-    versionFix.addEventListener('load', () => {
-      const enhancedScan = document.createElement('script');
-      enhancedScan.src = './vehicle-scan-v2.js?v=20260831j';
-      enhancedScan.defer = true;
-      document.head.appendChild(enhancedScan);
-    }, {once:true});
-    document.head.appendChild(versionFix);
+    const fastScan = document.createElement('script');
+    fastScan.src = './vehicle-scan-fast.js?v=20260831m';
+    fastScan.defer = true;
+    document.head.appendChild(fastScan);
   }, {once:true});
   document.head.appendChild(scanScript);
 
@@ -88,7 +82,7 @@
   }
 
   const target = document.getElementById('downloads');
-  if (target) new MutationObserver(scan).observe(target, {childList:true, subtree:true, attributes:true});
+  if (target) new MutationObserver(scan).observe(target, {childList:true,subtree:true,attributes:true});
   scan();
   window.addEventListener('beforeunload', () => urls.splice(0).forEach(URL.revokeObjectURL));
 })();
