@@ -1,8 +1,8 @@
 (() => {
   const form = document.getElementById('vehicleForm');
   const ui = document.querySelector('.vehicle-scan');
-  if (!form || !ui || ui.dataset.ocrV2 === '1') return;
-  ui.dataset.ocrV2 = '1';
+  if (!form || !ui || ui.dataset.ocrV3 === '1') return;
+  ui.dataset.ocrV3 = '1';
 
   const cameraInput = ui.querySelector('.scan-input-camera');
   const uploadInput = ui.querySelector('.scan-input-upload');
@@ -17,17 +17,26 @@
   const field = name => form.elements.namedItem(name);
   const clean = value => String(value ?? '').replace(/\s+/g, ' ').trim();
   const upper = value => clean(value).toUpperCase();
-  const detectedOrder = ['plate','brand','model','version','vin','engine'];
+  const targets = ['plate','brand','model','version','vin','engine'];
   const knownBrands = [
     'ABARTH','ALFA ROMEO','AUDI','BMW','BYD','CHEVROLET','CITROEN','CITROËN','CUPRA','DACIA','DS AUTOMOBILES',
     'FIAT','FORD','HONDA','HYUNDAI','JAGUAR','JEEP','KIA','LAND ROVER','LEXUS','MAZDA','MERCEDES-BENZ','MERCEDES BENZ',
     'MG','MINI','MITSUBISHI','NISSAN','OPEL','PEUGEOT','PORSCHE','RENAULT','SEAT','SKODA','ŠKODA','SMART','SUBARU',
     'SUZUKI','TESLA','TOYOTA','VOLKSWAGEN','VOLVO'
   ];
+  const fuels = ['GASOLINA','DIESEL','DIÉSEL','GASÓLEO','GASOLEO','ELÉCTRICO','ELECTRICO','HÍBRIDO','HIBRIDO','GLP','GNC'];
 
-  let workerPromise = null;
   let scriptPromise = null;
-  let secondPass = false;
+  let workerPromise = null;
+  let applying = false;
+  let stage = 'base';
+
+  targets.forEach(name => {
+    const input = field(name);
+    input?.addEventListener('input', () => {
+      if (!applying) input.dataset.manualAfterOcr = '1';
+    });
+  });
 
   function setBusy(value) {
     cameraButton.disabled = value;
@@ -48,7 +57,7 @@
     result.textContent = message;
   }
 
-  function loadScript() {
+  function loadTesseract() {
     if (window.Tesseract?.createWorker) return Promise.resolve(window.Tesseract);
     if (scriptPromise) return scriptPromise;
     scriptPromise = new Promise((resolve, reject) => {
@@ -56,8 +65,8 @@
       if (existing) {
         if (window.Tesseract?.createWorker) resolve(window.Tesseract);
         else {
-          existing.addEventListener('load', () => resolve(window.Tesseract), {once:true});
-          existing.addEventListener('error', reject, {once:true});
+          existing.addEventListener('load', () => resolve(window.Tesseract), { once:true });
+          existing.addEventListener('error', reject, { once:true });
         }
         return;
       }
@@ -73,14 +82,15 @@
 
   async function getWorker() {
     if (workerPromise) return workerPromise;
-    workerPromise = loadScript().then(Tesseract => Tesseract.createWorker('spa', 1, {
+    workerPromise = loadTesseract().then(Tesseract => Tesseract.createWorker('spa', 1, {
       logger(message) {
         if (message.status === 'recognizing text') {
           const raw = Math.round((message.progress || 0) * 100);
-          const percent = secondPass ? 55 + Math.round(raw * .38) : 12 + Math.round(raw * .4);
-          setProgress(percent, secondPass ? 'Afinando lectura…' : 'Leyendo documento…');
+          const base = stage === 'base' ? 10 : 50;
+          const span = stage === 'base' ? 38 : 42;
+          setProgress(base + Math.round(raw * span / 100), stage === 'base' ? 'Leyendo documento…' : 'Comprobando campos…');
         } else if (/loading|initializing/i.test(message.status || '')) {
-          setProgress(8, 'Preparando lector…');
+          setProgress(7, 'Preparando lector…');
         }
       }
     }));
@@ -101,7 +111,7 @@
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
       canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-      const ctx = canvas.getContext('2d', {alpha:false, willReadFrequently:true});
+      const ctx = canvas.getContext('2d', { alpha:false, willReadFrequently:true });
       ctx.fillStyle = '#fff';
       ctx.fillRect(0,0,canvas.width,canvas.height);
       ctx.drawImage(image,0,0,canvas.width,canvas.height);
@@ -109,29 +119,6 @@
     } finally {
       URL.revokeObjectURL(url);
     }
-  }
-
-  function enhancedCanvas(source) {
-    const canvas = document.createElement('canvas');
-    canvas.width = source.width;
-    canvas.height = source.height;
-    const ctx = canvas.getContext('2d', {alpha:false, willReadFrequently:true});
-    ctx.drawImage(source,0,0);
-    const image = ctx.getImageData(0,0,canvas.width,canvas.height);
-    const data = image.data;
-    let mean = 0;
-    for (let i=0;i<data.length;i+=4) mean += .299*data[i] + .587*data[i+1] + .114*data[i+2];
-    mean /= Math.max(1,data.length/4);
-    const threshold = Math.max(145, Math.min(205, mean * .88));
-    for (let i=0;i<data.length;i+=4) {
-      const lum = .299*data[i] + .587*data[i+1] + .114*data[i+2];
-      const boosted = Math.max(0, Math.min(255, (lum - 128) * 1.6 + 128));
-      const v = boosted > threshold ? 255 : 0;
-      data[i]=data[i+1]=data[i+2]=v;
-      data[i+3]=255;
-    }
-    ctx.putImageData(image,0,0);
-    return canvas;
   }
 
   function linesOf(text) {
@@ -144,76 +131,24 @@
       .filter(Boolean);
   }
 
-  function codeToken(letter, number) {
-    const variants = number === '1' ? '[1IL]' : number === '2' ? '[2Z]' : number === '3' ? '[3B]' : number;
-    return new RegExp(`(?:^|[^A-Z0-9])${letter}\\s*[.·,:;\\-]?\\s*${variants}(?!\\d)`, 'i');
-  }
-
-  function looksLikeHeader(value) {
-    const text = clean(value).toUpperCase();
-    return !text || /^(?:A|B|C|D|E|F|G|J|K|P|Q|S)\s*[.·,:;\-]?\s*[0-9ILZB]?\s*$/.test(text) ||
-      /^(?:MARCA|MODELO|DENOMINACI[ÓO]N|TIPO|VARIANTE|VERSI[ÓO]N|BASTIDOR|MATR[IÍ]CULA|CILINDRADA|POTENCIA|COMBUSTIBLE)\b/.test(text);
-  }
-
-  function tidyCandidate(value, max = 80) {
-    let text = clean(value)
-      .replace(/^[:;,.\-–—)\]]+\s*/,'')
-      .replace(/^(?:MARCA|MODELO|DENOMINACI[ÓO]N(?:\s+COMERCIAL)?|TIPO(?:\s*\/\s*VARIANTE\s*\/\s*VERSI[ÓO]N)?|VARIANTE(?:\s*\/\s*VERSI[ÓO]N)?|BASTIDOR|CILINDRADA|POTENCIA|COMBUSTIBLE)\s*[:;,.\-–—]?\s*/i,'')
-      .replace(/\s+(?=[A-Z]\s*[.·,:;\-]?\s*[0-9ILZB](?:\s*[.·,:;\-]?\s*[0-9ILZB])?\b).*$/i,'')
-      .trim();
-    if (text.length > max) text = text.slice(0,max).trim();
-    if (!text || looksLikeHeader(text)) return '';
-    return text;
-  }
-
-  function afterCode(lines, letter, number, max = 80) {
-    const token = codeToken(letter,number);
-    for (let i=0;i<lines.length;i++) {
-      const match = token.exec(lines[i]);
-      if (!match) continue;
-      const start = match.index + match[0].length;
-      const inline = tidyCandidate(lines[i].slice(start),max);
-      if (inline) return inline;
-      for (let j=1;j<=3;j++) {
-        const candidate = tidyCandidate(lines[i+j] || '',max);
-        if (candidate && !looksLikeHeader(candidate)) return candidate;
-      }
-    }
+  function marker(line) {
+    const value = upper(line).replace(/[^A-Z0-9]/g,'');
+    if (/^P[1IL]$/.test(value)) return 'P1';
+    if (/^P[2Z]$/.test(value)) return 'P2';
+    if (/^P[3B]$/.test(value)) return 'P3';
+    if (/^D[1IL]$/.test(value)) return 'D1';
+    if (/^D[2Z]$/.test(value)) return 'D2';
+    if (/^D[3B]$/.test(value)) return 'D3';
     return '';
   }
 
-  function afterLabel(lines, patterns, max = 80) {
-    for (let i=0;i<lines.length;i++) {
-      for (const source of patterns) {
-        const re = new RegExp(`${source}\\s*[:;,.\\-–—]?\\s*(.*)$`,'i');
-        const match = lines[i].match(re);
-        if (!match) continue;
-        const inline = tidyCandidate(match[1],max);
-        if (inline) return inline;
-        for (let j=1;j<=2;j++) {
-          const candidate = tidyCandidate(lines[i+j] || '',max);
-          if (candidate && !looksLikeHeader(candidate)) return candidate;
-        }
-      }
-    }
-    return '';
-  }
-
-  function plateFrom(text) {
-    const source = upper(text);
-    const modern = source.match(/\b\d{4}\s*[- ]?\s*[BCDFGHJKLMNPRSTVWXYZ]{3}\b/);
-    if (modern) return modern[0].replace(/[\s-]+/g,'');
-    const old = source.match(/\b[A-Z]{1,2}\s*[- ]?\s*\d{4}\s*[- ]?\s*[A-Z]{1,2}\b/);
-    return old ? old[0].replace(/[\s-]+/g,'') : '';
-  }
-
-  function vinFrom(text, lines) {
-    const direct = afterCode(lines,'E','',60) || afterLabel(lines,['(?:N[ÚU]MERO\\s+DE\\s+)?BASTIDOR','VIN'],60);
-    const source = `${direct}\n${text}`.toUpperCase();
-    const candidates = source.match(/(?:[A-HJ-NPR-Z0-9][\s\-]*){17}/g) || [];
-    for (const raw of candidates) {
-      const value = raw.replace(/[^A-HJ-NPR-Z0-9]/g,'');
-      if (value.length === 17 && /[A-Z]/.test(value) && /\d/.test(value)) return value;
+  function nextLineValue(lines, wanted, test = () => true) {
+    const index = lines.findIndex(line => marker(line) === wanted);
+    if (index < 0) return '';
+    for (let i = index + 1; i < Math.min(lines.length, index + 5); i += 1) {
+      const candidate = clean(lines[i]);
+      if (!candidate || marker(candidate)) continue;
+      if (test(candidate)) return candidate;
     }
     return '';
   }
@@ -223,66 +158,214 @@
     return knownBrands.find(brand => new RegExp(`(?:^|\\s)${brand.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')}(?:\\s|$)`,'i').test(source)) || '';
   }
 
-  function parse(text) {
+  function fuelFrom(text) {
+    const source = upper(text);
+    return fuels.find(item => source.includes(item)) || '';
+  }
+
+  function normalizeVin(raw) {
+    const token = upper(raw).replace(/[^A-Z0-9]/g,'');
+    if (!token) return '';
+    const candidate = token.replace(/O/g,'0').replace(/I/g,'1').replace(/Q/g,'0');
+    if (candidate.length !== 17) return '';
+    if (!/^[A-HJ-NPR-Z0-9]{17}$/.test(candidate)) return '';
+    if (/FECHA|METRAJ|KILOMET|DOCUMENT|OBSERV/.test(candidate)) return '';
+    if (!/[A-Z]/.test(candidate) || !/\d/.test(candidate)) return '';
+    return candidate;
+  }
+
+  function vinFrom(text) {
+    for (const line of linesOf(text)) {
+      const compact = upper(line).replace(/[^A-Z0-9]/g,'');
+      if (compact.length >= 16 && compact.length <= 19) {
+        const value = normalizeVin(compact);
+        if (value) return value;
+      }
+    }
+    return '';
+  }
+
+  function plateFrom(text) {
+    const source = upper(text).replace(/[_|]/g,' ');
+    const exact = source.match(/\b\d{4}\s*[- ]?\s*[BCDFGHJKLMNPRSTVWXYZ]{3}\b/);
+    return exact ? exact[0].replace(/[\s-]+/g,'') : '';
+  }
+
+  function numericValue(raw, min, max, decimals = true) {
+    const values = String(raw || '').replace(/,/g,'.').match(/\d+(?:\.\d+)?/g) || [];
+    for (const part of values) {
+      const number = Number(part);
+      if (!Number.isFinite(number) || number < min || number > max) continue;
+      if (!decimals && !Number.isInteger(number)) continue;
+      return part;
+    }
+    return '';
+  }
+
+  function normalizeVersion(raw) {
+    let value = upper(raw)
+      .replace(/[—–_]+/g,'-')
+      .replace(/[^A-Z0-9\-_/.*]/g,'')
+      .replace(/[-_/.*]{2,}$/,'')
+      .replace(/[!|]+$/,'')
+      .trim();
+    if (value.length < 4) return '';
+    return value;
+  }
+
+  function modelFromSparse(lines) {
+    const afterD3 = nextLineValue(lines,'D3', value => /^[A-Z0-9][A-Z0-9 .\-_/]{1,40}$/i.test(value));
+    if (afterD3) return upper(afterD3.replace(/[|]+$/,''));
+    return '';
+  }
+
+  function versionFromSparse(lines) {
+    const afterD2 = nextLineValue(lines,'D2', value => /[A-Z0-9]/i.test(value));
+    if (afterD2) return normalizeVersion(afterD2);
+    const d3 = lines.findIndex(line => marker(line) === 'D3');
+    if (d3 > 0) {
+      for (let i = d3 - 1; i >= Math.max(0,d3 - 4); i -= 1) {
+        if (/[-_/]/.test(lines[i]) && /[A-Z0-9]/i.test(lines[i])) {
+          const value = normalizeVersion(lines[i]);
+          if (value) return value;
+        }
+      }
+    }
+    return '';
+  }
+
+  function parseSparse(text) {
     const lines = linesOf(text);
-    const brand = tidyCandidate(
-      afterCode(lines,'D','1',45) ||
-      afterLabel(lines,['MARCA(?:\\s+DEL\\s+VEH[IÍ]CULO)?'],45) ||
-      knownBrandFrom(text),45
-    );
-    const model = tidyCandidate(
-      afterCode(lines,'D','3',60) ||
-      afterLabel(lines,['DENOMINACI[ÓO]N\\s+COMERCIAL','MODELO'],60),60
-    );
-    const version = tidyCandidate(
-      afterCode(lines,'D','2',80) ||
-      afterLabel(lines,['TIPO\\s*\\/?\\s*VARIANTE\\s*\\/?\\s*VERSI[ÓO]N','VARIANTE\\s*\\/?\\s*VERSI[ÓO]N','VERSI[ÓO]N'],80),80
-    );
-    const displacement = tidyCandidate(afterCode(lines,'P','1',24) || afterLabel(lines,['CILINDRADA'],24),24);
-    const power = tidyCandidate(afterCode(lines,'P','2',24) || afterLabel(lines,['POTENCIA'],24),24);
-    const fuel = tidyCandidate(afterCode(lines,'P','3',32) || afterLabel(lines,['COMBUSTIBLE','CARBURANTE'],32),32);
-    const engine = [
-      displacement ? (/cm|cc/i.test(displacement) ? displacement : `${displacement} cm³`) : '',
-      power ? (/kw|cv/i.test(power) ? power : `${power} kW`) : '',
-      fuel
-    ].filter(Boolean).join(' · ');
+    const p1raw = nextLineValue(lines,'P1', value => /\d/.test(value));
+    const p2raw = nextLineValue(lines,'P2', value => /\d/.test(value));
+    const p1 = numericValue(p1raw, 400, 10000, false);
+    const p2 = numericValue(p2raw, 1, 1000, true);
+    const fuel = fuelFrom(text);
     return {
       plate: plateFrom(text),
-      brand,
-      model,
-      version,
-      vin: vinFrom(text,lines),
-      engine
+      brand: knownBrandFrom(text),
+      model: modelFromSparse(lines),
+      version: versionFromSparse(lines),
+      vin: vinFrom(text),
+      p1,
+      p2,
+      fuel
     };
   }
 
-  function score(data) {
-    return detectedOrder.reduce((total,name) => total + (clean(data[name]) ? 1 : 0),0);
+  function rect(canvas, x, y, w, h) {
+    return {
+      left: Math.round(canvas.width * x),
+      top: Math.round(canvas.height * y),
+      width: Math.max(1, Math.round(canvas.width * w)),
+      height: Math.max(1, Math.round(canvas.height * h))
+    };
   }
 
-  function merge(primary, secondary) {
-    const out = {};
-    detectedOrder.forEach(name => { out[name] = clean(primary[name]) || clean(secondary[name]); });
+  async function readRegion(worker, canvas, box, whitelist = '') {
+    stage = 'focus';
+    try {
+      await worker.setParameters({
+        tessedit_pageseg_mode:'7',
+        preserve_interword_spaces:'1',
+        tessedit_char_whitelist: whitelist
+      });
+    } catch (_) {}
+    const { data } = await worker.recognize(canvas, { rectangle: box }, { text:true });
+    return clean(data?.text || '');
+  }
+
+  async function focusedFields(worker, canvas, base) {
+    const out = { ...base };
+    const landscapePermit = canvas.width / canvas.height > 1.2 && canvas.width / canvas.height < 1.65;
+    if (!landscapePermit) return out;
+
+    setProgress(52,'Comprobando matrícula…');
+    const plateRaw = await readRegion(worker, canvas, rect(canvas,.077,.029,.402,.087), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789- ');
+    out.plate = plateFrom(plateRaw) || out.plate;
+
+    setProgress(60,'Comprobando versión…');
+    const versionRaw = await readRegion(worker, canvas, rect(canvas,.077,.785,.402,.081), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/.* ');
+    out.version = normalizeVersion(versionRaw) || out.version;
+
+    if (!out.vin) {
+      setProgress(67,'Comprobando bastidor…');
+      const vinRaw = await readRegion(worker, canvas, rect(canvas,.572,.029,.398,.087), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ');
+      out.vin = vinFrom(vinRaw) || normalizeVin(vinRaw) || out.vin;
+    }
+
+    if (!out.brand) {
+      setProgress(73,'Comprobando marca…');
+      const brandRaw = await readRegion(worker, canvas, rect(canvas,.077,.721,.402,.081), 'ABCDEFGHIJKLMNOPQRSTUVWXYZÁÉÍÓÚÜÑ- ');
+      out.brand = knownBrandFrom(brandRaw) || upper(brandRaw.replace(/[^A-ZÁÉÍÓÚÜÑ -]/gi,'').trim());
+    }
+
+    if (!out.model) {
+      setProgress(79,'Comprobando modelo…');
+      const modelRaw = await readRegion(worker, canvas, rect(canvas,.077,.837,.402,.082), 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/ ');
+      out.model = upper(modelRaw.replace(/[^A-Z0-9\-_/ ]/gi,'').trim());
+    }
+
+    if (!out.p1) {
+      setProgress(84,'Comprobando cilindrada…');
+      const raw = await readRegion(worker, canvas, rect(canvas,.577,.337,.192,.041), '0123456789., ');
+      out.p1 = numericValue(raw,400,10000,false);
+    }
+
+    if (!out.p2) {
+      setProgress(88,'Comprobando potencia…');
+      const raw = await readRegion(worker, canvas, rect(canvas,.577,.39,.192,.06), '0123456789., ');
+      out.p2 = numericValue(raw,1,1000,true);
+    }
+
+    if (!out.fuel) {
+      setProgress(91,'Comprobando combustible…');
+      const raw = await readRegion(worker, canvas, rect(canvas,.577,.45,.29,.062), 'ABCDEFGHIJKLMNOPQRSTUVWXYZÁÉÍÓÚÜÑ ');
+      out.fuel = fuelFrom(raw) || upper(raw.replace(/[^A-ZÁÉÍÓÚÜÑ ]/gi,'').trim());
+    }
+
     return out;
   }
 
+  function buildEngine(data) {
+    return [
+      data.p1 ? `${data.p1} cm³` : '',
+      data.p2 ? `${data.p2} kW` : '',
+      data.fuel || ''
+    ].filter(Boolean).join(' · ');
+  }
+
   function fill(data) {
+    const values = {
+      plate: data.plate,
+      brand: data.brand,
+      model: data.model,
+      version: data.version,
+      vin: data.vin,
+      engine: buildEngine(data)
+    };
     const filled = [];
-    const already = [];
-    detectedOrder.forEach(name => {
-      const input = field(name);
-      const value = clean(data[name]);
-      if (!input || !value) return;
-      if (clean(input.value)) {
-        already.push(name);
-        return;
-      }
-      input.value = ['plate','vin'].includes(name) ? upper(value) : value;
-      input.dispatchEvent(new Event('input',{bubbles:true}));
-      input.dispatchEvent(new Event('change',{bubbles:true}));
-      filled.push(name);
-    });
-    return {filled,already};
+    const preserved = [];
+    applying = true;
+    try {
+      targets.forEach(name => {
+        const input = field(name);
+        const value = clean(values[name]);
+        if (!input || !value) return;
+        if (input.dataset.manualAfterOcr === '1') {
+          preserved.push(name);
+          return;
+        }
+        input.value = ['plate','vin','brand','model','version'].includes(name) ? upper(value) : value;
+        input.dataset.ocrFilled = '1';
+        input.dispatchEvent(new Event('input',{bubbles:true}));
+        input.dispatchEvent(new Event('change',{bubbles:true}));
+        filled.push(name);
+      });
+    } finally {
+      applying = false;
+    }
+    return { filled, preserved, values };
   }
 
   async function process(file) {
@@ -294,40 +377,33 @@
     setResult('');
     setProgress(3,'Preparando imagen…');
     try {
-      const original = await imageToCanvas(file);
+      const canvas = await imageToCanvas(file);
       const worker = await getWorker();
-      secondPass = false;
-      try { await worker.setParameters({tessedit_pageseg_mode:'3', preserve_interword_spaces:'1'}); } catch (_) {}
-      const first = await worker.recognize(original);
-      let detected = parse(first.data?.text || '');
+      stage = 'base';
+      try { await worker.setParameters({ tessedit_pageseg_mode:'11', preserve_interword_spaces:'1', tessedit_char_whitelist:'' }); } catch (_) {}
+      const first = await worker.recognize(canvas, {}, { text:true });
+      let detected = parseSparse(first.data?.text || '');
+      detected = await focusedFields(worker, canvas, detected);
 
-      if (score(detected) < 4) {
-        secondPass = true;
-        setProgress(55,'Afinando lectura…');
-        const enhanced = enhancedCanvas(original);
-        try { await worker.setParameters({tessedit_pageseg_mode:'6', preserve_interword_spaces:'1'}); } catch (_) {}
-        const second = await worker.recognize(enhanced);
-        detected = merge(detected, parse(second.data?.text || ''));
-      }
-
-      secondPass = false;
+      stage = 'focus';
       setProgress(96,'Completando datos…');
-      const {filled,already} = fill(detected);
+      const { filled, preserved, values } = fill(detected);
+      const found = targets.filter(name => clean(values[name])).length;
       setProgress(100,'Listo');
-      const found = score(detected);
+
       if (filled.length) {
-        const extra = already.length ? ` · ${already.length} ya tenían valor` : '';
+        const extra = preserved.length ? ` · ${preserved.length} conservado${preserved.length === 1 ? '' : 's'}` : '';
         setResult(`${filled.length} ${filled.length === 1 ? 'dato completado' : 'datos completados'}${extra}. Revísalos antes de continuar.`, 'success');
       } else if (found) {
-        setResult('He reconocido datos, pero los campos correspondientes ya estaban completados.', 'success');
+        setResult('Los datos detectados ya estaban completados o se han conservado porque los editaste.', 'success');
       } else {
-        setResult('No he podido leer suficiente información. Prueba con el documento entero, recto, sin reflejos y con buena luz.', 'error');
+        setResult('No he podido identificar suficientes datos. Prueba con el documento entero, recto y sin reflejos.', 'error');
       }
     } catch (error) {
-      console.error('OCR vehículo v2',error);
+      console.error('OCR vehículo v3', error);
       setResult('No se ha podido leer la imagen. Prueba otra foto o rellena los datos manualmente.', 'error');
     } finally {
-      secondPass = false;
+      stage = 'base';
       setTimeout(() => setBusy(false),250);
     }
   }
@@ -339,10 +415,10 @@
     process(file).finally(() => { event.target.value = ''; });
   }
 
-  cameraInput.addEventListener('change',intercept,{capture:true});
-  uploadInput.addEventListener('change',intercept,{capture:true});
+  cameraInput.addEventListener('change', intercept, { capture:true });
+  uploadInput.addEventListener('change', intercept, { capture:true });
 
-  window.addEventListener('beforeunload',async () => {
+  window.addEventListener('beforeunload', async () => {
     try { const worker = await workerPromise; await worker?.terminate?.(); } catch (_) {}
   });
 })();
