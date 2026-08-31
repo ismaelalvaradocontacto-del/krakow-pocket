@@ -16,10 +16,16 @@
   scanScript.src = './vehicle-scan.js?v=20260831i';
   scanScript.defer = true;
   scanScript.addEventListener('load', () => {
-    const enhancedScan = document.createElement('script');
-    enhancedScan.src = './vehicle-scan-v2.js?v=20260831j';
-    enhancedScan.defer = true;
-    document.head.appendChild(enhancedScan);
+    const versionFix = document.createElement('script');
+    versionFix.src = './vehicle-version-fix.js?v=20260831k';
+    versionFix.defer = true;
+    versionFix.addEventListener('load', () => {
+      const enhancedScan = document.createElement('script');
+      enhancedScan.src = './vehicle-scan-v2.js?v=20260831j';
+      enhancedScan.defer = true;
+      document.head.appendChild(enhancedScan);
+    }, {once:true});
+    document.head.appendChild(versionFix);
   }, {once:true});
   document.head.appendChild(scanScript);
 
