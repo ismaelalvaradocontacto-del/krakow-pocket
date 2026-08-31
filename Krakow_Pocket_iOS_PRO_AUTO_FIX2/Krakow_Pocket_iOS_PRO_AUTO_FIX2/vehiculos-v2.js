@@ -12,6 +12,7 @@
   const defaultFields = ['place','courtCity','bankAccount','paymentDays'];
   let combinedUrl = '';
   let mergeBusy = false;
+  const brandedUrls = [];
 
   const $ = (s, root = document) => root.querySelector(s);
   const $$ = (s, root = document) => Array.from(root.querySelectorAll(s));
@@ -39,6 +40,11 @@
   function hasLastOperation() {
     const d = readStore(DRAFT_KEY);
     return ['seller_name','buyer_name','plate','vin','price','contractModel'].some(k => clean(d[k]));
+  }
+
+  function setOperationTitle(recovered = hasLastOperation()) {
+    const title = $('#operationTitle');
+    if (title) title.textContent = recovered ? 'Continuar operación' : 'Nueva operación';
   }
 
   function setFreshDefaults() {
@@ -112,10 +118,19 @@
   function updateLastNote(text) {
     const note = $('#lastOperationNote');
     if (!note) return;
-    if (text) { note.innerHTML = text; return; }
-    note.innerHTML = hasLastOperation()
-      ? '<strong>Última transferencia recuperada.</strong> Pocket conserva solo esta operación y la sustituirá cuando empieces otra.'
-      : '<strong>Una sola operación.</strong> Pocket conservará esta transferencia por si necesitas corregirla o volver a generar los documentos.';
+    const recovered = hasLastOperation();
+    if (text) {
+      note.innerHTML = text;
+      note.classList.add('visible');
+      return;
+    }
+    if (recovered) {
+      note.innerHTML = '<strong>Operación recuperada.</strong>';
+      note.classList.add('visible');
+    } else {
+      note.innerHTML = '';
+      note.classList.remove('visible');
+    }
   }
 
   function updateReview() {
@@ -130,7 +145,7 @@
     const meta = [value('plate'), value('price') ? `${value('price')} €` : ''].filter(Boolean).join(' · ');
     box.innerHTML = `
       <div class="review-hero ${missing.length ? 'pending' : 'ready'}">
-        <div><span class="eyebrow">ESTADO</span><strong>${missing.length ? `Faltan ${missing.length} datos` : 'Todo listo'}</strong><small>${missing.length ? 'Puedes tocar una sección para completarla.' : 'La documentación está preparada para generarse.'}</small></div>
+        <div><span class="eyebrow">ESTADO</span><strong>${missing.length ? `Faltan ${missing.length} datos` : 'Todo listo'}</strong><small>${missing.length ? 'Toca una sección para completarla.' : 'Listo para generar.'}</small></div>
         <span class="status-dot">${missing.length ? missing.length : '✓'}</span>
       </div>
       <div class="review-list">
@@ -155,6 +170,30 @@
     $('.download-row.combined')?.remove();
   }
 
+  async function brandManagerPdf(link) {
+    if (!link || link.dataset.traspasoBranded === '1' || !window.PDFLib) return;
+    try {
+      const bytes = await fetch(link.href).then(r => r.arrayBuffer());
+      const doc = await window.PDFLib.PDFDocument.load(bytes);
+      const page = doc.getPages()[0];
+      const bold = await doc.embedFont(window.PDFLib.StandardFonts.HelveticaBold);
+      const height = page.getHeight();
+      page.drawRectangle({x:40,y:height-60,width:245,height:22,color:window.PDFLib.rgb(1,1,1)});
+      page.drawText('TRASPASO · FICHA DE GESTIÓN',{x:44,y:height-49,size:8,font:bold,color:window.PDFLib.rgb(.64,.37,.25)});
+      const branded = await doc.save();
+      const blob = new Blob([branded], {type:'application/pdf'});
+      const url = URL.createObjectURL(blob);
+      brandedUrls.push(url);
+      link.href = url;
+      link.dataset.traspasoBranded = '1';
+      if (link.download) link.download = link.download.replace(/^Gestor\s*-\s*/i, 'Ficha - ');
+      const filename = link.closest('.download-row')?.querySelector('.download-copy span');
+      if (filename && link.download) filename.textContent = link.download;
+    } catch (err) {
+      console.error('No se pudo aplicar la identidad al PDF', err);
+    }
+  }
+
   async function mergeDownloads() {
     const downloads = $('#downloads');
     if (!downloads || downloads.hidden || mergeBusy || $('.download-row.combined', downloads)) return;
@@ -162,6 +201,7 @@
     if (links.length < 4 || !window.PDFLib) return;
     mergeBusy = true;
     try {
+      await brandManagerPdf(links[3]);
       const merged = await window.PDFLib.PDFDocument.create();
       for (const link of links) {
         const bytes = await fetch(link.href).then(r => r.arrayBuffer());
@@ -193,13 +233,13 @@
         share.className = 'download-link share-link';
         share.textContent = 'Compartir';
         share.addEventListener('click', async () => {
-          try { await navigator.share({files:[file], title:'Transferencia de vehículo'}); } catch (err) { if (err?.name !== 'AbortError') console.error(err); }
+          try { await navigator.share({files:[file], title:'Traspaso · Transferencia de vehículo'}); } catch (err) { if (err?.name !== 'AbortError') console.error(err); }
         });
         actions.prepend(share);
       }
       downloads.prepend(row);
       const status = $('#generateStatus');
-      if (status) status.textContent = 'Documentación preparada. Esta operación se conservará hasta que inicies otra.';
+      if (status) status.textContent = 'Documentación preparada.';
     } catch (err) {
       console.error('No se pudo crear el PDF completo', err);
     } finally {
@@ -214,7 +254,7 @@
   $('#newCase')?.addEventListener('click', e => {
     e.preventDefault();
     e.stopImmediatePropagation();
-    if (!confirm('¿Empezar una transferencia nueva? La operación actual dejará de conservarse. Los datos de gestoría y tus valores habituales se mantendrán.')) return;
+    if (!confirm('¿Empezar una transferencia nueva? La operación actual se sustituirá. Los datos de gestoría y valores habituales se mantendrán.')) return;
 
     const office = {};
     officeFields.forEach(name => { office[name] = value(name); });
@@ -236,7 +276,9 @@
     showStep('operacion');
     updateProgress();
     updateReview();
-    updateLastNote('<strong>Nueva transferencia.</strong> La anterior ya no se conserva; esta será la única operación guardada mientras trabajas.');
+    setOperationTitle(false);
+    const note = $('#lastOperationNote');
+    if (note) { note.innerHTML = ''; note.classList.remove('visible'); }
   }, true);
 
   form.addEventListener('input', e => {
@@ -270,9 +312,13 @@
   const hadLast = hasLastOperation();
   if (!hadLast) setValues(readStore(DEFAULTS_KEY), true);
   setFreshDefaults();
+  setOperationTitle(hadLast);
   updateProgress();
   updateLastNote();
   setTimeout(updateReview,0);
 
-  window.addEventListener('beforeunload', clearCombined);
+  window.addEventListener('beforeunload', () => {
+    clearCombined();
+    brandedUrls.splice(0).forEach(url => URL.revokeObjectURL(url));
+  });
 })();
