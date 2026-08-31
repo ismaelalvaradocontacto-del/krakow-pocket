@@ -21,7 +21,7 @@
     makes.defer = true;
     makes.addEventListener('load', () => {
       const normalize = document.createElement('script');
-      normalize.src = './vehicle-field-normalize.js?v=20260831t';
+      normalize.src = './vehicle-field-normalize.js?v=20260831v';
       normalize.defer = true;
       normalize.addEventListener('load', () => {
         const fastScan = document.createElement('script');
