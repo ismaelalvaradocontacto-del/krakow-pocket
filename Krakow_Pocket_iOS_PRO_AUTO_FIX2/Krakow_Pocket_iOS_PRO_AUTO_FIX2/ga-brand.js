@@ -3,6 +3,7 @@
   dateStyle.rel = 'stylesheet';
   dateStyle.href = './date-fields.css?v=20260831g';
   document.head.appendChild(dateStyle);
+
   const dateScript = document.createElement('script');
   dateScript.src = './date-fields.js?v=20260831g';
   dateScript.defer = true;
@@ -12,33 +13,10 @@
   scanStyle.rel = 'stylesheet';
   scanStyle.href = './vehicle-scan.css?v=20260831i';
   document.head.appendChild(scanStyle);
+
   const scanScript = document.createElement('script');
-  scanScript.src = './vehicle-scan.js?v=20260831i';
+  scanScript.src = './vehicle-scan.js?v=20260831ai';
   scanScript.defer = true;
-  scanScript.addEventListener('load', () => {
-    const makes = document.createElement('script');
-    makes.src = './vehicle-brand-rescue.js?v=20260831r';
-    makes.defer = true;
-    makes.addEventListener('load', () => {
-      const reset = document.createElement('script');
-      reset.src = './vehicle-scan-new-source.js?v=20260831b';
-      reset.defer = true;
-      reset.addEventListener('load', () => {
-        const ocr = document.createElement('script');
-        ocr.src = './vehicle-scan-v6.js?v=20260831ac';
-        ocr.defer = true;
-        ocr.addEventListener('load', () => {
-          const refine = document.createElement('script');
-          refine.src = './vehicle-scan-field-refine.js?v=20260831c';
-          refine.defer = true;
-          document.head.appendChild(refine);
-        }, {once:true});
-        document.head.appendChild(ocr);
-      }, {once:true});
-      document.head.appendChild(reset);
-    }, {once:true});
-    document.head.appendChild(makes);
-  }, {once:true});
   document.head.appendChild(scanScript);
 
   const RED = [177/255, 15/255, 63/255];
@@ -84,8 +62,7 @@
   }
 
   function scan() {
-    const rows = document.querySelectorAll('.downloads .download-row');
-    rows.forEach(row => {
+    document.querySelectorAll('.downloads .download-row').forEach(row => {
       const link = row.querySelector('a.download-link');
       if (!link) return;
       if (row.classList.contains('combined')) {
@@ -93,9 +70,7 @@
         return;
       }
       const label = row.querySelector('.download-copy strong')?.textContent || '';
-      if (/ficha para el gestor|ficha del gestor/i.test(label)) {
-        setTimeout(() => stampPdf(link, 0, false), 120);
-      }
+      if (/ficha para el gestor|ficha del gestor/i.test(label)) setTimeout(() => stampPdf(link, 0, false), 120);
     });
   }
 
