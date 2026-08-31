@@ -1,8 +1,8 @@
 (() => {
   const form = document.getElementById('vehicleForm');
   const ui = document.querySelector('.vehicle-scan');
-  if (!form || !ui || ui.dataset.fastOcr === '2') return;
-  ui.dataset.fastOcr = '2';
+  if (!form || !ui || ui.dataset.fastOcr === '3') return;
+  ui.dataset.fastOcr = '3';
 
   const cameraInput = ui.querySelector('.scan-input-camera');
   const uploadInput = ui.querySelector('.scan-input-upload');
@@ -358,7 +358,7 @@
   }
 
   function count(data) {
-    return fields.reduce((total, name) => total + (clean(data[name]) ? 1 : 0), 0);
+    return fields.reduce((total, name) => total + (clean(data[name]) ? 1 : 0), 0;
   }
 
   function merge(primary, secondary) {
@@ -410,6 +410,29 @@
     return sheet;
   }
 
+  function clearPreviousOcrValues() {
+    applying = true;
+    try {
+      fields.forEach(name => {
+        const input = field(name);
+        if (!input) return;
+
+        // Si el usuario corrigió el campo manualmente después del OCR,
+        // se conserva. Todo valor procedente de una lectura anterior se
+        // elimina para que dos permisos distintos nunca se mezclen.
+        if (input.dataset.manualAfterOcr === '1') return;
+        if (input.dataset.ocrFilled === '1') {
+          input.value = '';
+          delete input.dataset.ocrFilled;
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+    } finally {
+      applying = false;
+    }
+  }
+
   function fill(data) {
     let preserved = 0;
     applying = true;
@@ -424,6 +447,7 @@
         }
         input.value = upper(value);
         input.dataset.ocrFilled = '1';
+        delete input.dataset.manualAfterOcr;
         input.dispatchEvent(new Event('input', { bubbles: true }));
         input.dispatchEvent(new Event('change', { bubbles: true }));
       });
@@ -450,6 +474,11 @@
       return;
     }
     if (running) return;
+
+    // Cada imagen representa una nueva fuente documental. Antes de leerla,
+    // se retiran los valores que vinieron del OCR anterior para impedir que
+    // queden datos de dos vehículos mezclados si el nuevo OCR no detecta todo.
+    clearPreviousOcrValues();
 
     setBusy(true);
     setResult('');
