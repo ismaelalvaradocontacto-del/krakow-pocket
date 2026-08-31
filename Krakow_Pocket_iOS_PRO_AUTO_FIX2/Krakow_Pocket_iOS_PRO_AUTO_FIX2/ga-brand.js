@@ -21,12 +21,18 @@
     makes.defer = true;
     makes.addEventListener('load', () => {
       const reset = document.createElement('script');
-      reset.src = './vehicle-scan-new-source.js?v=20260831a';
+      reset.src = './vehicle-scan-new-source.js?v=20260831b';
       reset.defer = true;
       reset.addEventListener('load', () => {
         const paddle = document.createElement('script');
         paddle.src = './vehicle-scan-paddle.js?v=20260831ab';
         paddle.defer = true;
+        paddle.addEventListener('load', () => {
+          const refine = document.createElement('script');
+          refine.src = './vehicle-scan-field-refine.js?v=20260831a';
+          refine.defer = true;
+          document.head.appendChild(refine);
+        }, {once:true});
         document.head.appendChild(paddle);
       }, {once:true});
       document.head.appendChild(reset);
