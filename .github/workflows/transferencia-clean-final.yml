@@ -25,7 +25,6 @@ jobs:
 
           app = Path('Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2')
 
-          # HTML: retirar todos los antiguos fragmentos Base64.
           p = app / 'vehiculos.html'
           s = p.read_text()
           s = '\n'.join(line for line in s.splitlines() if 'vehiculos-tpl-' not in line) + '\n'
@@ -33,7 +32,6 @@ jobs:
           s = s.replace('vehiculos.js?v=20260831b', 'vehiculos.js?v=20260831c')
           p.write_text(s)
 
-          # JS: cargar directamente los tres PDF binarios.
           p = app / 'vehiculos.js'
           s = p.read_text()
           new_loader = '''  const TEMPLATE_FILES = Object.freeze({
@@ -54,16 +52,9 @@ jobs:
             return bytes.slice();
           }
           '''
-          s, n = re.subn(
-              r'  function templateBytes\(base64\) \{\n.*?\n  \}\n',
-              new_loader,
-              s,
-              count=1,
-              flags=re.S,
-          )
+          s, n = re.subn(r'  function templateBytes\(base64\) \{\n.*?\n  \}\n', new_loader, s, count=1, flags=re.S)
           if n != 1:
               raise SystemExit(f'templateBytes: se esperaban 1 sustitución y hubo {n}')
-
           replacements = {
             'PDFDocument.load(templateBytes(window.VEHICLE_DOC_TEMPLATES.mandate))': "PDFDocument.load(await templateBytes('mandate'))",
             'PDFDocument.load(templateBytes(window.VEHICLE_DOC_TEMPLATES.contractRehab))': "PDFDocument.load(await templateBytes('contractRehab'))",
@@ -76,7 +67,6 @@ jobs:
               s = s.replace(old, new)
           p.write_text(s)
 
-          # Service worker: cachear los PDF reales.
           p = app / 'sw.js'
           s = p.read_text()
           s = re.sub(r',"\./vehiculos-tpl-[^"]+\.js"', '', s)
@@ -87,7 +77,6 @@ jobs:
           s = re.sub(r'const CACHE="[^"]+";', 'const CACHE="pocket-v21-transferencia-pdf-20260831";', s, count=1)
           p.write_text(s)
 
-          # Prueba integral usando exactamente las plantillas servidas por Pocket.
           test = r'''import fs from 'node:fs';
           import path from 'node:path';
           import vm from 'node:vm';
@@ -152,7 +141,6 @@ jobs:
           '''
           (app/'scripts/test-vehiculos.mjs').write_text(textwrap.dedent(test))
 
-          # Eliminar toda la infraestructura temporal anterior.
           for f in app.glob('vehiculos-tpl-*.js'): f.unlink()
           for f in (app/'assets/vehiculos').glob('*.b64'): f.unlink()
           shutil.rmtree(app/'_transport',ignore_errors=True)
@@ -171,7 +159,6 @@ jobs:
           set -euo pipefail
           git config user.name 'Pocket Automation'
           git config user.email 'actions@users.noreply.github.com'
-          git rm .github/workflows/transferencia-clean-final.yml
           git add -A
           git commit -m 'Finaliza Transferencia con plantillas PDF binarias'
           git push
