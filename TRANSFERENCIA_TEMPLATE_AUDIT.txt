@@ -1,0 +1,37 @@
+[mandato] files=14
+vehiculos-tpl-mandate-01.js chars= 11673 sha256= cc67350f639914f191a99811406eb55f4376d8ed6152ec93cba9746eb8860a1a
+vehiculos-tpl-mandate-02.js chars= 11673 sha256= 46cc41337a7f751d0f6cb3a9c2c53fa1249473c085a4a8ee2414ebed423057ce
+vehiculos-tpl-mandate-03.js chars= 11674 sha256= 4f46ea1758484c2143bd752246800e0665a5b2a9758004ffbad751caa0717a6f
+vehiculos-tpl-mandate-04.js chars= 11673 sha256= 3e7ea744f9cb2e2fa0d7317e5001d3df5b3539dfa8ad04d738657acd1dc1eb98
+vehiculos-tpl-mandate-05.js chars= 11674 sha256= f9bf9746caf41be176f2b7a1c2f3ae694bcdb2d4a89795745573a2b5050711ef
+vehiculos-tpl-mandate-06.js chars= 11672 sha256= 70f552b731aac3524c287309b172791068dea827cabf464b059370f9fe4054ee
+vehiculos-tpl-mandate-07.js chars= 11673 sha256= 989308d8fbf96b31075152489176a53684e32a2dbf811385ce6b13da72520751
+vehiculos-tpl-mandate-08.js chars= 11674 sha256= 10005eb2e7a943e52cfc19b40435d5dd72beb580a5b42d06964eaa8c8824a11b
+vehiculos-tpl-mandate-09.js chars= 11673 sha256= 499955f73f50b0a96fde8755ad76408feb0252819590f26ff0ec9cd236d7b27f
+vehiculos-tpl-mandate-10.js chars= 11618 sha256= 144c6dcc118f0320055d621d14c35fd44477988bc65dbec21a12565821ec3f43
+vehiculos-tpl-mandate-11.js chars= 11696 sha256= a7fb4ab42fbe088789e20958c03056a3c3c0ad0152e5a49d5ef0533c4dd0883a
+vehiculos-tpl-mandate-12.js chars= 5279 sha256= cbe15eabe761350716db6f2f36a7df4970b9cc31113930f167eeeb954d57329f
+vehiculos-tpl-mandate-13.js chars= 11095 sha256= 07693a4304e044a003a2e29f148870ed5a6d3ced43c971e443d9affcadd2c172
+vehiculos-tpl-mandate-14.js chars= 11673 sha256= 69613a917fb03b66f930ed14dde6237b7c63744a477163e34f4f0e724b0f91f6
+base64_chars= 156420
+bytes= 117315 sha256= 129099f81c327d17cec4f4b424f338f5b71f98d928a22d3e87281da363767acd header= b'%PDF-1.7' tail= b'p\x06\xfd\x1fU\xfd&q'
+expected= 175100 eef564a0880b1ee913456315bb7304df9410fd71be9066cc5de0eee4f39138c0
+MATCH= False
+
+[particulares] files=3
+vehiculos-tpl-contractparticulares-01.js chars= 15000 sha256= 203ed0dd833bc40ce8def70c0f2e1aeb92ebfe55deb6a03b56545ff1d360675e
+vehiculos-tpl-contractparticulares-02.js chars= 15000 sha256= 1412cd3bc91ca6fc77fecd486879361c3feb3eca9cc6f8d0ea47f2c3f3a41138
+vehiculos-tpl-contractparticulares-03.js chars= 15000 sha256= 340192c1e03718072cd6308d346d7e5e7b4251065baca183f42a6106a0d68cbd
+base64_chars= 45000
+bytes= 33750 sha256= 81b8f6e46b0640e0bc14460cb64bb7bdbf66165287d0fa9fc5613d811d45cb79 header= b'%PDF-1.7' tail= b'\xe72\xcb\x9e\xd3E\xd2['
+expected= 78922 77048a0ebdf6933a549563a92045cba0db79d9f32e98e986940ab11ba6ba1d56
+MATCH= False
+
+[rehabilitacion] files=4
+vehiculos-tpl-contractrehab-01.js chars= 15000 sha256= 331d1843ae606a85d2120999aa1943e37f817d188da957f3e09cf74ed03afd93
+vehiculos-tpl-contractrehab-02.js chars= 14999 sha256= 9a669acccdb5b63843f4fac491d7e1baaf1ca4f0ae743917054b0161f1b364b7
+vehiculos-tpl-contractrehab-03.js chars= 15000 sha256= 079d12002d4d7ee1b09f58bbd7734c62368278abde3fbf9c3136a03b4bc0de3b
+vehiculos-tpl-contractrehab-04.js chars= 4352 sha256= 304b7e9d17a0d0bf2c82c819fef8dc8bd9a0c148bbabffc1ece2e8226df35315
+base64_chars= 49351
+DECODE_ERROR= Error('Incorrect padding')
+
