@@ -44,13 +44,18 @@
 
         <div class="field contract-model-field required">
           <span>Tipo de operación</span>
+          <select name="contractModel" required hidden aria-hidden="true" tabindex="-1">
+            <option value="">Selecciona</option>
+            <option value="particulares">Particulares</option>
+            <option value="rehabilitacion">Rehabilitación</option>
+          </select>
           <div class="choice-grid">
             <label class="choice">
-              <input type="radio" name="contractModel" value="particulares" required>
+              <input type="radio" name="contractModelVisual" value="particulares" data-contract-value="particulares">
               <span class="choice-card"><span><strong>Compraventa</strong><small>Contrato entre particulares</small></span></span>
             </label>
             <label class="choice">
-              <input type="radio" name="contractModel" value="rehabilitacion" required>
+              <input type="radio" name="contractModelVisual" value="rehabilitacion" data-contract-value="rehabilitacion">
               <span class="choice-card"><span><strong>Rehabilitación</strong><small>Modelo específico de rehabilitación</small></span></span>
             </label>
           </div>
@@ -191,5 +196,21 @@
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
   <script src="./vehiculos.js?v=20260831d"></script>
   <script src="./vehiculos-v2.js?v=20260831d"></script>
+  <script>
+    (() => {
+      const form = document.getElementById('vehicleForm');
+      const select = form?.elements.namedItem('contractModel');
+      const radios = Array.from(document.querySelectorAll('[data-contract-value]'));
+      if (!form || !select || !radios.length) return;
+      const sync = () => radios.forEach(r => { r.checked = r.dataset.contractValue === select.value; });
+      radios.forEach(r => r.addEventListener('change', () => {
+        if (!r.checked) return;
+        select.value = r.dataset.contractValue;
+        select.dispatchEvent(new Event('change', {bubbles:true}));
+      }));
+      select.addEventListener('change', sync);
+      sync();
+    })();
+  </script>
 </body>
 </html>
