@@ -1,38 +1,64 @@
 (() => {
   const RED = [177/255, 15/255, 63/255];
   const branded = new WeakSet();
+  const urls = [];
 
-  async function applyGaBrand(link) {
-    if (!link || branded.has(link) || !window.PDFLib) return;
-    const row = link.closest('.download-row');
-    const label = row?.querySelector('.download-copy strong')?.textContent || '';
-    if (!/ficha para el gestor|ficha del gestor/i.test(label)) return;
+  async function stampPdf(link, pageIndex = 0, combined = false) {
+    if (!link || branded.has(link) || !window.PDFLib || !link.href) return;
     branded.add(link);
     try {
       const bytes = await fetch(link.href).then(r => r.arrayBuffer());
       const doc = await window.PDFLib.PDFDocument.load(bytes);
-      const page = doc.getPages()[0];
+      const pages = doc.getPages();
+      const page = pages[Math.min(pageIndex, pages.length - 1)];
       const bold = await doc.embedFont(window.PDFLib.StandardFonts.HelveticaBold);
       const h = page.getHeight();
-      page.drawRectangle({x:38,y:h-62,width:280,height:25,color:window.PDFLib.rgb(1,1,1)});
+      page.drawRectangle({x:38,y:h-62,width:290,height:25,color:window.PDFLib.rgb(1,1,1)});
       page.drawText('gA · TRASPASO · FICHA DE GESTIÓN',{x:44,y:h-49,size:8,font:bold,color:window.PDFLib.rgb(...RED)});
       const out = await doc.save();
       const blob = new Blob([out], {type:'application/pdf'});
       const url = URL.createObjectURL(blob);
+      urls.push(url);
       link.href = url;
       link.dataset.gaBranded = '1';
+
+      if (combined) {
+        const row = link.closest('.download-row');
+        const share = row?.querySelector('.share-link');
+        if (share && navigator.share) {
+          const fresh = share.cloneNode(true);
+          const filename = link.download || 'Transferencia completa.pdf';
+          const file = new File([blob], filename, {type:'application/pdf'});
+          fresh.addEventListener('click', async () => {
+            try { await navigator.share({files:[file], title:'Traspaso · gA'}); }
+            catch (err) { if (err?.name !== 'AbortError') console.error(err); }
+          });
+          share.replaceWith(fresh);
+        }
+      }
     } catch (err) {
       console.error('No se pudo aplicar la identidad gA al PDF', err);
     }
   }
 
   function scan() {
-    document.querySelectorAll('.downloads .download-row .download-link').forEach(link => {
-      setTimeout(() => applyGaBrand(link), 120);
+    const rows = document.querySelectorAll('.downloads .download-row');
+    rows.forEach(row => {
+      const link = row.querySelector('a.download-link');
+      if (!link) return;
+      if (row.classList.contains('combined')) {
+        setTimeout(() => stampPdf(link, 4, true), 160);
+        return;
+      }
+      const label = row.querySelector('.download-copy strong')?.textContent || '';
+      if (/ficha para el gestor|ficha del gestor/i.test(label)) {
+        setTimeout(() => stampPdf(link, 0, false), 120);
+      }
     });
   }
 
   const target = document.getElementById('downloads');
   if (target) new MutationObserver(scan).observe(target, {childList:true, subtree:true, attributes:true});
   scan();
+  window.addEventListener('beforeunload', () => urls.splice(0).forEach(URL.revokeObjectURL));
 })();
