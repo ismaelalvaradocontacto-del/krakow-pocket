@@ -1,4 +1,13 @@
 (() => {
+  const dateStyle = document.createElement('link');
+  dateStyle.rel = 'stylesheet';
+  dateStyle.href = './date-fields.css?v=20260831g';
+  document.head.appendChild(dateStyle);
+  const dateScript = document.createElement('script');
+  dateScript.src = './date-fields.js?v=20260831g';
+  dateScript.defer = true;
+  document.head.appendChild(dateScript);
+
   const RED = [177/255, 15/255, 63/255];
   const branded = new WeakSet();
   const urls = [];
