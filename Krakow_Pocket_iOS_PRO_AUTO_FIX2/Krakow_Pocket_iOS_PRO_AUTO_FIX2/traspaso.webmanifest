@@ -1,0 +1,19 @@
+{
+  "name": "Traspaso",
+  "short_name": "Traspaso",
+  "description": "Transferencias de vehículos",
+  "start_url": "./vehiculos.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f3f0e9",
+  "theme_color": "#24231f",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "./traspaso-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
