@@ -1,8 +1,8 @@
 (() => {
   const form = document.getElementById('vehicleForm');
   const ui = document.querySelector('.vehicle-scan');
-  if (!form || !ui || ui.dataset.unifiedOcr === '5') return;
-  ui.dataset.unifiedOcr = '5';
+  if (!form || !ui || ui.dataset.unifiedOcr === '6') return;
+  ui.dataset.unifiedOcr = '6';
 
   const cameraInput = ui.querySelector('.scan-input-camera');
   const uploadInput = ui.querySelector('.scan-input-upload');
@@ -32,22 +32,31 @@
   let stage = 'base';
 
   function canonicalBrand(value) {
-    const raw = upper(value)
-      .replace(/^(?:MARCA|BRAND)\s*[:;,.·\-–—]?\s*/i, '')
+    let raw = upper(value)
+      .replace(/^(?:D\s*[.·,:;-]?\s*1|MARCA|BRAND)\s*[:;,.·\-–—]?\s*/i, '')
       .replace(/[^A-ZÁÉÍÓÚÜÑ0-9 .&+\-/]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
-    if (raw.length < 2 || raw.length > 40 || !/[A-ZÁÉÍÓÚÜÑ]{2}/.test(raw)) return '';
-    if (/OBSERV|DOCUMENT|MATR[IÍ]CULA|MODELO|BASTIDOR|COMBUSTIBLE|CILINDRADA|POTENCIA/i.test(raw)) return '';
-    return window.TRASPASO_CANONICALIZE_MAKE?.(raw) || raw;
+
+    if (!raw || raw.length < 2 || raw.length > 40 || !/[A-ZÁÉÍÓÚÜÑ]{2}/.test(raw)) return '';
+    if (/OBSERV|DOCUMENT|MATR[IÍ]CULA|MODELO|BASTIDOR|COMBUSTIBLE|CILINDRADA|POTENCIA|PART[- ]?SIN/i.test(raw)) return '';
+
+    const known = window.TRASPASO_VEHICLE_MAKES_2026 || [];
+    const rawKey = compact(raw);
+    const exact = known.find(make => compact(make) === rawKey);
+    if (exact) return exact;
+
+    const canon = window.TRASPASO_CANONICALIZE_MAKE?.(raw);
+    return canon || raw;
   }
 
   function modelValue(value) {
     const raw = upper(value)
-      .replace(/^(?:MODELO|DENOMINACI[ÓO]N\s+COMERCIAL)\s*[:;,.·\-–—]?\s*/i, '')
+      .replace(/^(?:D\s*[.·,:;-]?\s*3|MODELO|DENOMINACI[ÓO]N\s+COMERCIAL)\s*[:;,.·\-–—]?\s*/i, '')
       .replace(/[^A-Z0-9 .+\-_/]/g, ' ')
       .replace(/\s+/g, ' ')
       .trim();
+
     if (raw.length < 2 || raw.length > 55) return '';
     if (/^(?:OBSERVACIONES?|DOCUMENTO|PART[- ]?SIN|D[. ]?[1234]|C[. ]?4)$/i.test(raw)) return '';
     return raw;
@@ -66,12 +75,10 @@
     if (!original || /OBSERV|DOCUMENT|FECHA|METRAJ|KILOMET|PR[ÓO]XIMA|ITV|VIGOR/i.test(original)) return '';
 
     const raw = original.replace(/[^A-Z0-9]/g, '');
-    if (raw.length < 17 || raw.length > 24) return '';
+    if (raw.length < 17 || raw.length > 22) return '';
 
     for (let i = 0; i <= raw.length - 17; i += 1) {
       const piece = raw.slice(i, i + 17);
-      // Un VIN real mezcla letras y números. Esta regla evita aceptar frases
-      // de 17 caracteres (p.ej. OBSERVACIONES) como bastidor.
       const letters = (piece.match(/[A-Z]/g) || []).length;
       const digits = (piece.match(/\d/g) || []).length;
       if (letters < 3 || digits < 3) continue;
@@ -83,12 +90,18 @@
     return '';
   }
 
-  function normalizeField(name, value) {
+  function validate(name, value) {
     if (name === 'brand') return canonicalBrand(value);
     if (name === 'model') return modelValue(value);
-    if (name === 'vin') return vinValue(value) || upper(value).replace(/[^A-Z0-9]/g, '');
-    if (name === 'plate') return plateValue(value) || upper(value).replace(/[^A-Z0-9-]/g, '');
-    return upper(value);
+    if (name === 'vin') return vinValue(value);
+    if (name === 'plate') return plateValue(value);
+    return '';
+  }
+
+  function normalizeManual(name, value) {
+    const raw = upper(value);
+    if (name === 'brand' || name === 'model') return raw;
+    return raw.replace(/\s+/g, '');
   }
 
   names.forEach(name => {
@@ -97,23 +110,22 @@
     input.autocapitalize = 'characters';
     input.autocomplete = 'off';
     input.spellcheck = false;
+
     input.addEventListener('input', event => {
       if (writing || event.isComposing) return;
-      if (name === 'brand' || name === 'model') input.value = upper(input.value);
-      else input.value = upper(input.value).replace(/\s+/g, '');
+      input.value = normalizeManual(name, input.value);
     });
+
     input.addEventListener('blur', () => {
-      const next = normalizeField(name, input.value);
-      if (next) input.value = next;
+      const checked = validate(name, input.value);
+      if (checked) input.value = checked;
     });
   });
 
   [0, 120, 500].forEach(delay => setTimeout(() => {
     names.forEach(name => {
       const input = field(name);
-      if (!input?.value) return;
-      if (name === 'brand' || name === 'model') input.value = upper(input.value);
-      else input.value = upper(input.value).replace(/\s+/g, '');
+      if (input?.value) input.value = normalizeManual(name, input.value);
     });
   }, delay));
 
@@ -157,6 +169,7 @@
   function loadTesseract() {
     if (window.Tesseract?.createWorker) return Promise.resolve(window.Tesseract);
     if (tesseractPromise) return tesseractPromise;
+
     tesseractPromise = new Promise((resolve, reject) => {
       const existing = document.querySelector('script[src*="tesseract.js@5"]');
       if (existing) {
@@ -174,28 +187,31 @@
       script.onerror = () => reject(new Error('No se pudo cargar el lector.'));
       document.head.appendChild(script);
     });
+
     return tesseractPromise;
   }
 
   async function getWorker() {
     if (workerPromise) return workerPromise;
+
     workerPromise = loadTesseract().then(Tesseract => Tesseract.createWorker('spa', 1, {
       logger(message) {
         if (message.status === 'recognizing text') {
           const raw = Math.round((message.progress || 0) * 100);
           const maps = {
+            template:[8,58,'Leyendo campos…'],
             base:[12,48,'Leyendo documento…'],
-            enhanced:[62,22,'Mejorando lectura…'],
-            focus:[86,11,'Completando campos…'],
-            rotated:[86,11,'Comprobando orientación…']
+            enhanced:[62,25,'Mejorando lectura…'],
+            rotated:[88,9,'Comprobando orientación…']
           };
           const [start, span, copy] = maps[stage] || maps.base;
           setProgress(start + Math.round(raw * span / 100), copy);
         } else if (/loading|initializing/i.test(message.status || '')) {
-          setProgress(7, 'Preparando lector…');
+          setProgress(6, 'Preparando lector…');
         }
       }
     }));
+
     return workerPromise;
   }
 
@@ -228,20 +244,27 @@
         img.onerror = reject;
         img.src = url;
       });
+
       const maxSide = 3000;
       const longest = Math.max(image.naturalWidth, image.naturalHeight);
       const shortest = Math.min(image.naturalWidth, image.naturalHeight);
       let scale = Math.min(1, maxSide / longest);
-      if (shortest < 1100) scale = Math.min(maxSide / longest, Math.max(scale, Math.min(2.2, 1400 / Math.max(1, shortest))));
+
+      if (shortest < 1100) {
+        scale = Math.min(maxSide / longest, Math.max(scale, Math.min(2.2, 1400 / Math.max(1, shortest))));
+      }
+
       const canvas = document.createElement('canvas');
       canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
       canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
       const ctx = canvas.getContext('2d', { alpha:false, willReadFrequently:true });
+
       ctx.fillStyle = '#fff';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillRect(0,0,canvas.width,canvas.height);
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-      ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(image,0,0,canvas.width,canvas.height);
+
       return canvas;
     } finally {
       URL.revokeObjectURL(url);
@@ -252,31 +275,52 @@
     const out = document.createElement('canvas');
     out.width = source.width;
     out.height = source.height;
+
     const ctx = out.getContext('2d', { alpha:false, willReadFrequently:true });
-    ctx.drawImage(source, 0, 0);
-    const image = ctx.getImageData(0, 0, out.width, out.height);
+    ctx.drawImage(source,0,0);
+
+    const image = ctx.getImageData(0,0,out.width,out.height);
     const data = image.data;
     const histogram = new Uint32Array(256);
+
     for (let i = 0; i < data.length; i += 4) {
       const lum = Math.round(.299*data[i] + .587*data[i+1] + .114*data[i+2]);
       histogram[lum] += 1;
     }
-    const total = out.width * out.height;
-    let acc = 0, low = 0, high = 255;
-    for (let i = 0; i < 256; i += 1) { acc += histogram[i]; if (acc >= total*.012) { low = i; break; } }
+
+    const total = out.width*out.height;
+    let acc = 0;
+    let low = 0;
+    let high = 255;
+
+    for (let i = 0; i < 256; i += 1) {
+      acc += histogram[i];
+      if (acc >= total*.012) { low = i; break; }
+    }
+
     acc = 0;
-    for (let i = 0; i < 256; i += 1) { acc += histogram[i]; if (acc >= total*.988) { high = i; break; } }
-    if (high - low < 50) { low = Math.max(0, low-25); high = Math.min(255, high+25); }
-    const span = Math.max(1, high-low);
+    for (let i = 0; i < 256; i += 1) {
+      acc += histogram[i];
+      if (acc >= total*.988) { high = i; break; }
+    }
+
+    if (high-low < 50) {
+      low = Math.max(0,low-25);
+      high = Math.min(255,high+25);
+    }
+
+    const span = Math.max(1,high-low);
+
     for (let i = 0; i < data.length; i += 4) {
       const lum = .299*data[i] + .587*data[i+1] + .114*data[i+2];
       let value = ((lum-low)*255)/span;
-      value = (Math.max(0, Math.min(255, value))-128)*1.22+128;
-      value = Math.max(0, Math.min(255, value));
+      value = (Math.max(0,Math.min(255,value))-128)*1.22+128;
+      value = Math.max(0,Math.min(255,value));
       data[i] = data[i+1] = data[i+2] = value;
       data[i+3] = 255;
     }
-    ctx.putImageData(image, 0, 0);
+
+    ctx.putImageData(image,0,0);
     return out;
   }
 
@@ -284,12 +328,115 @@
     const out = document.createElement('canvas');
     out.width = source.height;
     out.height = source.width;
+
     const ctx = out.getContext('2d', { alpha:false });
     ctx.fillStyle = '#fff';
     ctx.fillRect(0,0,out.width,out.height);
     ctx.translate(out.width/2,out.height/2);
     ctx.rotate(Math.PI/2);
     ctx.drawImage(source,-source.width/2,-source.height/2);
+
+    return out;
+  }
+
+  function isKnownPermitLayout(source) {
+    const ratio = source.width/source.height;
+    return source.width > source.height && ratio >= 1.28 && ratio <= 1.55;
+  }
+
+  const TEMPLATE_ROWS = {
+    plate:{x:.09,y:.025,w:.38,h:.085, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-'},
+    vin:{x:.575,y:.025,w:.405,h:.085, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'},
+    brand:{x:.09,y:.705,w:.39,h:.09, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .&+-/'},
+    model:{x:.09,y:.835,w:.39,h:.065, whitelist:'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 .+-/_'}
+  };
+
+  function cropRow(source, spec, enhanced = false) {
+    const sx = Math.max(0,Math.round(source.width*spec.x));
+    const sy = Math.max(0,Math.round(source.height*spec.y));
+    const sw = Math.max(1,Math.min(source.width-sx,Math.round(source.width*spec.w)));
+    const sh = Math.max(1,Math.min(source.height-sy,Math.round(source.height*spec.h)));
+
+    const scale = Math.max(3, Math.min(6, 1700/Math.max(sw,1)));
+    const out = document.createElement('canvas');
+    out.width = Math.max(1,Math.round(sw*scale));
+    out.height = Math.max(1,Math.round(sh*scale));
+
+    const ctx = out.getContext('2d', { alpha:false, willReadFrequently:true });
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,out.width,out.height);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(source,sx,sy,sw,sh,0,0,out.width,out.height);
+
+    if (!enhanced) return out;
+
+    const image = ctx.getImageData(0,0,out.width,out.height);
+    const data = image.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const lum = .299*data[i] + .587*data[i+1] + .114*data[i+2];
+      let value = (lum-128)*1.45+128;
+      value = Math.max(0,Math.min(255,value));
+      data[i] = data[i+1] = data[i+2] = value;
+      data[i+3] = 255;
+    }
+    ctx.putImageData(image,0,0);
+    return out;
+  }
+
+  function cropText(name, text) {
+    const lines = String(text || '')
+      .replace(/\r/g,'\n')
+      .split(/\n+/)
+      .map(line => clean(line))
+      .filter(Boolean);
+
+    for (const line of lines) {
+      const value = validate(name,line);
+      if (value) return value;
+    }
+
+    const joined = clean(lines.join(' '));
+    return validate(name,joined);
+  }
+
+  async function recognize(worker, canvas, psm, timeout, whitelist = '') {
+    try {
+      await worker.setParameters({
+        tessedit_pageseg_mode:String(psm),
+        preserve_interword_spaces:'1',
+        tessedit_char_whitelist:whitelist
+      });
+    } catch (_) {}
+
+    return withTimeout(worker.recognize(canvas, {}, { text:true, tsv:true }), timeout);
+  }
+
+  async function readTemplateRows(worker, source) {
+    if (!isKnownPermitLayout(source)) return {};
+
+    stage = 'template';
+    const out = {};
+    const order = ['plate','vin','brand','model'];
+
+    for (let i = 0; i < order.length; i += 1) {
+      const name = order[i];
+      const spec = TEMPLATE_ROWS[name];
+      setProgress(8 + i*13, `Leyendo ${name === 'plate' ? 'matrícula' : name === 'vin' ? 'bastidor' : name === 'brand' ? 'marca' : 'modelo'}…`);
+
+      try {
+        const first = await recognize(worker,cropRow(source,spec,false),7,7500,spec.whitelist);
+        out[name] = cropText(name,first?.data?.text || '');
+
+        if (!out[name]) {
+          const second = await recognize(worker,cropRow(source,spec,true),7,6500,spec.whitelist);
+          out[name] = cropText(name,second?.data?.text || '');
+        }
+      } catch (error) {
+        if (error?.code === 'OCR_TIMEOUT') resetWorker();
+      }
+    }
+
     return out;
   }
 
@@ -303,9 +450,9 @@
       .filter(Boolean);
   }
 
-  function sameLineValue(lines, codeRegex, validator) {
+  function sameLineValue(lines, regex, validator) {
     for (const line of lines) {
-      const match = line.match(codeRegex);
+      const match = line.match(regex);
       if (!match) continue;
       const value = validator(match[1] || '');
       if (value) return value;
@@ -313,41 +460,17 @@
     return '';
   }
 
-  function parseText(text) {
-    const lines = linesOf(text);
-    const data = {
-      plate: sameLineValue(lines, /^\s*A\s*[:;,.·\-–—]?\s*(.+)$/i, plateValue),
-      vin: sameLineValue(lines, /^\s*E\s*[:;,.·\-–—]?\s*(.+)$/i, vinValue),
-      brand: sameLineValue(lines, /^\s*[D0]\s*[.·,:;\-]?\s*[1IL]\s*[:;,.·\-–—]?\s*(.+)$/i, canonicalBrand),
-      model: sameLineValue(lines, /^\s*[D0]\s*[.·,:;\-]?\s*[3B]\s*[:;,.·\-–—]?\s*(.+)$/i, modelValue)
-    };
-
-    if (!data.plate) {
-      const modern = upper(text).match(/\b\d{4}\s*[BCDFGHJKLMNPRSTVWXYZ]{3}\b/);
-      if (modern) data.plate = modern[0].replace(/\s+/g,'');
-    }
-
-    if (!data.brand) {
-      const makes = window.TRASPASO_VEHICLE_MAKES_2026 || [];
-      for (const line of lines) {
-        const key = compact(line);
-        const known = makes.find(make => compact(make) === key);
-        if (known) { data.brand = known; break; }
-      }
-    }
-
-    // Deliberadamente NO buscamos VIN por todo el texto. Debe estar asociado a E.
-    return data;
-  }
-
   function parseTsv(tsv) {
     const rows = String(tsv || '').split(/\r?\n/);
     const words = [];
+
     for (let i = 1; i < rows.length; i += 1) {
       const cols = rows[i].split('\t');
       if (cols.length < 12 || Number(cols[0]) !== 5) continue;
+
       const text = clean(cols.slice(11).join('\t'));
       if (!text) continue;
+
       const word = {
         text,
         block:Number(cols[2]) || 0,
@@ -358,10 +481,12 @@
         w:Number(cols[8]) || 0,
         h:Number(cols[9]) || 0
       };
+
       word.right = word.x + word.w;
       word.cy = word.y + word.h/2;
       words.push(word);
     }
+
     return words;
   }
 
@@ -374,50 +499,16 @@
     return '';
   }
 
-  function validateField(name, raw) {
-    if (name === 'plate') return plateValue(raw);
-    if (name === 'vin') return vinValue(raw);
-    if (name === 'brand') return canonicalBrand(raw);
-    if (name === 'model') return modelValue(raw);
-    return '';
-  }
-
-  function lineGroups(words) {
-    const map = new Map();
-    words.forEach(word => {
-      const key = `${word.block}:${word.par}:${word.line}`;
-      if (!map.has(key)) map.set(key, []);
-      map.get(key).push(word);
-    });
-    return [...map.values()].map(group => group.sort((a,b) => a.x-b.x));
-  }
-
   function spatialData(words) {
-    const data = {};
+    const out = {};
     const labels = [];
 
-    // Primero: misma línea OCR.
-    for (const group of lineGroups(words)) {
-      for (let i = 0; i < group.length; i += 1) {
-        let name = codeFrom(group[i].text);
-        let used = 1;
-        if (!name && i+1 < group.length) {
-          name = codeFrom(group[i].text + group[i+1].text);
-          if (name) used = 2;
-        }
-        if (!name || data[name]) continue;
-        const raw = group.slice(i+used).map(word => word.text).join(' ');
-        const value = validateField(name, raw);
-        if (value) data[name] = value;
-      }
-    }
-
-    // Segundo: geometría, aunque Tesseract haya separado etiqueta y valor.
     for (let i = 0; i < words.length; i += 1) {
       let name = codeFrom(words[i].text);
       let right = words[i].right;
       let cy = words[i].cy;
       let h = words[i].h;
+
       if (!name && i+1 < words.length) {
         const next = words[i+1];
         if (Math.abs(next.cy-cy) <= Math.max(h,next.h)) {
@@ -429,114 +520,86 @@
           }
         }
       }
+
       if (name) labels.push({name,right,cy,h});
     }
 
     for (const label of labels) {
-      if (data[label.name]) continue;
-      const tolerance = Math.max(18, label.h*1.35);
+      if (out[label.name]) continue;
+
+      const tolerance = Math.max(18,label.h*1.4);
       const candidates = words
         .filter(word => word.x > label.right+2 && Math.abs(word.cy-label.cy) <= tolerance)
         .sort((a,b) => a.x-b.x);
+
       if (!candidates.length) continue;
 
       const picked = [];
       let lastRight = label.right;
+
       for (const word of candidates) {
         if (codeFrom(word.text)) break;
-        if (picked.length && word.x-lastRight > Math.max(100, word.h*6)) break;
+        if (picked.length && word.x-lastRight > Math.max(100,word.h*6)) break;
+
         picked.push(word.text);
         lastRight = word.right;
-        const value = validateField(label.name, picked.join(' '));
+
+        const value = validate(label.name,picked.join(' '));
         if ((label.name === 'plate' || label.name === 'vin') && value) break;
       }
-      const value = validateField(label.name, picked.join(' '));
-      if (value) data[label.name] = value;
+
+      const value = validate(label.name,picked.join(' '));
+      if (value) out[label.name] = value;
     }
 
-    return data;
-  }
-
-  function fromResponse(response) {
-    const text = parseText(response?.data?.text || '');
-    const spatial = spatialData(parseTsv(response?.data?.tsv || ''));
-    const out = {};
-    names.forEach(name => { out[name] = spatial[name] || text[name] || ''; });
     return out;
   }
 
-  function count(data) {
-    return names.reduce((total,name) => total + (clean(data[name]) ? 1 : 0), 0);
+  function parseGeneric(response) {
+    const text = response?.data?.text || '';
+    const lines = linesOf(text);
+    const out = {
+      plate:sameLineValue(lines,/^\s*A\s*[:;,.·\-–—]?\s*(.+)$/i,plateValue),
+      vin:sameLineValue(lines,/^\s*E\s*[:;,.·\-–—]?\s*(.+)$/i,vinValue),
+      brand:sameLineValue(lines,/^\s*[D0]\s*[.·,:;\-]?\s*[1IL]\s*[:;,.·\-–—]?\s*(.+)$/i,canonicalBrand),
+      model:sameLineValue(lines,/^\s*[D0]\s*[.·,:;\-]?\s*[3B]\s*[:;,.·\-–—]?\s*(.+)$/i,modelValue)
+    };
+
+    const spatial = spatialData(parseTsv(response?.data?.tsv || ''));
+    names.forEach(name => {
+      if (!out[name] && spatial[name]) out[name] = spatial[name];
+    });
+
+    if (!out.plate) {
+      const modern = upper(text).match(/\b\d{4}\s*[BCDFGHJKLMNPRSTVWXYZ]{3}\b/);
+      if (modern) out.plate = modern[0].replace(/\s+/g,'');
+    }
+
+    if (!out.brand) {
+      const makes = window.TRASPASO_VEHICLE_MAKES_2026 || [];
+      for (const line of lines) {
+        const key = compact(line);
+        const known = makes.find(make => compact(make) === key);
+        if (known) {
+          out.brand = known;
+          break;
+        }
+      }
+    }
+
+    return out;
   }
 
   function merge(primary, secondary) {
     const out = {};
-    names.forEach(name => { out[name] = clean(primary[name]) || clean(secondary[name]); });
+    names.forEach(name => {
+      out[name] = clean(primary[name]) || clean(secondary[name]);
+    });
     return out;
   }
 
-  function crop(source, x, y, w, h) {
-    const sx = Math.max(0, Math.round(source.width*x));
-    const sy = Math.max(0, Math.round(source.height*y));
-    const sw = Math.max(1, Math.min(source.width-sx, Math.round(source.width*w)));
-    const sh = Math.max(1, Math.min(source.height-sy, Math.round(source.height*h)));
-    const canvas = document.createElement('canvas');
-    const scale = Math.max(2, Math.min(5, 1200/Math.max(sw,1)));
-    canvas.width = Math.max(1, Math.round(sw*scale));
-    canvas.height = Math.max(1, Math.round(sh*scale));
-    const ctx = canvas.getContext('2d', {alpha:false, willReadFrequently:true});
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
-    ctx.drawImage(source,sx,sy,sw,sh,0,0,canvas.width,canvas.height);
-    return canvas;
-  }
-
-  function buildKnownPermitFocus(source, missing) {
-    const ratio = source.width/source.height;
-    // Solo se usa si la foto se parece a un permiso completo. En recortes o
-    // fotos parciales manda la lectura por etiqueta/posición.
-    if (ratio < 1.27 || ratio > 1.53) return null;
-
-    const specs = {
-      plate:['A', .075,.025,.405,.09],
-      vin:['E', .575,.025,.40,.09],
-      brand:['D.1', .095,.705,.39,.09],
-      model:['D.3', .095,.825,.39,.095]
-    };
-    const wanted = missing.map(name => [name, ...(specs[name] || [])]).filter(row => row.length === 6);
-    if (!wanted.length) return null;
-
-    const rowHeight = 235;
-    const sheet = document.createElement('canvas');
-    sheet.width = 1600;
-    sheet.height = rowHeight*wanted.length;
-    const ctx = sheet.getContext('2d', {alpha:false});
-    ctx.fillStyle = '#fff';
-    ctx.fillRect(0,0,sheet.width,sheet.height);
-    ctx.fillStyle = '#111';
-    ctx.font = '700 52px Arial, sans-serif';
-    ctx.textBaseline = 'middle';
-
-    wanted.forEach(([name,label,x,y,w,h],index) => {
-      const rowY = index*rowHeight;
-      ctx.fillText(label, 20, rowY+rowHeight/2);
-      const region = crop(source,x,y,w,h);
-      ctx.drawImage(region,0,0,region.width,region.height,190,rowY+15,1380,rowHeight-30);
-    });
-    return sheet;
-  }
-
-  async function recognize(worker, canvas, psm, timeout) {
-    try {
-      await worker.setParameters({
-        tessedit_pageseg_mode:String(psm),
-        preserve_interword_spaces:'1',
-        tessedit_char_whitelist:''
-      });
-    } catch (_) {}
-    return withTimeout(worker.recognize(canvas, {}, {text:true,tsv:true}), timeout);
+  function count(data) {
+    return names.reduce((total,name) => total + (clean(data[name]) ? 1 : 0),0);
   }
 
   function fill(data) {
@@ -545,12 +608,15 @@
       names.forEach(name => {
         const input = field(name);
         if (!input) return;
-        const value = validateField(name, data[name] || '');
+
+        const value = validate(name,data[name] || '');
         input.value = value;
+
         if (value) input.dataset.ocrFilled = '1';
         else delete input.dataset.ocrFilled;
-        input.dispatchEvent(new Event('input', {bubbles:true}));
-        input.dispatchEvent(new Event('change', {bubbles:true}));
+
+        input.dispatchEvent(new Event('input',{bubbles:true}));
+        input.dispatchEvent(new Event('change',{bubbles:true}));
       });
     } finally {
       writing = false;
@@ -559,6 +625,7 @@
 
   async function process(file) {
     if (!file || !file.type?.startsWith('image/') || running) return;
+
     clearVehicleIdentity();
     setBusy(true);
     setResult('');
@@ -568,60 +635,65 @@
       const source = await fileToCanvas(file);
       const worker = await getWorker();
 
-      stage = 'base';
-      const first = await recognize(worker, source, 11, 22000);
-      let detected = fromResponse(first);
+      let detected = {};
+
+      if (isKnownPermitLayout(source)) {
+        detected = await readTemplateRows(worker,source);
+      }
 
       if (count(detected) < 4) {
-        stage = 'enhanced';
-        setProgress(62,'Mejorando imagen…');
+        stage = 'base';
+        setProgress(62,'Completando lectura…');
         try {
-          const second = await recognize(worker, enhanceCanvas(source), 11, 15000);
-          detected = merge(detected, fromResponse(second));
+          const response = await recognize(worker,source,11,18000,'');
+          detected = merge(detected,parseGeneric(response));
         } catch (error) {
           if (error?.code === 'OCR_TIMEOUT') resetWorker();
         }
       }
 
       if (count(detected) < 4) {
-        const missing = names.filter(name => !clean(detected[name]));
-        const focus = buildKnownPermitFocus(source, missing);
-        if (focus) {
-          stage = 'focus';
-          setProgress(86,'Completando campos…');
-          try {
-            const third = await recognize(worker, focus, 6, 11000);
-            detected = merge(detected, fromResponse(third));
-          } catch (error) {
-            if (error?.code === 'OCR_TIMEOUT') resetWorker();
-          }
+        stage = 'enhanced';
+        setProgress(78,'Mejorando imagen…');
+        try {
+          const response = await recognize(worker,enhanceCanvas(source),11,13000,'');
+          detected = merge(detected,parseGeneric(response));
+        } catch (error) {
+          if (error?.code === 'OCR_TIMEOUT') resetWorker();
         }
       }
 
       if (count(detected) <= 1 && source.height > source.width*1.15) {
         stage = 'rotated';
-        setProgress(86,'Comprobando orientación…');
+        setProgress(88,'Comprobando orientación…');
         try {
-          const fourth = await recognize(worker, rotateCanvas(source), 11, 10000);
-          detected = merge(detected, fromResponse(fourth));
+          const response = await recognize(worker,rotateCanvas(source),11,10000,'');
+          detected = merge(detected,parseGeneric(response));
         } catch (error) {
           if (error?.code === 'OCR_TIMEOUT') resetWorker();
         }
       }
 
       fill(detected);
+
       const found = count({
         brand:field('brand')?.value,
         model:field('model')?.value,
         vin:field('vin')?.value,
         plate:field('plate')?.value
       });
+
       setProgress(100,'Listo');
-      if (found === 4) setResult('4 datos identificados.','success');
-      else if (found > 0) setResult(`${found} de 4 datos identificados. Revisa los que faltan.`,'success');
-      else setResult('No he podido identificar los datos. Prueba con otra foto o completa los datos manualmente.','error');
+
+      if (found === 4) {
+        setResult('4 datos identificados.','success');
+      } else if (found > 0) {
+        setResult(`${found} de 4 datos identificados. Revisa los que faltan.`,'success');
+      } else {
+        setResult('No he podido identificar los datos con seguridad. Prueba con otra foto o complétalos manualmente.','error');
+      }
     } catch (error) {
-      console.error('OCR unificado de vehículo', error);
+      console.error('OCR vehículo v6',error);
       if (error?.code === 'OCR_TIMEOUT') {
         resetWorker();
         setResult('La lectura ha tardado demasiado. Puedes volver a intentarlo.','error');
@@ -638,10 +710,12 @@
     const file = event.target.files?.[0];
     if (!file) return;
     event.stopImmediatePropagation();
-    process(file).finally(() => { event.target.value = ''; });
+    process(file).finally(() => {
+      event.target.value = '';
+    });
   }
 
-  cameraInput.addEventListener('change', intercept, {capture:true});
-  uploadInput.addEventListener('change', intercept, {capture:true});
-  window.addEventListener('beforeunload', () => resetWorker());
+  cameraInput.addEventListener('change',intercept,{capture:true});
+  uploadInput.addEventListener('change',intercept,{capture:true});
+  window.addEventListener('beforeunload',() => resetWorker());
 })();
