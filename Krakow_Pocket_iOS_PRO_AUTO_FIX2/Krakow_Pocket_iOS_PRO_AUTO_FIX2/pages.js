@@ -4,7 +4,7 @@ window.POCKET_PAGES = [
     title: "Traspaso",
     description: "Transferencias de vehículos.",
     category: "Gestiones",
-    icon: "⇄",
+    icon: "gA",
     href: "./vehiculos.html",
     createdAt: "2026-08-31T03:17:00+02:00"
   },
