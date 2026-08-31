@@ -20,10 +20,10 @@
     makes.src = './vehicle-brand-rescue.js?v=20260831r';
     makes.defer = true;
     makes.addEventListener('load', () => {
-      const unified = document.createElement('script');
-      unified.src = './vehicle-scan-unified.js?v=20260831z';
-      unified.defer = true;
-      document.head.appendChild(unified);
+      const quality = document.createElement('script');
+      quality.src = './vehicle-scan-quality.js?v=20260831aa';
+      quality.defer = true;
+      document.head.appendChild(quality);
     }, {once:true});
     document.head.appendChild(makes);
   }, {once:true});
