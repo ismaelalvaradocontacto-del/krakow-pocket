@@ -1,1 +1,195 @@
-test
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#f5f5f1">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Transferencia de vehículo · Pocket</title>
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg">
+  <link rel="icon" href="./pocket-icon-v2-192.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./vehiculos.css?v=20260831d">
+  <link rel="stylesheet" href="./vehiculos-v2.css?v=20260831d">
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="back" href="./index.html" aria-label="Volver a Pocket">← <span>Pocket</span></a>
+      <button class="quiet" id="newCase" type="button">Nueva</button>
+    </header>
+
+    <section class="hero">
+      <span class="eyebrow">VEHÍCULOS</span>
+      <h1>Transferencia</h1>
+      <p>Introduce los datos una vez. Pocket prepara toda la documentación.</p>
+    </section>
+
+    <div class="last-operation-note" id="lastOperationNote" aria-live="polite"></div>
+
+    <nav class="steps" aria-label="Secciones de la transferencia">
+      <button type="button" class="step active" data-step="operacion"><span>Operación</span><small data-step-state></small></button>
+      <button type="button" class="step" data-step="partes"><span>Personas</span><small data-step-state></small></button>
+      <button type="button" class="step" data-step="vehiculo"><span>Vehículo</span><small data-step-state></small></button>
+      <button type="button" class="step" data-step="generar"><span>Revisar</span><small data-step-state></small></button>
+    </nav>
+
+    <form id="vehicleForm" novalidate>
+      <section class="panel active" data-panel="operacion">
+        <div class="section-head">
+          <div><span class="eyebrow">1 DE 4 · OPERACIÓN</span><h2>Datos básicos</h2></div>
+          <span class="saved" id="saveState">Solo esta operación</span>
+        </div>
+
+        <div class="field contract-model-field required">
+          <span>Tipo de operación</span>
+          <div class="choice-grid">
+            <label class="choice">
+              <input type="radio" name="contractModel" value="particulares" required>
+              <span class="choice-card"><span><strong>Compraventa</strong><small>Contrato entre particulares</small></span></span>
+            </label>
+            <label class="choice">
+              <input type="radio" name="contractModel" value="rehabilitacion" required>
+              <span class="choice-card"><span><strong>Rehabilitación</strong><small>Modelo específico de rehabilitación</small></span></span>
+            </label>
+          </div>
+        </div>
+
+        <div class="grid cols-2 primary-fields">
+          <label class="field required"><span>Precio (€)</span><input name="price" inputmode="decimal" placeholder="8.500"></label>
+          <label class="field required"><span>Fecha</span><input name="date" type="date"></label>
+        </div>
+
+        <details class="advanced-operation">
+          <summary>Más datos del contrato</summary>
+          <div class="details-body">
+            <p class="details-note">Pocket recuerda los valores habituales para que no tengas que repetirlos en cada transferencia.</p>
+            <div class="grid cols-2">
+              <label class="field required"><span>Lugar</span><input name="place" autocomplete="address-level2"></label>
+              <label class="field"><span>Hora</span><input name="time" type="time"></label>
+              <label class="field"><span>Juzgados y Tribunales de</span><input name="courtCity"></label>
+              <label class="field"><span>ITV · fecha</span><input name="itvDate" type="date"></label>
+              <label class="field"><span>Seguro vigente hasta</span><input name="insuranceUntil" type="date"></label>
+              <label class="field wide"><span>Cuenta para el pago</span><input name="bankAccount" autocomplete="off"></label>
+              <label class="field"><span>Plazo de pago · días</span><input name="paymentDays" inputmode="numeric"></label>
+              <label class="field"><span>Referencia interna</span><input name="reference"></label>
+            </div>
+          </div>
+        </details>
+
+        <details class="office-settings">
+          <summary><span class="summary-copy"><strong>Datos de gestoría</strong><small>Configuración · se conserva para las próximas transferencias</small></span></summary>
+          <div class="details-body">
+            <div class="grid cols-2">
+              <label class="field wide required"><span>Gestor/a administrativo/a</span><input name="manager1_name"></label>
+              <label class="field required"><span>DNI</span><input name="manager1_dni"></label>
+              <label class="field required"><span>Nº colegiado</span><input name="manager1_collegeNo"></label>
+              <label class="field wide required"><span>Colegio Oficial de Gestores Administrativos de</span><input name="collegeName"></label>
+              <label class="field wide required"><span>Despacho profesional</span><input name="officeName"></label>
+              <label class="field required"><span>Municipio</span><input name="officeCity"></label>
+              <label class="field wide required"><span>Calle</span><input name="officeStreet"></label>
+              <label class="field"><span>Número</span><input name="officeNumber"></label>
+              <label class="field required"><span>C.P.</span><input name="officeCp"></label>
+            </div>
+            <details>
+              <summary>Más gestores</summary>
+              <div class="grid cols-2 inside">
+                <label class="field wide"><span>Gestor/a 2</span><input name="manager2_name"></label>
+                <label class="field"><span>DNI</span><input name="manager2_dni"></label>
+                <label class="field"><span>Nº colegiado</span><input name="manager2_collegeNo"></label>
+                <label class="field wide"><span>Gestor/a 3</span><input name="manager3_name"></label>
+              </div>
+            </details>
+            <div class="grid cols-1 subject-grid">
+              <label class="field required"><span>Asunto · línea 1</span><input name="subject1"></label>
+              <label class="field"><span>Asunto · línea 2</span><input name="subject2"></label>
+              <label class="field"><span>Notas para el gestor</span><textarea name="managerNotes" rows="4"></textarea></label>
+            </div>
+          </div>
+        </details>
+
+        <div class="nav-actions"><span></span><button class="primary next" type="button" data-next="partes">Continuar</button></div>
+      </section>
+
+      <section class="panel" data-panel="partes" hidden>
+        <div class="section-head"><div><span class="eyebrow">2 DE 4 · PERSONAS</span><h2>Vendedor y comprador</h2></div></div>
+        <div class="party-grid">
+          <fieldset class="party"><legend>Vendedor</legend>
+            <div class="grid cols-2">
+              <label class="field wide required"><span>Nombre y apellidos</span><input name="seller_name" autocomplete="name"></label>
+              <label class="field required"><span>DNI / NIE</span><input name="seller_dni"></label>
+              <label class="field"><span>Municipio</span><input name="seller_city"></label>
+              <label class="field wide"><span>Calle / domicilio</span><input name="seller_street"></label>
+              <label class="field"><span>Número</span><input name="seller_number"></label>
+              <label class="field"><span>C.P.</span><input name="seller_cp" inputmode="numeric"></label>
+              <label class="field"><span>Provincia</span><input name="seller_province"></label>
+              <label class="field"><span>Teléfono</span><input name="seller_phone" inputmode="tel"></label>
+              <label class="field wide"><span>Email</span><input name="seller_email" type="email"></label>
+            </div>
+            <details><summary>Representación / segundo otorgante</summary><div class="grid cols-2 inside">
+              <label class="field wide"><span>Segundo otorgante</span><input name="seller_second_name"></label>
+              <label class="field"><span>DNI / NIE</span><input name="seller_second_dni"></label>
+              <label class="field wide"><span>Representa a</span><input name="seller_represented_name"></label>
+              <label class="field"><span>DNI / NIF representado</span><input name="seller_represented_dni"></label>
+            </div></details>
+          </fieldset>
+
+          <fieldset class="party"><legend>Comprador</legend>
+            <div class="grid cols-2">
+              <label class="field wide required"><span>Nombre y apellidos</span><input name="buyer_name" autocomplete="name"></label>
+              <label class="field required"><span>DNI / NIE</span><input name="buyer_dni"></label>
+              <label class="field"><span>Municipio</span><input name="buyer_city"></label>
+              <label class="field wide"><span>Calle / domicilio</span><input name="buyer_street"></label>
+              <label class="field"><span>Número</span><input name="buyer_number"></label>
+              <label class="field"><span>C.P.</span><input name="buyer_cp" inputmode="numeric"></label>
+              <label class="field"><span>Provincia</span><input name="buyer_province"></label>
+              <label class="field"><span>Teléfono</span><input name="buyer_phone" inputmode="tel"></label>
+              <label class="field wide"><span>Email</span><input name="buyer_email" type="email"></label>
+            </div>
+            <details><summary>Representación / segundo otorgante</summary><div class="grid cols-2 inside">
+              <label class="field wide"><span>Segundo otorgante</span><input name="buyer_second_name"></label>
+              <label class="field"><span>DNI / NIE</span><input name="buyer_second_dni"></label>
+              <label class="field wide"><span>Representa a</span><input name="buyer_represented_name"></label>
+              <label class="field"><span>DNI / NIF representado</span><input name="buyer_represented_dni"></label>
+            </div></details>
+          </fieldset>
+        </div>
+        <div class="nav-actions"><button class="secondary next" type="button" data-next="operacion">Atrás</button><button class="primary next" type="button" data-next="vehiculo">Continuar</button></div>
+      </section>
+
+      <section class="panel" data-panel="vehiculo" hidden>
+        <div class="section-head"><div><span class="eyebrow">3 DE 4 · VEHÍCULO</span><h2>Identificación</h2></div></div>
+        <div class="grid cols-2">
+          <label class="field required"><span>Marca</span><input name="brand"></label>
+          <label class="field required"><span>Modelo</span><input name="model"></label>
+          <label class="field"><span>Versión</span><input name="version"></label>
+          <label class="field"><span>Motor</span><input name="engine"></label>
+          <label class="field wide required"><span>Nº de bastidor</span><input name="vin" autocomplete="off"></label>
+          <label class="field required"><span>Matrícula</span><input name="plate" autocomplete="off"></label>
+          <label class="field"><span>Kilómetros</span><input name="km" inputmode="numeric"></label>
+          <label class="field wide"><span>Extras incluidos</span><input name="extras"></label>
+          <label class="field wide"><span>Estado del vehículo</span><textarea name="vehicleState" rows="3"></textarea></label>
+        </div>
+        <div class="nav-actions"><button class="secondary next" type="button" data-next="partes">Atrás</button><button class="primary next" type="button" data-next="generar">Revisar</button></div>
+      </section>
+
+      <section class="panel" data-panel="generar" hidden>
+        <div class="section-head"><div><span class="eyebrow">4 DE 4 · DOCUMENTACIÓN</span><h2>Revisar y generar</h2></div></div>
+        <div class="review" id="review"></div>
+        <div class="generate-box">
+          <button class="primary generate" id="generateBtn" type="submit">Generar documentación</button>
+          <span class="generate-status" id="generateStatus"></span>
+          <p class="microcopy">Pocket conserva únicamente esta transferencia. Cuando inicies otra, la anterior se sustituirá.</p>
+        </div>
+        <div class="downloads" id="downloads" hidden></div>
+        <div class="nav-actions"><button class="secondary next" type="button" data-next="vehiculo">Atrás</button><span></span></div>
+      </section>
+    </form>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+  <script src="./vehiculos.js?v=20260831d"></script>
+  <script src="./vehiculos-v2.js?v=20260831d"></script>
+</body>
+</html>
