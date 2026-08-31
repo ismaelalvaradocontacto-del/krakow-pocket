@@ -14,13 +14,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Corregir A4 y relanzar cierre
+      - name: Corregir A4 del PDF del gestor
         run: |
           python -c "from pathlib import Path; p=Path('Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/vehiculos.js'); s=p.read_text(); a='let page = doc.addPage([595.28, 841.89]);'; b='let page = doc.addPage();\n    page.setSize(595.28, 841.89);'; c='const ensure = needed => { if (y - needed < 48) { page = doc.addPage([595.28,841.89]); y = H - 48; } };'; d='const ensure = needed => { if (y - needed < 48) { page = doc.addPage(); page.setSize(595.28,841.89); y = H - 48; } };'; assert a in s and c in s; p.write_text(s.replace(a,b).replace(c,d))"
-          echo '# rerun after manager A4 fix' >> .github/workflows/transferencia-clean-final.yml
           git config user.name 'Pocket Automation'
           git config user.email 'actions@users.noreply.github.com'
-          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/vehiculos.js .github/workflows/transferencia-clean-final.yml
-          git rm .github/workflows/transferencia-fix-manager-test.yml
+          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/vehiculos.js
           git commit -m 'Corrige A4 del PDF del gestor'
           git push
