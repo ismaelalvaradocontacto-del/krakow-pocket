@@ -159,12 +159,23 @@
     return { day, month: months[monthNo - 1], year, year2: year.slice(-2), display: `${String(Number(m[3])).padStart(2,'0')}/${String(monthNo).padStart(2,'0')}/${year}` };
   }
 
-  function templateBytes(base64) {
-    const bin = atob(base64);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    return bytes;
-  }
+  const TEMPLATE_FILES = Object.freeze({
+  mandate: './assets/vehiculos/mandato.pdf',
+  contractParticulares: './assets/vehiculos/contrato-particulares.pdf',
+  contractRehab: './assets/vehiculos/contrato-rehabilitacion.pdf'
+});
+const templateCache = new Map();
+
+async function templateBytes(name) {
+  if (templateCache.has(name)) return templateCache.get(name).slice(0);
+  const url = TEMPLATE_FILES[name];
+  if (!url) throw new Error(`Plantilla desconocida: ${name}`);
+  const response = await fetch(url, { cache: 'no-store' });
+  if (!response.ok) throw new Error(`No se ha podido cargar ${url}`);
+  const bytes = await response.arrayBuffer();
+  templateCache.set(name, bytes);
+  return bytes.slice(0);
+}
 
   function fitSize(font, text, maxWidth, start = 8, min = 5.2) {
     let size = start;
@@ -184,7 +195,7 @@
   }
 
   async function makeMandate(d, prefix) {
-    const doc = await PDFDocument.load(templateBytes(window.VEHICLE_DOC_TEMPLATES.mandate));
+    const doc = await PDFDocument.load(await templateBytes('mandate'));
     const page = doc.getPages()[0];
     const font = await doc.embedFont(StandardFonts.Helvetica);
     const date = dateParts(d.date);
@@ -233,7 +244,7 @@
   }
 
   async function makeContractRehab(d) {
-    const doc = await PDFDocument.load(templateBytes(window.VEHICLE_DOC_TEMPLATES.contractRehab));
+    const doc = await PDFDocument.load(await templateBytes('contractRehab'));
     const font = await doc.embedFont(StandardFonts.Helvetica);
     const p1 = doc.getPages()[0], p2 = doc.getPages()[1];
     const date = dateParts(d.date);
@@ -268,7 +279,7 @@
   }
 
   async function makeContractParticulares(d) {
-    const doc = await PDFDocument.load(templateBytes(window.VEHICLE_DOC_TEMPLATES.contractParticulares));
+    const doc = await PDFDocument.load(await templateBytes('contractParticulares'));
     const font = await doc.embedFont(StandardFonts.Helvetica);
     const p1 = doc.getPages()[0], p2 = doc.getPages()[1];
     const date = dateParts(d.date);
@@ -316,13 +327,13 @@
     const bold = await doc.embedFont(StandardFonts.HelveticaBold);
     let page = doc.addPage();
     page.setSize(595.28, 841.89);
-    const W = page.getWidth(), H = page.getHeight(), M = 44;
+    const W = 595.28, H = 841.89, M = 44;
     let y = H - 48;
     const ink = rgb(.09,.13,.10), muted = rgb(.42,.46,.43), line = rgb(.87,.89,.87), accent = rgb(.19,.36,.26);
 
     const ensure = needed => { if (y - needed < 48) { page = doc.addPage(); page.setSize(595.28,841.89); y = H - 48; } };
     const text = (value,x,yy,size=9,font=regular,color=ink) => { if (clean(value)) page.drawText(clean(value),{x,y:yy,size,font,color}); };
-    const hr = () => { page.drawLine({start:{x:M,y},end:{x:W-M,y},thickness:.6,color:line}); y -= 16; };
+    const hr = () => { y -= 16; };
     const section = title => { ensure(42); y -= 4; text(title.toUpperCase(),M,y,7.5,bold,accent); y -= 14; };
     const pair = (label,value,x,width) => {
       const v = clean(value) || '—';
@@ -410,7 +421,7 @@
       first?.scrollIntoView({behavior:'smooth',block:'center'});
       return;
     }
-    if (!window.PDFLib || !window.VEHICLE_DOC_TEMPLATES) {
+    if (!window.PDFLib) {
       status.textContent = 'No se ha podido cargar el generador de PDF.';
       return;
     }
