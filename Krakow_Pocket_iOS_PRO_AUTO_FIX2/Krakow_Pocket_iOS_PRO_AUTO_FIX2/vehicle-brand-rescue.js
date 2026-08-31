@@ -19,7 +19,7 @@
     ['GAC'],['GASGAS','GAS GAS'],['GEELY'],['GENESIS'],['GILERA'],['GMC'],['GREAT WALL','GWM','GREATWALL'],
     ['HARLEY-DAVIDSON','HARLEY DAVIDSON','HARLEY'],['HISPANO SUIZA','HISPANOSUIZA'],['HONDA'],['HUMMER'],['HUSQVARNA'],['HYUNDAI'],
     ['INDIAN'],['INEOS'],['INFINITI'],['IRIZAR'],['ISUZU'],['IVECO'],
-    ['JAC'],['JAECOO','JAECOO'],['JAGUAR'],['JEEP'],['JINCHENG'],['KAWASAKI'],['KEEWAY'],['KGM','KGM MOTORS','SSANGYONG'],['KIA'],['KING LONG','KINGLONG'],['KTM'],['KYMCO'],
+    ['JAC'],['JAECOO'],['JAGUAR'],['JEEP'],['JINCHENG'],['KAWASAKI'],['KEEWAY'],['KGM','KGM MOTORS','SSANGYONG'],['KIA'],['KING LONG','KINGLONG'],['KTM'],['KYMCO'],
     ['LADA'],['LAMBORGHINI'],['LANCIA'],['LAND ROVER','LANDROVER'],['LEAPMOTOR','LEAP MOTOR'],['LEXUS'],['LIFAN'],['LIGIER'],['LINCOLN'],['LOTUS'],['LUCID'],
     ['MACBOR'],['MAHINDRA'],['MAN'],['MASERATI'],['MAXUS'],['MAYBACH'],['MAZDA'],['MCLAREN'],['MERCEDES-BENZ','MERCEDES BENZ','MERCEDES'],['MG','MG MOTOR'],['MICROCAR'],['MINI'],['MITSUBISHI'],['MONDIAL','FB MONDIAL'],['MORGAN'],['MOTO GUZZI','MOTOGUZZI'],['MV AGUSTA','MVAGUSTA'],
     ['NIO'],['NISSAN'],['NIU'],['OPEL'],['OMODA'],['ORA'],['OTOKAR'],
@@ -68,7 +68,6 @@
     if (!compact) return '';
     if (aliases.has(compact)) return aliases.get(compact);
 
-    // Corrige pequeñas deformaciones OCR solo cuando la coincidencia es clara.
     if (compact.length >= 4) {
       let best = '';
       let bestDistance = Infinity;
@@ -135,11 +134,12 @@
     const ratio = source.width / source.height;
     if (ratio < 1.2 || ratio > 1.65) return null;
 
-    const x = Math.round(source.width * .055);
-    const y = Math.round(source.height * .695);
-    const w = Math.round(source.width * .445);
-    const h = Math.round(source.height * .105);
-    const scale = 5;
+    // Recorta únicamente el valor de D.1. Evita C.4 y D.2, que antes contaminaban la lectura.
+    const x = Math.round(source.width * .10);
+    const y = Math.round(source.height * .72);
+    const w = Math.round(source.width * .39);
+    const h = Math.round(source.height * .065);
+    const scale = 7;
 
     const out = document.createElement('canvas');
     out.width = Math.max(1, w * scale);
@@ -175,9 +175,7 @@
       const match = line.match(/D\s*[.·,:;\-]?\s*[1IL]\s*[:;,.\-–—]?\s*(.+)$/i);
       if (match?.[1]) { candidate = match[1]; break; }
     }
-    if (!candidate) {
-      candidate = originalLines.find(line => !/^D\s*[.·,:;\-]?\s*[1IL]\s*$/i.test(line)) || '';
-    }
+    if (!candidate) candidate = originalLines[0] || '';
 
     candidate = upper(candidate)
       .replace(/^.*?D\s*[.·,:;\-]?\s*[1IL]\s*[:;,.\-–—]?\s*/i, '')
@@ -190,8 +188,6 @@
     if (candidate.length < 2 || candidate.length > 35) return '';
     if (!/[A-ZÁÉÍÓÚÜÑ]{2}/.test(candidate)) return '';
     if (/^(DOCUMENTO|OBSERVACIONES|MATRICULA|MATRÍCULA|MODELO|BASTIDOR|TIPO|VARIANTE|VERSION|VERSIÓN)$/i.test(candidate)) return '';
-
-    // La tabla oficial D.1 es la fuente de verdad. El catálogo solo normaliza si reconoce la marca.
     return canonicalize(candidate) || candidate;
   }
 
