@@ -17,7 +17,7 @@
   scanScript.defer = true;
   scanScript.addEventListener('load', () => {
     const enhancedScan = document.createElement('script');
-    enhancedScan.src = './vehicle-scan-v2.js?v=20260831i';
+    enhancedScan.src = './vehicle-scan-v2.js?v=20260831j';
     enhancedScan.defer = true;
     document.head.appendChild(enhancedScan);
   }, {once:true});
