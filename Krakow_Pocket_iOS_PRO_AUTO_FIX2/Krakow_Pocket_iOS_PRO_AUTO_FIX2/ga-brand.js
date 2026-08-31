@@ -21,7 +21,7 @@
     fastScan.defer = true;
     fastScan.addEventListener('load', () => {
       const brandRescue = document.createElement('script');
-      brandRescue.src = './vehicle-brand-rescue.js?v=20260831n';
+      brandRescue.src = './vehicle-brand-rescue.js?v=20260831o';
       brandRescue.defer = true;
       document.head.appendChild(brandRescue);
     }, {once:true});
