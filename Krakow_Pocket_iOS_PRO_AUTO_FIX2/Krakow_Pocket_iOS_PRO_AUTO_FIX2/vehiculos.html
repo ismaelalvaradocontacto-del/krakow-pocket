@@ -3,27 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#f5f5f1">
+  <meta name="theme-color" content="#24231f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <title>Transferencia de vehículo · Pocket</title>
-  <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="apple-touch-icon" href="./pocket-icon-v2-192.svg">
-  <link rel="icon" href="./pocket-icon-v2-192.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./vehiculos.css?v=20260831d">
-  <link rel="stylesheet" href="./vehiculos-v2.css?v=20260831d">
+  <meta name="apple-mobile-web-app-title" content="Traspaso">
+  <title>Traspaso · Transferencias de vehículos</title>
+  <link rel="manifest" href="./traspaso.webmanifest">
+  <link rel="apple-touch-icon" href="./traspaso-icon.svg">
+  <link rel="icon" href="./traspaso-icon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./vehiculos.css?v=20260831e">
+  <link rel="stylesheet" href="./vehiculos-v2.css?v=20260831e">
+  <link rel="stylesheet" href="./traspaso.css?v=20260831e">
 </head>
 <body>
   <main class="shell">
     <header class="topbar">
-      <a class="back" href="./index.html" aria-label="Volver a Pocket">← <span>Pocket</span></a>
+      <a class="back" href="./index.html" aria-label="Salir">← <span>Salir</span></a>
+      <div class="brand-lockup" aria-label="Traspaso">
+        <img src="./traspaso-icon.svg" alt="">
+        <strong>Traspaso</strong>
+      </div>
       <button class="quiet" id="newCase" type="button">Nueva</button>
     </header>
 
     <section class="hero">
-      <span class="eyebrow">VEHÍCULOS</span>
-      <h1>Transferencia</h1>
-      <p>Introduce los datos una vez. Pocket prepara toda la documentación.</p>
+      <span class="eyebrow">TRANSFERENCIA DE VEHÍCULO</span>
+      <h1 id="operationTitle">Nueva operación</h1>
     </section>
 
     <div class="last-operation-note" id="lastOperationNote" aria-live="polite"></div>
@@ -39,7 +44,7 @@
       <section class="panel active" data-panel="operacion">
         <div class="section-head">
           <div><span class="eyebrow">1 DE 4 · OPERACIÓN</span><h2>Datos básicos</h2></div>
-          <span class="saved" id="saveState">Solo esta operación</span>
+          <span class="saved" id="saveState">1 operación</span>
         </div>
 
         <div class="field contract-model-field required">
@@ -52,11 +57,11 @@
           <div class="choice-grid">
             <label class="choice">
               <input type="radio" name="contractModelVisual" value="particulares" data-contract-value="particulares">
-              <span class="choice-card"><span><strong>Compraventa</strong><small>Contrato entre particulares</small></span></span>
+              <span class="choice-card"><span><strong>Compraventa</strong><small>Entre particulares</small></span></span>
             </label>
             <label class="choice">
               <input type="radio" name="contractModelVisual" value="rehabilitacion" data-contract-value="rehabilitacion">
-              <span class="choice-card"><span><strong>Rehabilitación</strong><small>Modelo específico de rehabilitación</small></span></span>
+              <span class="choice-card"><span><strong>Rehabilitación</strong><small>Contrato específico</small></span></span>
             </label>
           </div>
         </div>
@@ -67,9 +72,9 @@
         </div>
 
         <details class="advanced-operation">
-          <summary>Más datos del contrato</summary>
+          <summary>Más datos</summary>
           <div class="details-body">
-            <p class="details-note">Pocket recuerda los valores habituales para que no tengas que repetirlos en cada transferencia.</p>
+            <p class="details-note">Se conservarán como valores habituales.</p>
             <div class="grid cols-2">
               <label class="field required"><span>Lugar</span><input name="place" autocomplete="address-level2"></label>
               <label class="field"><span>Hora</span><input name="time" type="time"></label>
@@ -84,7 +89,7 @@
         </details>
 
         <details class="office-settings">
-          <summary><span class="summary-copy"><strong>Datos de gestoría</strong><small>Configuración · se conserva para las próximas transferencias</small></span></summary>
+          <summary><span class="summary-copy"><strong>Gestoría</strong><small>Configuración guardada</small></span></summary>
           <div class="details-body">
             <div class="grid cols-2">
               <label class="field wide required"><span>Gestor/a administrativo/a</span><input name="manager1_name"></label>
@@ -109,7 +114,7 @@
             <div class="grid cols-1 subject-grid">
               <label class="field required"><span>Asunto · línea 1</span><input name="subject1"></label>
               <label class="field"><span>Asunto · línea 2</span><input name="subject2"></label>
-              <label class="field"><span>Notas para el gestor</span><textarea name="managerNotes" rows="4"></textarea></label>
+              <label class="field"><span>Notas</span><textarea name="managerNotes" rows="4"></textarea></label>
             </div>
           </div>
         </details>
@@ -185,7 +190,7 @@
         <div class="generate-box">
           <button class="primary generate" id="generateBtn" type="submit">Generar documentación</button>
           <span class="generate-status" id="generateStatus"></span>
-          <p class="microcopy">Pocket conserva únicamente esta transferencia. Cuando inicies otra, la anterior se sustituirá.</p>
+          <p class="microcopy">Esta operación se conserva hasta que inicies otra.</p>
         </div>
         <div class="downloads" id="downloads" hidden></div>
         <div class="nav-actions"><button class="secondary next" type="button" data-next="vehiculo">Atrás</button><span></span></div>
@@ -194,8 +199,8 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script src="./vehiculos.js?v=20260831d"></script>
-  <script src="./vehiculos-v2.js?v=20260831d"></script>
+  <script src="./vehiculos.js?v=20260831e"></script>
+  <script src="./vehiculos-v2.js?v=20260831e"></script>
   <script>
     (() => {
       const form = document.getElementById('vehicleForm');
