@@ -5,6 +5,7 @@ on:
     branches: [transferencia-binary-final]
     paths:
       - '.migration/transferencia/READY'
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -22,20 +23,30 @@ jobs:
           SRC='.migration/transferencia'
           DST="$APP/assets/vehiculos"
           mkdir -p "$DST"
-          cat "$SRC"/mandato-*.b64 | base64 -d | gzip -d > "$DST/mandato.pdf"
+
+          curl -fL --retry 3 --retry-delay 2 \
+            'https://www.gestorestoledo.org/wp-content/uploads/2026/03/1543-Mandato-especifico-240326.pdf' \
+            -o "$DST/mandato.pdf"
+
           cat "$SRC"/particulares-*.b64 | base64 -d | gzip -d > "$DST/contrato-particulares.pdf"
-          cat "$SRC"/rehab-*.b64 | base64 -d | gzip -d > "$DST/contrato-rehabilitacion.pdf"
+          base64 -d < "$APP/_transport/rehabilitacion.b64" | gzip -d > "$DST/contrato-rehabilitacion.pdf"
+
           test "$(stat -c%s "$DST/mandato.pdf")" = '175100'
           test "$(sha256sum "$DST/mandato.pdf" | cut -d' ' -f1)" = 'eef564a0880b1ee913456315bb7304df9410fd71be9066cc5de0eee4f39138c0'
           test "$(stat -c%s "$DST/contrato-particulares.pdf")" = '78922'
           test "$(sha256sum "$DST/contrato-particulares.pdf" | cut -d' ' -f1)" = '77048a0ebdf6933a549563a92045cba0db79d9f32e98e986940ab11ba6ba1d56'
           test "$(stat -c%s "$DST/contrato-rehabilitacion.pdf")" = '37013'
           test "$(sha256sum "$DST/contrato-rehabilitacion.pdf" | cut -d' ' -f1)" = '71c3e964b7cc934df797d1bb321f354eb068d62b3ebf76936c8b67c74b2fc82b'
-      - name: Guardar PDF binarios
+
+      - name: Guardar PDF binarios verificados
         shell: bash
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/assets/vehiculos/*.pdf
-          git commit -m 'Guarda originales PDF de Transferencia'
-          git push
+          if git diff --cached --quiet; then
+            echo 'Los PDF ya estaban actualizados.'
+          else
+            git commit -m 'Guarda originales PDF de Transferencia'
+            git push
+          fi
