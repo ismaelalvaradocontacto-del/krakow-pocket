@@ -25,12 +25,10 @@ console.log(`fragmentos cargados: ${templateScripts.length}`);
 for (const src of templateScripts) {
   const file=src.replace(/^\.\//,'').split('?')[0];
   const source=fs.readFileSync(path.join(appDir,file),'utf8');
-  if(file.includes('mandate-')) {
-    const match=source.match(/\+\"([^\"]*)\";\s*$/) || source.match(/\+\=\"([^\"]*)\";\s*$/);
-    const chunk=match?.[1]||'';
-    const hash=crypto.createHash('sha256').update(chunk,'ascii').digest('hex');
-    console.log(`MANDATE_CHUNK ${file} len=${chunk.length} sha256=${hash} first=${chunk.slice(0,32)} last=${chunk.slice(-32)}`);
-  }
+  const match=source.match(/\+\"([^\"]*)\";\s*$/) || source.match(/\+\=\"([^\"]*)\";\s*$/);
+  const chunk=match?.[1]||'';
+  const hash=crypto.createHash('sha256').update(chunk,'ascii').digest('hex');
+  console.log(`TEMPLATE_CHUNK ${file} len=${chunk.length} sha256=${hash} first=${chunk.slice(0,32)} last=${chunk.slice(-32)}`);
   vm.runInContext(source,context,{filename:file});
 }
 const templates=window.VEHICLE_DOC_TEMPLATES||{};
