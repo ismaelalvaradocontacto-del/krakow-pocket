@@ -20,10 +20,16 @@
     makes.src = './vehicle-brand-rescue.js?v=20260831r';
     makes.defer = true;
     makes.addEventListener('load', () => {
-      const paddle = document.createElement('script');
-      paddle.src = './vehicle-scan-paddle.js?v=20260831ab';
-      paddle.defer = true;
-      document.head.appendChild(paddle);
+      const reset = document.createElement('script');
+      reset.src = './vehicle-scan-new-source.js?v=20260831a';
+      reset.defer = true;
+      reset.addEventListener('load', () => {
+        const paddle = document.createElement('script');
+        paddle.src = './vehicle-scan-paddle.js?v=20260831ab';
+        paddle.defer = true;
+        document.head.appendChild(paddle);
+      }, {once:true});
+      document.head.appendChild(reset);
     }, {once:true});
     document.head.appendChild(makes);
   }, {once:true});
