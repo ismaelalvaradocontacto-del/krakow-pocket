@@ -36,6 +36,11 @@ jobs:
           old_size = 'const W = page.getWidth(), H = page.getHeight(), M = 44;'
           if old_size in s:
               s = s.replace(old_size, 'const W = 595.28, H = 841.89, M = 44;', 1)
+          old_hr = 'const hr = () => { page.drawLine({start:{x:M,y},end:{x:W-M,y},thickness:.6,color:line}); y -= 16; };'
+          new_hr = 'const hr = () => { y -= 16; };'
+          if old_hr not in s:
+              raise SystemExit('No se encontró la línea decorativa del PDF del gestor')
+          s = s.replace(old_hr, new_hr, 1)
 
           new_loader = '''  const TEMPLATE_FILES = Object.freeze({
             mandate: './assets/vehiculos/mandato.pdf',
