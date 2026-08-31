@@ -3,31 +3,30 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <meta name="theme-color" content="#24231f">
+  <meta name="theme-color" content="#b10f3f">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="Traspaso">
-  <title>Traspaso · Transferencias de vehículos</title>
+  <title>Traspaso · gA</title>
   <link rel="manifest" href="./traspaso.webmanifest">
   <link rel="apple-touch-icon" href="./traspaso-icon.svg">
   <link rel="icon" href="./traspaso-icon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./vehiculos.css?v=20260831e">
-  <link rel="stylesheet" href="./vehiculos-v2.css?v=20260831e">
-  <link rel="stylesheet" href="./traspaso.css?v=20260831e">
+  <link rel="stylesheet" href="./vehiculos.css?v=20260831f">
+  <link rel="stylesheet" href="./vehiculos-v2.css?v=20260831f">
+  <link rel="stylesheet" href="./traspaso.css?v=20260831f">
 </head>
 <body>
   <main class="shell">
     <header class="topbar">
       <a class="back" href="./index.html" aria-label="Salir">← <span>Salir</span></a>
-      <div class="brand-lockup" aria-label="Traspaso">
-        <img src="./traspaso-icon.svg" alt="">
-        <strong>Traspaso</strong>
+      <div class="brand-lockup" aria-label="Consejo General de Gestores Administrativos">
+        <img src="https://www.consejogestores.org/wp-content/uploads/2024/02/LOGO-CONSEJO-GENERAL.png" alt="Consejo General de Gestores Administrativos">
       </div>
       <button class="quiet" id="newCase" type="button">Nueva</button>
     </header>
 
     <section class="hero">
-      <span class="eyebrow">TRANSFERENCIA DE VEHÍCULO</span>
+      <span class="eyebrow">TRASPASO</span>
       <h1 id="operationTitle">Nueva operación</h1>
     </section>
 
@@ -199,8 +198,9 @@
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script src="./vehiculos.js?v=20260831e"></script>
-  <script src="./vehiculos-v2.js?v=20260831e"></script>
+  <script src="./vehiculos.js?v=20260831f"></script>
+  <script src="./vehiculos-v2.js?v=20260831f"></script>
+  <script src="./ga-brand.js?v=20260831f"></script>
   <script>
     (() => {
       const form = document.getElementById('vehicleForm');
