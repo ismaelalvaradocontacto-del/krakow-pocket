@@ -27,6 +27,12 @@
         const ocr = document.createElement('script');
         ocr.src = './vehicle-scan-v6.js?v=20260831ac';
         ocr.defer = true;
+        ocr.addEventListener('load', () => {
+          const refine = document.createElement('script');
+          refine.src = './vehicle-scan-field-refine.js?v=20260831b';
+          refine.defer = true;
+          document.head.appendChild(refine);
+        }, {once:true});
         document.head.appendChild(ocr);
       }, {once:true});
       document.head.appendChild(reset);
