@@ -17,7 +17,7 @@
   scanScript.defer = true;
   scanScript.addEventListener('load', () => {
     const versionFix = document.createElement('script');
-    versionFix.src = './vehicle-version-fix.js?v=20260831k';
+    versionFix.src = './vehicle-version-fix.js?v=20260831l';
     versionFix.defer = true;
     versionFix.addEventListener('load', () => {
       const enhancedScan = document.createElement('script');
