@@ -1,0 +1,41 @@
+name: Transferencia binary migrate
+
+on:
+  push:
+    branches: [transferencia-binary-final]
+    paths:
+      - '.migration/transferencia/READY'
+
+permissions:
+  contents: write
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruir y verificar originales
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP='Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2'
+          SRC='.migration/transferencia'
+          DST="$APP/assets/vehiculos"
+          mkdir -p "$DST"
+          cat "$SRC"/mandato-*.b64 | base64 -d | gzip -d > "$DST/mandato.pdf"
+          cat "$SRC"/particulares-*.b64 | base64 -d | gzip -d > "$DST/contrato-particulares.pdf"
+          cat "$SRC"/rehab-*.b64 | base64 -d | gzip -d > "$DST/contrato-rehabilitacion.pdf"
+          test "$(stat -c%s "$DST/mandato.pdf")" = '175100'
+          test "$(sha256sum "$DST/mandato.pdf" | cut -d' ' -f1)" = 'eef564a0880b1ee913456315bb7304df9410fd71be9066cc5de0eee4f39138c0'
+          test "$(stat -c%s "$DST/contrato-particulares.pdf")" = '78922'
+          test "$(sha256sum "$DST/contrato-particulares.pdf" | cut -d' ' -f1)" = '77048a0ebdf6933a549563a92045cba0db79d9f32e98e986940ab11ba6ba1d56'
+          test "$(stat -c%s "$DST/contrato-rehabilitacion.pdf")" = '37013'
+          test "$(sha256sum "$DST/contrato-rehabilitacion.pdf" | cut -d' ' -f1)" = '71c3e964b7cc934df797d1bb321f354eb068d62b3ebf76936c8b67c74b2fc82b'
+      - name: Guardar PDF binarios
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/assets/vehiculos/*.pdf
+          git commit -m 'Guarda originales PDF de Transferencia'
+          git push
