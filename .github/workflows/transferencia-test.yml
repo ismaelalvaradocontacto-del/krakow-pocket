@@ -29,4 +29,30 @@ jobs:
         run: npm install --no-save pdf-lib@1.17.1 jsdom@24.1.3
 
       - name: Generar y validar los PDF
-        run: node Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/scripts/test-vehiculos.mjs
+        shell: bash
+        run: |
+          set +e
+          node Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/scripts/test-vehiculos.mjs > transferencia-test.log 2>&1
+          code=$?
+          cat transferencia-test.log
+          echo "$code" > transferencia-test.exit
+          exit 0
+
+      - name: Guardar diagnóstico
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: transferencia-test
+          path: |
+            transferencia-test.log
+            transferencia-test.exit
+          retention-days: 1
+
+      - name: Confirmar resultado
+        shell: bash
+        run: |
+          code=$(cat transferencia-test.exit)
+          if [ "$code" != "0" ]; then
+            echo "La prueba integral de Transferencia ha fallado."
+            exit "$code"
+          fi
