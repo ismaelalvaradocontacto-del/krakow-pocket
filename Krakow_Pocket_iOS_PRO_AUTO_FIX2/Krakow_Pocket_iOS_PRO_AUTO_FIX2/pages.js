@@ -1,10 +1,10 @@
 window.POCKET_PAGES = [
   {
     id: "transferencia-vehiculo",
-    title: "Transferencia de vehículo",
-    description: "Prepara la documentación completa de una transferencia desde un único expediente.",
+    title: "Traspaso",
+    description: "Transferencias de vehículos.",
     category: "Gestiones",
-    icon: "🚗",
+    icon: "⇄",
     href: "./vehiculos.html",
     createdAt: "2026-08-31T03:17:00+02:00"
   },
