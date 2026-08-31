@@ -1,4 +1,4 @@
-name: Transferencia · ajustar prueba gestor
+name: Transferencia · ajustar PDF gestor
 
 on:
   push:
@@ -14,37 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Ajustar creación A4 y relanzar cierre
+      - name: Corregir A4 y relanzar cierre
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p=Path('.github/workflows/transferencia-clean-final.yml')
-          s=p.read_text()
-          needle="""      - name: Probar los cuatro PDF con ambos contratos
-        run: |
-          npm install --no-save pdf-lib@1.17.1 jsdom@24.1.3
-"""
-          replacement="""      - name: Probar los cuatro PDF con ambos contratos
-        run: |
-          python - <<'PY2'
-          from pathlib import Path
-          p=Path('Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/vehiculos.js')
-          s=p.read_text()
-          a='let page = doc.addPage([595.28, 841.89]);'
-          b='let page = doc.addPage();\\n    page.setSize(595.28, 841.89);'
-          c='const ensure = needed => { if (y - needed < 48) { page = doc.addPage([595.28,841.89]); y = H - 48; } };'
-          d='const ensure = needed => { if (y - needed < 48) { page = doc.addPage(); page.setSize(595.28,841.89); y = H - 48; } };'
-          if a not in s or c not in s: raise SystemExit('No se encontró creación A4 del gestor')
-          p.write_text(s.replace(a,b).replace(c,d))
-          PY2
-          npm install --no-save pdf-lib@1.17.1 jsdom@24.1.3
-"""
-          if needle not in s: raise SystemExit('No se encontró paso de prueba')
-          p.write_text(s.replace(needle,replacement,1))
-          PY
+          python -c "from pathlib import Path; p=Path('Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/vehiculos.js'); s=p.read_text(); a='let page = doc.addPage([595.28, 841.89]);'; b='let page = doc.addPage();\n    page.setSize(595.28, 841.89);'; c='const ensure = needed => { if (y - needed < 48) { page = doc.addPage([595.28,841.89]); y = H - 48; } };'; d='const ensure = needed => { if (y - needed < 48) { page = doc.addPage(); page.setSize(595.28,841.89); y = H - 48; } };'; assert a in s and c in s; p.write_text(s.replace(a,b).replace(c,d))"
+          echo '# rerun after manager A4 fix' >> .github/workflows/transferencia-clean-final.yml
           git config user.name 'Pocket Automation'
           git config user.email 'actions@users.noreply.github.com'
-          git add .github/workflows/transferencia-clean-final.yml
+          git add Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/vehiculos.js .github/workflows/transferencia-clean-final.yml
           git rm .github/workflows/transferencia-fix-manager-test.yml
-          git commit -m 'Corrige prueba A4 del PDF del gestor'
+          git commit -m 'Corrige A4 del PDF del gestor'
           git push
