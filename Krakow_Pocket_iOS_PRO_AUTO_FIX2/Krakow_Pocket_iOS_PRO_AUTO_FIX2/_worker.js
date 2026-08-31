@@ -88,6 +88,10 @@ async function readVehicle(request, env) {
     return json({ ok: false, code: 'NOT_CONFIGURED', message: 'La lectura automática todavía no tiene configurada la clave del servicio.' }, 503);
   }
 
+  const url = new URL(request.url);
+  const origin = request.headers.get('origin');
+  if (origin && origin !== url.origin) return json({ ok: false, code: 'FORBIDDEN' }, 403);
+
   const secFetchSite = request.headers.get('sec-fetch-site');
   if (secFetchSite && !['same-origin', 'same-site', 'none'].includes(secFetchSite)) {
     return json({ ok: false, code: 'FORBIDDEN' }, 403);
@@ -136,7 +140,7 @@ async function readVehicle(request, env) {
     const content = [{ type: 'input_text', text: prompt }];
     if (isPdf) {
       temporaryFileId = await uploadPdf(file, env.OPENAI_API_KEY);
-      content.push({ type: 'input_file', file_id: temporaryFileId, detail: 'high' });
+      content.push({ type: 'input_file', file_id: temporaryFileId });
     } else {
       const base64 = arrayBufferToBase64(await file.arrayBuffer());
       content.push({ type: 'input_image', image_url: `data:${type || 'image/jpeg'};base64,${base64}`, detail: 'high' });
