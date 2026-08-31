@@ -29,7 +29,7 @@
         ocr.defer = true;
         ocr.addEventListener('load', () => {
           const refine = document.createElement('script');
-          refine.src = './vehicle-scan-field-refine.js?v=20260831b';
+          refine.src = './vehicle-scan-field-refine.js?v=20260831c';
           refine.defer = true;
           document.head.appendChild(refine);
         }, {once:true});
