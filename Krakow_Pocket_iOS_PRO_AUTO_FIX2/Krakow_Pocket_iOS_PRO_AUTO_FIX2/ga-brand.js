@@ -8,6 +8,15 @@
   dateScript.defer = true;
   document.head.appendChild(dateScript);
 
+  const scanStyle = document.createElement('link');
+  scanStyle.rel = 'stylesheet';
+  scanStyle.href = './vehicle-scan.css?v=20260831h';
+  document.head.appendChild(scanStyle);
+  const scanScript = document.createElement('script');
+  scanScript.src = './vehicle-scan.js?v=20260831h';
+  scanScript.defer = true;
+  document.head.appendChild(scanScript);
+
   const RED = [177/255, 15/255, 63/255];
   const branded = new WeakSet();
   const urls = [];
