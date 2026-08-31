@@ -50,14 +50,14 @@ jobs:
           const templateCache = new Map();
 
           async function templateBytes(name) {
-            if (templateCache.has(name)) return templateCache.get(name).slice();
+            if (templateCache.has(name)) return templateCache.get(name).slice(0);
             const url = TEMPLATE_FILES[name];
             if (!url) throw new Error(`Plantilla desconocida: ${name}`);
             const response = await fetch(url, { cache: 'no-store' });
             if (!response.ok) throw new Error(`No se ha podido cargar ${url}`);
-            const bytes = new Uint8Array(await response.arrayBuffer());
+            const bytes = await response.arrayBuffer();
             templateCache.set(name, bytes);
-            return bytes.slice();
+            return bytes.slice(0);
           }
           '''
           s, n = re.subn(r'  function templateBytes\(base64\) \{\n.*?\n  \}\n', new_loader, s, count=1, flags=re.S)
