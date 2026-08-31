@@ -20,22 +20,10 @@
     makes.src = './vehicle-brand-rescue.js?v=20260831r';
     makes.defer = true;
     makes.addEventListener('load', () => {
-      const normalize = document.createElement('script');
-      normalize.src = './vehicle-field-normalize.js?v=20260831v';
-      normalize.defer = true;
-      normalize.addEventListener('load', () => {
-        const spatial = document.createElement('script');
-        spatial.src = './vehicle-spatial-rescue.js?v=20260831w';
-        spatial.defer = true;
-        spatial.addEventListener('load', () => {
-          const fastScan = document.createElement('script');
-          fastScan.src = './vehicle-scan-fast.js?v=20260831u';
-          fastScan.defer = true;
-          document.head.appendChild(fastScan);
-        }, {once:true});
-        document.head.appendChild(spatial);
-      }, {once:true});
-      document.head.appendChild(normalize);
+      const unified = document.createElement('script');
+      unified.src = './vehicle-scan-unified.js?v=20260831x';
+      unified.defer = true;
+      document.head.appendChild(unified);
     }, {once:true});
     document.head.appendChild(makes);
   }, {once:true});
