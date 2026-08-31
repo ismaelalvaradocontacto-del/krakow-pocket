@@ -34,6 +34,11 @@ jobs:
 
           p = app / 'vehiculos.js'
           s = p.read_text()
+          old_size = 'const W = page.getWidth(), H = page.getHeight(), M = 44;'
+          new_size = 'const W = 595.28, H = 841.89, M = 44;'
+          if old_size not in s:
+              raise SystemExit('No se encontró el tamaño dinámico del PDF del gestor')
+          s = s.replace(old_size, new_size, 1)
           new_loader = '''  const TEMPLATE_FILES = Object.freeze({
             mandate: './assets/vehiculos/mandato.pdf',
             contractParticulares: './assets/vehiculos/contrato-particulares.pdf',
