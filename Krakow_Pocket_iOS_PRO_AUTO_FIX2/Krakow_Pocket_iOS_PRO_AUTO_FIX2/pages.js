@@ -1,5 +1,14 @@
 window.POCKET_PAGES = [
   {
+    id: "transferencia-vehiculo",
+    title: "Transferencia de vehículo",
+    description: "Prepara la documentación completa de una transferencia desde un único expediente.",
+    category: "Gestiones",
+    icon: "🚗",
+    href: "./vehiculos.html",
+    createdAt: "2026-08-31T03:17:00+02:00"
+  },
+  {
     id: "casita",
     title: "Casita",
     description: "Ambiente, agua, energía y control de la casa en un único panel preparado para domótica real.",
