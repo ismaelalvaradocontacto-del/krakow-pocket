@@ -5,8 +5,8 @@
   "start_url": "./vehiculos.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f3f0e9",
-  "theme_color": "#24231f",
+  "background_color": "#f4f4f4",
+  "theme_color": "#b10f3f",
   "lang": "es",
   "icons": [
     {
