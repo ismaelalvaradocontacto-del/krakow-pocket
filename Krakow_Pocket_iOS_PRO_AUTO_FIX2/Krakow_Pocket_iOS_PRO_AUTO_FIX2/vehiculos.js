@@ -314,12 +314,13 @@
     const doc = await PDFDocument.create();
     const regular = await doc.embedFont(StandardFonts.Helvetica);
     const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-    let page = doc.addPage([595.28, 841.89]);
+    let page = doc.addPage();
+    page.setSize(595.28, 841.89);
     const W = page.getWidth(), H = page.getHeight(), M = 44;
     let y = H - 48;
     const ink = rgb(.09,.13,.10), muted = rgb(.42,.46,.43), line = rgb(.87,.89,.87), accent = rgb(.19,.36,.26);
 
-    const ensure = needed => { if (y - needed < 48) { page = doc.addPage([595.28,841.89]); y = H - 48; } };
+    const ensure = needed => { if (y - needed < 48) { page = doc.addPage(); page.setSize(595.28,841.89); y = H - 48; } };
     const text = (value,x,yy,size=9,font=regular,color=ink) => { if (clean(value)) page.drawText(clean(value),{x,y:yy,size,font,color}); };
     const hr = () => { page.drawLine({start:{x:M,y},end:{x:W-M,y},thickness:.6,color:line}); y -= 16; };
     const section = title => { ensure(42); y -= 4; text(title.toUpperCase(),M,y,7.5,bold,accent); y -= 14; };
