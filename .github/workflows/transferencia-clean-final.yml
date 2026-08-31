@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/transferencia-clean-final.yml'
+      - '.transferencia-run'
   workflow_dispatch:
 
 permissions:
