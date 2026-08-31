@@ -1,8 +1,8 @@
 (() => {
   const form = document.getElementById('vehicleForm');
   const ui = document.querySelector('.vehicle-scan');
-  if (!form || !ui || ui.dataset.versionRefiner === '1') return;
-  ui.dataset.versionRefiner = '1';
+  if (!form || !ui || ui.dataset.versionRefiner === '2') return;
+  ui.dataset.versionRefiner = '2';
 
   const versionInput = form.elements.namedItem('version');
   const result = ui.querySelector('.vehicle-scan-result');
@@ -25,7 +25,7 @@
   async function getWorker() {
     if (workerPromise) return workerPromise;
     const wait = async () => {
-      for (let i = 0; i < 80; i += 1) {
+      for (let i = 0; i < 100; i += 1) {
         if (window.Tesseract?.createWorker) return window.Tesseract;
         await new Promise(resolve => setTimeout(resolve, 100));
       }
@@ -44,7 +44,7 @@
         img.onerror = reject;
         img.src = url;
       });
-      const maxSide = 3000;
+      const maxSide = 3200;
       const scale = Math.min(1, maxSide / Math.max(image.naturalWidth, image.naturalHeight));
       const source = document.createElement('canvas');
       source.width = Math.max(1, Math.round(image.naturalWidth * scale));
@@ -59,34 +59,37 @@
     }
   }
 
-  function cropD2(source, threshold = false) {
+  function cropD2(source, mode = 'gray') {
     const ratio = source.width / source.height;
     if (ratio < 1.2 || ratio > 1.65) return null;
-    const x = Math.round(source.width * .09);
-    const y = Math.round(source.height * .765);
-    const w = Math.round(source.width * .39);
-    const h = Math.round(source.height * .115);
-    const scale = 3;
+
+    // Permiso español horizontal: fila D.2 exacta, sin invadir D.1 ni D.3.
+    const x = Math.round(source.width * .075);
+    const y = Math.round(source.height * .785);
+    const w = Math.round(source.width * .405);
+    const h = Math.round(source.height * .057);
+    const scale = 6;
+
     const out = document.createElement('canvas');
-    out.width = w * scale;
-    out.height = h * scale;
+    out.width = Math.max(1, w * scale);
+    out.height = Math.max(1, h * scale);
     const ctx = out.getContext('2d', { alpha:false, willReadFrequently:true });
     ctx.fillStyle = '#fff';
     ctx.fillRect(0,0,out.width,out.height);
     ctx.imageSmoothingEnabled = true;
     ctx.drawImage(source,x,y,w,h,0,0,out.width,out.height);
 
-    if (threshold) {
-      const image = ctx.getImageData(0,0,out.width,out.height);
-      const data = image.data;
-      for (let i = 0; i < data.length; i += 4) {
-        const lum = .299*data[i] + .587*data[i+1] + .114*data[i+2];
-        const v = lum > 186 ? 255 : 0;
-        data[i] = data[i+1] = data[i+2] = v;
-        data[i+3] = 255;
-      }
-      ctx.putImageData(image,0,0);
+    const image = ctx.getImageData(0,0,out.width,out.height);
+    const data = image.data;
+    for (let i = 0; i < data.length; i += 4) {
+      const lum = .299*data[i] + .587*data[i+1] + .114*data[i+2];
+      let v = lum;
+      if (mode === 'contrast') v = Math.max(0, Math.min(255, (lum - 128) * 2 + 128));
+      if (mode === 'threshold') v = lum > 150 ? 255 : 0;
+      data[i] = data[i+1] = data[i+2] = v;
+      data[i+3] = 255;
     }
+    ctx.putImageData(image,0,0);
     return out;
   }
 
@@ -98,7 +101,7 @@
       .replace(/^[D0]?2[.:-]?/,'')
       .replace(/[.*]+$/,'')
       .replace(/\/{2,}/g,'/')
-      .replace(/-{2,}$/,'')
+      .replace(/[-_.*]{2,}$/,'')
       .replace(/^[-/]+|[-/]+$/g,'');
     if (value.length < 4 || value.length > 40) return '';
     return value;
@@ -109,12 +112,12 @@
     let points = 0;
     if (/[A-Z]/.test(value)) points += 2;
     if (/\d/.test(value)) points += 2;
-    if (value.includes('/')) points += 4;
-    if (value.includes('-')) points += 3;
-    if (/^[A-Z]-[A-Z]\/[A-Z0-9]+/.test(value)) points += 4;
-    if (/\.$/.test(value)) points -= 4;
-    if (/^[A-Z]{7,}$/.test(value)) points -= 3;
-    if (/[!|]/.test(value)) points -= 5;
+    if (value.includes('/')) points += 5;
+    if (value.includes('-')) points += 4;
+    if (/^[A-Z]-[A-Z]\/[A-Z0-9]+/.test(value)) points += 6;
+    if (/^[A-Z]{7,}$/.test(value)) points -= 5;
+    if (/[!|]/.test(value)) points -= 6;
+    if (/\.[A-Z]?$/.test(value)) points -= 4;
     return points;
   }
 
@@ -138,21 +141,27 @@
     running = true;
     try {
       const source = await loadCanvas(file);
-      const normal = cropD2(source,false);
-      const highContrast = cropD2(source,true);
-      if (!normal || !highContrast) return;
+      const gray = cropD2(source,'gray');
+      const contrast = cropD2(source,'contrast');
+      const threshold = cropD2(source,'threshold');
+      if (!gray || !contrast || !threshold) return;
+
       const worker = await getWorker();
       const whitelist = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_/.*';
-      const candidates = [];
-      candidates.push(await recognize(worker,normal,7,whitelist));
-      candidates.push(await recognize(worker,highContrast,7,whitelist));
-      candidates.push(await recognize(worker,normal,13,whitelist));
-      const best = candidates.filter(Boolean).sort((a,b) => score(b) - score(a))[0] || '';
-      if (!best || score(best) < 4) return;
+      const candidates = [
+        await recognize(worker,gray,6,whitelist),
+        await recognize(worker,gray,7,whitelist),
+        await recognize(worker,contrast,6,whitelist),
+        await recognize(worker,contrast,7,whitelist),
+        await recognize(worker,threshold,6,whitelist)
+      ].filter(Boolean);
+
+      const best = candidates.sort((a,b) => score(b) - score(a))[0] || '';
+      if (!best || score(best) < 6) return;
 
       const current = normalize(versionInput.value);
       if (best === current) return;
-      if (score(best) >= score(current) + 2 || !current) {
+      if (!current || score(best) >= score(current) + 2) {
         versionInput.value = best;
         versionInput.dataset.ocrFilled = '1';
         versionInput.dispatchEvent(new Event('input',{bubbles:true}));
@@ -174,7 +183,7 @@
     if (!pendingFile || running) return;
     const text = result.textContent.trim();
     if (!text || /leyendo|preparando|comprobando/i.test(text)) return;
-    setTimeout(() => refine(pendingFile), 80);
+    setTimeout(() => refine(pendingFile), 100);
   });
   observer.observe(result,{childList:true,subtree:true,characterData:true});
 
