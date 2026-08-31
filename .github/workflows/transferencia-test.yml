@@ -4,7 +4,8 @@ on:
   push:
     branches: [main]
     paths:
-      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/vehiculos*'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/vehiculos.html'
+      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/vehiculos.js'
       - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/scripts/test-vehiculos.mjs'
       - '.github/workflows/transferencia-test.yml'
   workflow_dispatch:
