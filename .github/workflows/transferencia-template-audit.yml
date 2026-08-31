@@ -1,11 +1,6 @@
 name: Transferencia template audit
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/transferencia-template-audit.yml'
-      - 'Krakow_Pocket_iOS_PRO_AUTO_FIX2/Krakow_Pocket_iOS_PRO_AUTO_FIX2/vehiculos-tpl-*.js'
   workflow_dispatch:
 
 permissions:
