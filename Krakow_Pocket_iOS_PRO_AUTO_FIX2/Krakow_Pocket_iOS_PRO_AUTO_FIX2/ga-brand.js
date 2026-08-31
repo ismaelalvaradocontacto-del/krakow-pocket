@@ -10,11 +10,17 @@
 
   const scanStyle = document.createElement('link');
   scanStyle.rel = 'stylesheet';
-  scanStyle.href = './vehicle-scan.css?v=20260831h';
+  scanStyle.href = './vehicle-scan.css?v=20260831i';
   document.head.appendChild(scanStyle);
   const scanScript = document.createElement('script');
-  scanScript.src = './vehicle-scan.js?v=20260831h';
+  scanScript.src = './vehicle-scan.js?v=20260831i';
   scanScript.defer = true;
+  scanScript.addEventListener('load', () => {
+    const enhancedScan = document.createElement('script');
+    enhancedScan.src = './vehicle-scan-v2.js?v=20260831i';
+    enhancedScan.defer = true;
+    document.head.appendChild(enhancedScan);
+  }, {once:true});
   document.head.appendChild(scanScript);
 
   const RED = [177/255, 15/255, 63/255];
