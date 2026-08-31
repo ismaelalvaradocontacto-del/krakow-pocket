@@ -25,7 +25,7 @@
       normalize.defer = true;
       normalize.addEventListener('load', () => {
         const fastScan = document.createElement('script');
-        fastScan.src = './vehicle-scan-fast.js?v=20260831s';
+        fastScan.src = './vehicle-scan-fast.js?v=20260831u';
         fastScan.defer = true;
         document.head.appendChild(fastScan);
       }, {once:true});
